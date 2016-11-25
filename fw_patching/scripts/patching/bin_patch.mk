@@ -1,3 +1,7 @@
+## @file bin_patch.mk
+## @brief Makefile to handle combination of the patch code with the base firmware ELF file
+##
+## @author Carsten Bruns (carst.bruns@gmx.de)
 
 PATCH_ELF=$(BUILD_DIR)/fw_patch.elf
 FW_BASE_ELF=$(FW_BASE_DIR)/fw_base.elf

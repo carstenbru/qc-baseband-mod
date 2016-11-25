@@ -1,3 +1,11 @@
+## @file create_wrapper_lcs.mk
+## @brief Makefile to generate the base firmware wrapper (fw_wrapper.lcs)
+##
+## The generated linker script contains only symbol definitions for the base firmware.
+## These are obtained from the firmware wrapper header file.
+##
+## @author Carsten Bruns (carst.bruns@gmx.de)
+
 WRAPPER_LCS_FILE=$(FW_BASE_DIR)/fw_wrapper.lcs
 WRAPPER_HEADER=$(patsubst %.img,%_wrapper.h,$(abspath $(BASE_FW)))
  

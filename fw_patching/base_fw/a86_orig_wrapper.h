@@ -1,9 +1,10 @@
-/*
- * fw_wrapper.h
+/**
+ * @file a86_orig_wrapper.h
+ * @brief Definitions of existing baseband firmware functions
  * 
- * Definitions of original firmware functions
+ * Specific to Asus Padfone Infinity 2 (A86), firmware version "M3.12.15-A86_1032"
  * 
- * @author Carsten Bruns
+ * @author Carsten Bruns (carst.bruns@gmx.de)
  */
 
 #ifndef __FW_WRAPPER_H

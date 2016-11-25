@@ -1,3 +1,11 @@
+/**
+ * @file patch.lcs
+ * @brief patch linker control script
+ *
+ * This file handles the correct placement of the patch code in memory.
+ *
+ * @author Carsten Bruns (carst.bruns@gmx.de)
+ */
 
 /*================================================================*/
 /* Configurable parameters                                        */
@@ -18,8 +26,6 @@ OUTPUT_FORMAT ("elf32-littleqdsp6",
                "elf32-bigqdsp6",
            "elf32-littleqdsp6")
 OUTPUT_ARCH (hexagon)
-
-/* INCLUDE ../wrapper/fw_wrapper.lcs */
 
 SECTIONS
 {

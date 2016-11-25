@@ -1,12 +1,20 @@
-#! /usr/bin/env python
-"""
-Splits elf files into segments.
+#!/usr/bin/env python2
 
-If the elf is signed, the elf headers and the hash segment are output to
+"""
+file: pil-splitter.py
+
+Splits ELF files into segments.
+
+If the ELF is signed, the ELF headers and the hash segment are output to
 the *.mdt file, and then the segments are output to *.b<n> files.
 
-If the elf isn't signed each segment is output to a *.b<n> file and the
-elf headers are output to the *.mdt file.
+If the ELF isn't signed each segment is output to a *.b<n> file and the
+ELF headers are output to the *.mdt file.
+
+This file is largely based on the pil-splitter.py script from Qualcomm and:
+https://github.com/remittor/qcom-mbn-tools
+
+modified by Carsten Bruns (carst.bruns@gmx.de)
 """
 
 import sys
@@ -22,7 +30,9 @@ def usage():
   exit(1)
 
 def dump_data(input, output, start, size):
-  """Dump 'size' bytes from 'input' at 'start' into newfile 'output'"""
+  """
+  Dump 'size' bytes from 'input' at 'start' into newfile 'output'
+  """
 
   if size == 0:
     return
@@ -35,7 +45,9 @@ def dump_data(input, output, start, size):
   #print 'BIN %s' % output
 
 def append_data(input, output, start, size):
-  """Append 'size' bytes from 'input' at 'start' to 'output' file"""
+  """
+  Append 'size' bytes from 'input' at 'start' to 'output' file
+  """
 
   if size == 0:
     return
@@ -47,7 +59,9 @@ def append_data(input, output, start, size):
 
 
 def dump_metadata(metadata, image, name):
-  """Creates <name>.mdt file from elf metadata"""
+  """
+  Creates <name>.mdt file from elf metadata
+  """
 
   name = "%s.mdt" % name
   # Dump out the elf header
@@ -61,7 +75,9 @@ def dump_metadata(metadata, image, name):
       break
 
 def dump_segments(metadata, image, name):
-  """Creates <name>.bXX files for each segment"""
+  """
+  Creates <name>.bXX files for each segment
+  """
   for i, seg in enumerate(metadata['segments']):
     start = seg['offset']
     size = seg['filesz']

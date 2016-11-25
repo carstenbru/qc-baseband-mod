@@ -1,4 +1,14 @@
-#! /usr/bin/env python
+#!/usr/bin/env python2
+
+"""
+file: pil-patcher.py
+
+Image patcher script with various functions. Used to update the hash table in the image.
+
+This file is the "pil-patcher.py" script from:
+https://github.com/remittor/qcom-mbn-tools
+Only this header was added.
+"""
 
 import sys
 import struct

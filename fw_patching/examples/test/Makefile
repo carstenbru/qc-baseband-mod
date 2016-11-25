@@ -1,3 +1,10 @@
+## @brief project Makefile
+##
+## This file contains project specific definitions,
+## such as the used base firmware image
+##
+## @author Carsten Bruns (carst.bruns@gmx.de)
+
 SEEMOO_FW_PATCH_DIR_ROOT=../../
 BASE_FW=../../base_fw/a86_orig.img
 # new Firmware version string, leave empty to leave version strings untouched

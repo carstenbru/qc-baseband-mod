@@ -1,3 +1,10 @@
+## @file image.mk
+## @brief Makefile to handle everything related to image file operations
+##
+## The targets in this file handle ELF extraction from the firmware image, hash table correction
+## and repacking of the patched image
+##
+## @author Carsten Bruns (carst.bruns@gmx.de)
 
 export MTOOLS_SKIP_CHECK=1
 FW_BASE_ELF=$(FW_BASE_DIR)/fw_base.elf

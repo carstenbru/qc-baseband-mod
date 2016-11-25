@@ -1,3 +1,10 @@
+/**
+ * @file test_handler.c
+ * @brief simple framework "pointer_table" attribute test
+ *
+ * @author Carsten Bruns (carst.bruns@gmx.de)
+ */
+
 #include FW_WRAPPER
 
 typedef struct {

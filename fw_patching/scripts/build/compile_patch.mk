@@ -1,3 +1,11 @@
+## @file compile_patch.mk
+## @brief Makefile to handle patch compilation and linking against a base firmware wrapper (fw_wrapper.lcs)
+##
+## For debugging purposes this file also includes targets to read ELF information 
+## and display the disassembled patch code.
+##
+## @author Carsten Bruns (carst.bruns@gmx.de)
+
 PATCH_ELF=$(BUILD_DIR)/fw_patch.elf
 
 CC=hexagon-gcc

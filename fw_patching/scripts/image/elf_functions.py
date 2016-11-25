@@ -1,7 +1,25 @@
+#!/usr/bin/env python2
+
+"""
+file: elf_functions.py
+
+ELF file processing functions
+
+This file is largely based on the pil-splitter.py script from Qualcomm and:
+https://github.com/remittor/qcom-mbn-tools
+
+modified by Carsten Bruns (carst.bruns@gmx.de)
+"""
+
 import struct
  
 def gen_struct(format, image):
-  """Generates a dictionary from the format tuple by reading image"""
+  """
+  Generates a dictionary from the format tuple by reading image
+  
+  :param format: struct format
+  :param image: input data
+  """
 
   str = "<%s" % "".join([x[1] for x in format])
   elems = struct.unpack(str, image.read(struct.calcsize(str)))
@@ -9,7 +27,11 @@ def gen_struct(format, image):
   return dict(zip(keys, elems))
 
 def parse_metadata(image):
-  """Parses elf header metadata"""
+  """
+  Parses elf header metadata
+  
+  :param image: input ELF file
+  """
   metadata = {}
 
   elf32_hdr = [
@@ -57,7 +79,11 @@ def parse_metadata(image):
   return metadata
 
 def is_elf(file):
-  """Verifies a file as being an ELF file"""
+  """
+  Verifies a file as being an ELF file
+  
+  :param file: input file to test
+  """
   file.seek(0)
   magic = file.read(4)
   file.seek(0)
