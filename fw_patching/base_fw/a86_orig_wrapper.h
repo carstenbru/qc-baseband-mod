@@ -34,10 +34,13 @@ ADDRESS(0x09130650) void* memset(void* ptr, int value, size_t num);
 
 ADDRESS(0x097A9E80) unsigned int qmi_csi_send_resp(void* req_handle, unsigned int msg_id, void* c_struct, unsigned int c_struct_len);
 
+ADDRESS(0x097AF0B0) unsigned int qmi_ping_svc_ping_response (void* clnt_info, void* req_handle, unsigned int msg_id, void* req_c_struct, unsigned int req_c_struct_len, void* service_cookie);
+ADDRESS(0x097AF2D0) unsigned int qmi_ping_svc_ping_data_response (void* clnt_info, void* req_handle, unsigned int msg_id, void* req_c_struct, unsigned int req_c_struct_len, void* service_cookie);
+ADDRESS(0x097AF220) unsigned int qmi_ping_svc_ping_large_data_response (void* clnt_info, void* req_handle, unsigned int msg_id, void* req_c_struct, unsigned int req_c_struct_len, void* service_cookie);
+ADDRESS(0x097AF130) unsigned int qmi_ping_svc_ping_data_ind_registration (void* clnt_info, void* req_handle, unsigned int msg_id, void* req_c_struct, unsigned int req_c_struct_len, void* service_cookie);
+
 /*
- * as we do not know all the QMI types here, let's just declare a void pointer
- * 
- * real function declaration:
+real function declaration data types:
  qmi_csi_cb_error (* const req_handle_table) (
     client_info_type         *clnt_info,
     qmi_req_handle           req_handle,
@@ -46,7 +49,7 @@ ADDRESS(0x097A9E80) unsigned int qmi_csi_send_resp(void* req_handle, unsigned in
     unsigned int             req_c_struct_len,
     void                     *service_cookie);
  */
-ADDRESS(0x0A0FF620) void* qmi_ping_svc_req_handle_table;
+ADDRESS(0x0A0FF620) unsigned int (*qmi_ping_svc_req_handle_table)(void* clnt_info, void* req_handle, unsigned int msg_id, void* req_c_struct, unsigned int req_c_struct_len, void* service_cookie);
 
 /* other */
 
