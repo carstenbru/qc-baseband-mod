@@ -1,0 +1,10 @@
+.directory
+ToDo 
+*.o
+modem.b*
+modem.mdt
+*.elf
+patched_modem.img
+fw_wrapper.lcs
+*.pyc
+disasm*.txt
