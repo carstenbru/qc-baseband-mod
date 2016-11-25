@@ -34,6 +34,7 @@ class BasePatch(object):
     
     def apply(self, firmware, metadata, **kargs):
         fw_pos = get_offset_in_elf(metadata, self.pos)
+        #print "patching at pos %d, length %d" % (fw_pos, len(self.data))
         firmware += max(0, fw_pos - len(firmware)) * "\x00"
         return firmware[:fw_pos] + self.data + firmware[fw_pos+len(self.data):]
 

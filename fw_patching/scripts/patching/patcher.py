@@ -12,7 +12,7 @@ from pycparserext.ext_c_parser import GnuCParser
 
 def read_symtab(filename):
     symtab = {}
-    table = commands.getstatusoutput('hexagon-readelf -s ' + filename)
+    table = commands.getstatusoutput('hexagon-readelf -s --wide ' + filename)
     for line in table[1].split('\n'):
         tokens = line.split()
         if (len(tokens) >= 8):
@@ -38,10 +38,20 @@ class FuncDefVisitor(c_ast.NodeVisitor):
             for expr in spec.exprlist.exprs:
                 if (expr.name.name == "overwrite"):
                     destName = expr.args.exprs[0].value[1:-1]
+                    pos = resolve_symbol(destName, symtab)
+                    pointer = resolve_symbol(node.decl.name, symtab)
                     
-                    self.patches.append(JumpPatch(resolve_symbol(destName, symtab), resolve_symbol(node.decl.name, symtab)))
-                    #print('function "%s" should overwrite "%s"' % (node.decl.name, destName))
-                    #print('function "%s" should overwrite "%s"' % (resolve_symbol(node.decl.name, symtab), resolve_symbol(destName, symtab)))
+                    self.patches.append(JumpPatch(pos, pointer))
+                    print('function "%s" should overwrite "%s"' % (node.decl.name, destName))
+                    print('-> function "0x%X" should overwrite "0x%X"' % (pointer, pos))
+                elif (expr.name.name == "pointer_table"):
+                    destName = expr.args.exprs[0].value[1:-1]
+                    destOffset = int(expr.args.exprs[1].value, 0)
+                    pos = resolve_symbol(destName, symtab) + (destOffset << 2)
+                    pointer = resolve_symbol(node.decl.name, symtab)
+                    self.patches.append(GenericPatch4(pos, pointer))
+                    print('function "%s" should be placed in pointer table "%s" at %d' % (node.decl.name, destName, destOffset))
+                    print('-> function "0x%X" should be placed in pointer table at "0x%X"' % (pointer, pos))
 
 def generate_patch_list(symtab, fw_wrapper, src_dir):
     patches = []

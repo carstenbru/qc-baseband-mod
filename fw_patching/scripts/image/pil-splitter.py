@@ -32,7 +32,7 @@ def dump_data(input, output, start, size):
   outFile.write(input.read(size))
   outFile.close()
 
-  print 'BIN %s' % output
+  #print 'BIN %s' % output
 
 def append_data(input, output, start, size):
   """Append 'size' bytes from 'input' at 'start' to 'output' file"""

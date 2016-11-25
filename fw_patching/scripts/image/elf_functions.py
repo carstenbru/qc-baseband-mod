@@ -43,7 +43,7 @@ def parse_metadata(image):
       ("align", "I"),
       ]
 
-  print "pg_start = 0x%08x" % metadata['pg_start']
+  #print "pg_start = 0x%08x" % metadata['pg_start']
 
   metadata['segments'] = []  
   for i in xrange(metadata['num_segments']):
@@ -52,7 +52,7 @@ def parse_metadata(image):
     phdr = gen_struct(elf32_phdr, image)
     metadata['segments'].append(phdr)
     phdr['hash'] = (phdr['flags'] & (0x7 << 24)) == (0x2 << 24)
-    print "["+str(i)+"] %08x" % poff," offset =",phdr['offset']," size =",phdr['filesz']
+    #print "["+str(i)+"] %08x" % poff," offset =",phdr['offset']," size =",phdr['filesz']
 
   return metadata
 
