@@ -5,9 +5,9 @@ file: pil-patcher.py
 
 Image patcher script with various functions. Used to update the hash table in the image.
 
-This file is the "pil-patcher.py" script from:
+This file largely based on the "pil-patcher.py" script from:
 https://github.com/remittor/qcom-mbn-tools
-Only this header was added.
+Only minor changes were performed.
 """
 
 import sys
@@ -189,6 +189,13 @@ def update_sec_hash(image, offset, sec_num, hash):
   image.seek(offset + hdr_size + sec_num * 32)
   image.write(hash)
     
+def update_hash_header_img_size(hash_file, seg_count):
+    data = struct.pack("<I", seg_count*32)
+    hash_file.seek(16)
+    hash_file.write(data)
+    hash_file.seek(20)
+    hash_file.write(data)
+    
 #----------------------------------------------  
 
 setup()
@@ -317,6 +324,10 @@ if (options.rm_sign == 2):
 if (options.upd_hash):
   print "---------- Update hash table -------------"
   
+  hash_file = open(hash_fn, 'r+b')
+  update_hash_header_img_size(hash_file, metadata['num_segments'])
+  hash_file.close()
+  
   for i, seg in enumerate(metadata['segments']):
     filesz = seg['filesz']
     #print "[" + "%02d" % i + "] stor_hash =","".join("{:02x}".format(ord(c)) for c in seg['stor_hash'])
@@ -326,7 +337,8 @@ if (options.upd_hash):
       die("Error: 001 %d" % filesz)
     if (not sec_exist):
       continue
-    if (seg['stor_hash'] == '\0'*32):
+    #if (seg['stor_hash'] == '\0'*32):
+    if (i == 1):
       continue
     seg['real_hash'] = get_file_sha256(sec_fn)
     

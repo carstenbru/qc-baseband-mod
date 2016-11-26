@@ -15,6 +15,15 @@
 
 /* ########################################### */
 
+/* define patch code target address (as void pointer) */
+
+ADDRESS(0x0CD0F000) void* __patch_addr_text_base__;
+/* you can define also the start address for data sections,
+   if left undefined they will be placed directly after the code*/
+//ADDRESS(0x0CD0F000) void* __patch_addr_data_base__;
+
+/* ########################################### */
+       
 /* firmware identification strings*/
 
 ADDRESS(0x0A0FB088) char* fw_version_string;

@@ -7,38 +7,34 @@
  * @author Carsten Bruns (carst.bruns@gmx.de)
  */
 
-/*================================================================*/
-/* Configurable parameters                                        */
-/*================================================================*/
-
-/* TODO!!!!!!!!!!!! */
-
-/* free memory for patch code start */
-__patch_addr_text_base__ = 0xA0FB0A0; /*0x08400000;*/
-
-/* free memory for patch data start */
-__patch_addr_data_base__ = 0xF8400000;
-
-/*================================================================*/
-/* Do not edit                                                    */
-/*================================================================*/
 OUTPUT_FORMAT ("elf32-littleqdsp6",
                "elf32-bigqdsp6",
            "elf32-littleqdsp6")
 OUTPUT_ARCH (hexagon)
+
+PHDRS
+{
+    text PT_LOAD;
+    data PT_LOAD;
+    rodata PT_LOAD;
+    bss PT_LOAD;
+}
 
 SECTIONS
 {
     . = __patch_addr_text_base__;
     .text : ALIGN(0x1000) { 
         *(.text) 
-    }
+    } : text
     
-    . = __patch_addr_data_base__;
+    . = DEFINED(__patch_addr_data_base__) ? __patch_addr_data_base__ : .;
     .data : ALIGN(0x1000) {
         *(.data)
-    }
+    } : data
+    .rodata : ALIGN(0x1000) {
+        *(.rodata)
+    } : rodata
     .bss : ALIGN(0x1000) {
         *(.bss)
-    }
+    } : bss
 }

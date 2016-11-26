@@ -13,7 +13,7 @@ LD=hexagon-ld
 RELF=hexagon-readelf
 OBJDUMP=hexagon-objdump
 EDITOR=kwrite
-CFLAGS=-mv5 -O2 -Wall -Wno-attributes
+CFLAGS=-mv5 -Wall -Wno-attributes
 LDFLAGS=-mv5 -nostdlib -nostartfiles
 
 OBJ=$(addprefix $(BUILD_DIR)/,$(notdir $(patsubst %.c,%.o,$(wildcard $(SRC_DIR)/*.c))))
@@ -27,6 +27,7 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 
 $(PATCH_ELF): $(OBJ) $(FW_BASE_DIR)/fw_wrapper.lcs
 	$(LD) -T$(FW_BASE_DIR)/fw_wrapper.lcs -T$(SEEMOO_FW_PATCH_DIR_ROOT)/scripts/build/patch.lcs $(LDFLAGS) $(OBJ) -o $(PATCH_ELF)
+	@echo patch ELF file generated
 
 readelf-obj: $(OBJ)
 	$(RELF) -a $(OBJ)

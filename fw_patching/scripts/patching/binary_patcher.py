@@ -53,6 +53,9 @@ class BasePatch(object):
     
     def apply(self, firmware, metadata, **kargs):
         fw_pos = get_offset_in_elf(metadata, self.pos)
+        if (fw_pos == 0):
+            print "error: patch address not in an ELF segment: 0x%X" % (self.pos)
+            exit(0)
         #print "patching at pos %d, length %d" % (fw_pos, len(self.data))
         firmware += max(0, fw_pos - len(firmware)) * "\x00"
         return firmware[:fw_pos] + self.data + firmware[fw_pos+len(self.data):]
@@ -76,17 +79,87 @@ class ElfPatch(BasePatch):
         except:
             print "error: could not read ELF patch file"
             
+    def align(self, base, alignment):
+        """
+        aligns an address to a chosen alignment
+        
+        :param base: address to align
+        :param alignment: address alignment
+        """
+        tmp = base - (base & (alignment-1))
+        if (tmp == base):
+            return base
+        else:
+            return tmp + alignment
+            
+    def check_and_create_seg(self, seg, dest_metadata):
+        """
+        checks if a segment falls into one at the destination ELF
+        
+        if the other segment is only in memory 
+        (filesz < memsz, e.g. the last padding segment)
+        and we are in this "virtual" region, we have to resize the
+        destination segment and create a new one or even two (one for our code and one for padding)
+        """
+        address = seg['paddr']
+        if (get_offset_in_elf(dest_metadata, address) == 0):
+            for i, targetseg in enumerate(dest_metadata['segments']):
+                start = targetseg['paddr']
+                msize = targetseg['memsz']
+    
+                if (msize != 0): # not an empty segment
+                    if ((address >= start) & (address < start+msize)): # our start address is in this segment
+                        if (address+seg['memsz'] < start+msize): # the end address too
+                            pre = 0
+                            offset = targetseg['offset'] + targetseg['filesz']
+                            # if we start not at the beginning of the segment we have to insert a padding segment before
+                            if (self.align(start, seg['align']) != seg['paddr']): 
+                                pre_seg = targetseg.copy()
+                                pre_seg['memsz'] = seg['paddr'] - start
+                                pre = 1
+                                dest_metadata['segments'].insert(i, pre_seg)
+                                dest_metadata['num_segments'] += 1
+                                # correct hash table segment too! (we need more space here now)
+                                dest_metadata['segments'][1]['filesz'] += dest_metadata['elf32_hdr']['phentsize']
+                                
+                            # insert our patch segment
+                            new_seg = seg.copy()
+                            offset = self.align(offset, new_seg['align'])
+                            new_seg['offset'] = offset
+                            offset += new_seg['filesz']
+                            dest_metadata['segments'].insert(i + pre, new_seg)
+                                
+                            # if there is free space after the segment we have to insert a padding segment after
+                            # (or not to delete the old one to be precise)
+                            if (targetseg['memsz'] > seg['memsz']):
+                                post_start = new_seg['paddr'] + new_seg['memsz']
+                                end_adr = targetseg['paddr'] + targetseg['memsz']
+                                offset = self.align(offset, targetseg['align'])
+                                targetseg['offset'] = offset
+                                targetseg['vaddr'] = new_seg['vaddr'] + new_seg['memsz']
+                                targetseg['paddr'] = new_seg['paddr'] + new_seg['memsz']
+                                targetseg['memsz'] = end_adr - targetseg['paddr']
+                                dest_metadata['num_segments'] += 1
+                                # correct hash table segment too! (we need more space here now)
+                                dest_metadata['segments'][1]['filesz'] += dest_metadata['elf32_hdr']['phentsize']
+                            else:
+                                dest_metadata['segments'].remove(targetseg)
+                            return dest_metadata
+        return dest_metadata
+            
     
     def apply(self, firmware, metadata, **kargs):
         for i, seg in enumerate(self.metadata['segments']):
             # segment type 1 is LOAD
             if (seg['type'] == 1):
                 start_adr = seg['paddr']
-                size = seg['filesz']
-                if (size != 0):
+                if (seg['memsz'] != 0):
                     self.pos = start_adr
+                    metadata = self.check_and_create_seg(seg, metadata)
                     self.data = self.get_bytes(seg)
-                    firmware = super(ElfPatch, self).apply(firmware, metadata)
+                    if (seg['filesz']):
+                        firmware = super(ElfPatch, self).apply(firmware, metadata)
+        firmware = update_metadata(firmware, metadata)
         return firmware
 
 class JumpPatch(BasePatch):
@@ -172,7 +245,7 @@ class StringPatch(BasePatch):
         return super(StringPatch, self).apply(firmware, metadata)
 
         
-def patch_firmware(src, dst, patches, extra = "", **kargs):
+def patch_firmware(src, dst, patches, **kargs):
     """
     patches the firmware ELF file with a list of patches
 
@@ -186,7 +259,6 @@ def patch_firmware(src, dst, patches, extra = "", **kargs):
     firmware = file(src,'rb').read()
     for p in patches:
         firmware = p.apply(firmware, metadata, **kargs)
-    firmware += extra
     firmware = file(dst,'wb').write(firmware)
     print "firmware patching finished"
 

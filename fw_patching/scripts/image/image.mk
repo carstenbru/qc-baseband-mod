@@ -34,6 +34,7 @@ $(PATCHED_MODEM_IMG): fix_hash_table
 	mkdir -p $(IMAGE_DIR)
 	cp -f $(BASE_FW) $(PATCHED_MODEM_IMG)
 	mcopy -D o -i $(PATCHED_MODEM_IMG) $(BLOB_DIR)/modem.* ::image/
+	@echo patched modem image generated
 	
 clean_image:
 	rm -f $(FW_BASE_DIR)/modem.*
