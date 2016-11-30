@@ -24,17 +24,18 @@ SECTIONS
 {
     . = __patch_addr_text_base__;
     .text : ALIGN(0x1000) { 
-        *(.text) 
+        *(.text*) 
     } : text
     
     . = DEFINED(__patch_addr_data_base__) ? __patch_addr_data_base__ : .;
     .data : ALIGN(0x1000) {
-        *(.data)
+        *(.data*)
+        *(.scommon*)
     } : data
     .rodata : ALIGN(0x1000) {
         *(.rodata)
     } : rodata
     .bss : ALIGN(0x1000) {
-        *(.bss)
+        *(.bss*)
     } : bss
 }

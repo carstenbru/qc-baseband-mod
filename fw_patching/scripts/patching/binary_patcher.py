@@ -28,7 +28,7 @@ from elf_functions import *
 def get_offset_in_elf(metadata, address):
     """
     gets the offset in the target ELF file (file position)
-    of a memory address
+    of a memory address and the number segment
     
     :param metadata: parsed metdata information of the ELF file
     :param address: address to resolve
@@ -39,8 +39,8 @@ def get_offset_in_elf(metadata, address):
     
         if (size != 0):
             if ((address >= start) & (address < start+size)):
-                return seg['offset'] + address - start
-    return 0
+                return (seg['offset'] + address - start), i
+    return 0, 0
 
 class BasePatch(object):
     """
@@ -52,7 +52,7 @@ class BasePatch(object):
         self.data = data
     
     def apply(self, firmware, metadata, **kargs):
-        fw_pos = get_offset_in_elf(metadata, self.pos)
+        fw_pos, i = get_offset_in_elf(metadata, self.pos)
         if (fw_pos == 0):
             print "error: patch address not in an ELF segment: 0x%X" % (self.pos)
             exit(0)
@@ -91,6 +91,33 @@ class ElfPatch(BasePatch):
             return base
         else:
             return tmp + alignment
+        
+    def add_segment_in_header(self, metadata):
+        """
+        adds a new segment in the ELF header
+        
+        :param metadata: destination metadata
+        """
+        metadata['num_segments'] += 1
+        # correct hash table segment and ELF segment too! (we need more space here now)
+        metadata['segments'][0]['filesz'] += metadata['elf32_hdr']['phentsize']
+        metadata['segments'][1]['filesz'] += 32
+        
+    def get_next_offset_aligned(self, metadata, alignment):
+        """
+        returns the next file offset to use for a new segment
+        
+        :param metadata: metadata containing ELF segments
+        """
+        max_offset = 0
+        max_pos = 0
+        for i, seg in enumerate(metadata['segments']):
+            offset = seg['offset']
+            if (offset > max_offset):
+                max_offset = offset
+                max_pos = i
+        pos = max_offset + metadata['segments'][max_pos]['filesz']
+        return self.align(pos, alignment)
             
     def check_and_create_seg(self, seg, dest_metadata):
         """
@@ -102,49 +129,61 @@ class ElfPatch(BasePatch):
         destination segment and create a new one or even two (one for our code and one for padding)
         """
         address = seg['paddr']
-        if (get_offset_in_elf(dest_metadata, address) == 0):
+        a1, start_seg = get_offset_in_elf(dest_metadata, address)
+        a2, end_seg = get_offset_in_elf(dest_metadata, address+seg['memsz'])
+        
+        # check if complete segment is in the same destination segment
+        if (start_seg != end_seg):
+            print "error: patch code ends in another segment then it starts"
+            print "this can also be caused by an overflow of the destination region"
+            print "start segment:%d segment:%d" % (start_seg, end_seg)
+            exit(0)
+            
+        if (start_seg  == 0):
+            last_smaller_seg = 0;
             for i, targetseg in enumerate(dest_metadata['segments']):
                 start = targetseg['paddr']
                 msize = targetseg['memsz']
     
                 if (msize != 0): # not an empty segment
-                    if ((address >= start) & (address < start+msize)): # our start address is in this segment
-                        if (address+seg['memsz'] < start+msize): # the end address too
-                            pre = 0
-                            offset = targetseg['offset'] + targetseg['filesz']
-                            # if we start not at the beginning of the segment we have to insert a padding segment before
-                            if (self.align(start, seg['align']) != seg['paddr']): 
-                                pre_seg = targetseg.copy()
-                                pre_seg['memsz'] = seg['paddr'] - start
-                                pre = 1
-                                dest_metadata['segments'].insert(i, pre_seg)
-                                dest_metadata['num_segments'] += 1
-                                # correct hash table segment too! (we need more space here now)
-                                dest_metadata['segments'][1]['filesz'] += dest_metadata['elf32_hdr']['phentsize']
+                    if (address < start+msize):
+                        if ((address >= start)): # our start address is in this segment
+                            if (address+seg['memsz'] < start+msize): # the end address too
+                                pre = 0
+                                # if we start not at the beginning of the segment we have to insert a padding segment before
+                                if (self.align(start, seg['align']) != seg['paddr']): 
+                                    pre_seg = targetseg.copy()
+                                    pre_seg['memsz'] = seg['paddr'] - start
+                                    pre = 1
+                                    metadata['segments'].insert(i, pre_seg)
+                                    self.add_segment_in_header(dest_metadata, pre_seg)
                                 
-                            # insert our patch segment
-                            new_seg = seg.copy()
-                            offset = self.align(offset, new_seg['align'])
-                            new_seg['offset'] = offset
-                            offset += new_seg['filesz']
-                            dest_metadata['segments'].insert(i + pre, new_seg)
+                                # insert our patch segment
+                                new_seg = seg.copy()
+                                new_seg['offset'] = self.get_next_offset_aligned(dest_metadata, new_seg['align'])
+                                dest_metadata['segments'].insert(i + pre, new_seg)
                                 
-                            # if there is free space after the segment we have to insert a padding segment after
-                            # (or not to delete the old one to be precise)
-                            if (targetseg['memsz'] > seg['memsz']):
-                                post_start = new_seg['paddr'] + new_seg['memsz']
-                                end_adr = targetseg['paddr'] + targetseg['memsz']
-                                offset = self.align(offset, targetseg['align'])
-                                targetseg['offset'] = offset
-                                targetseg['vaddr'] = new_seg['vaddr'] + new_seg['memsz']
-                                targetseg['paddr'] = new_seg['paddr'] + new_seg['memsz']
-                                targetseg['memsz'] = end_adr - targetseg['paddr']
-                                dest_metadata['num_segments'] += 1
-                                # correct hash table segment too! (we need more space here now)
-                                dest_metadata['segments'][1]['filesz'] += dest_metadata['elf32_hdr']['phentsize']
-                            else:
-                                dest_metadata['segments'].remove(targetseg)
-                            return dest_metadata
+                                # if there is free space after the segment we have to insert a padding segment after
+                                # (or not to delete the old one to be precise)
+                                if (targetseg['memsz'] > seg['memsz']):
+                                    post_start = self.align(new_seg['paddr'] + new_seg['memsz'], targetseg['align'])
+                                    end_adr = targetseg['paddr'] + targetseg['memsz']
+                                    targetseg['offset'] = self.get_next_offset_aligned(dest_metadata, targetseg['align'])
+                                    targetseg['vaddr'] = post_start
+                                    targetseg['paddr'] = post_start
+                                    targetseg['memsz'] = end_adr - targetseg['paddr']
+                                    self.add_segment_in_header(dest_metadata);
+                                else:
+                                    dest_metadata['segments'].remove(targetseg)
+                                return dest_metadata
+                    else:
+                        last_smaller_seg = i
+                            
+            # address does not fit in one of the segments, create a new one
+            new_seg = seg.copy()
+            new_seg['offset'] = self.get_next_offset_aligned(dest_metadata, new_seg['align'])
+            dest_metadata['segments'].insert(last_smaller_seg+1, new_seg)
+            self.add_segment_in_header(dest_metadata);
         return dest_metadata
             
     

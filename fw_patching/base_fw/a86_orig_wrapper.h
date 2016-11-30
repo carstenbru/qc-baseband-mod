@@ -17,10 +17,10 @@
 
 /* define patch code target address (as void pointer) */
 
-ADDRESS(0x0CD0F000) void* __patch_addr_text_base__;
-/* you can define also the start address for data sections,
-   if left undefined they will be placed directly after the code*/
-//ADDRESS(0x0CD0F000) void* __patch_addr_data_base__;
+ADDRESS(0x09F94000) void* __patch_addr_text_base__;
+/* you can also define the start address for data sections,
+   if left undefined they will be placed directly after the code */
+ADDRESS(0x0CD0F000) void* __patch_addr_data_base__;
 
 /* ########################################### */
        
@@ -35,6 +35,9 @@ ADDRESS(0x0A0FB0E0) char* fw_date_string2;
 /* standard C functions */
 
 typedef unsigned int size_t;
+
+ADDRESS(0x09F88260) void* malloc(size_t size);
+ADDRESS(0x09F87F40) void free(void* ptr);
 
 ADDRESS(0x092B9AB0) int printf(const char * format, ...);
 ADDRESS(0x09130360) void* memcpy(void* destination, const void* source, size_t num);

@@ -13,7 +13,7 @@ LD=hexagon-ld
 RELF=hexagon-readelf
 OBJDUMP=hexagon-objdump
 EDITOR=kwrite
-CFLAGS=-mv5 -Wall -Wno-attributes
+CFLAGS=-mv5 -O2 -Wall -Wno-attributes
 LDFLAGS=-mv5 -nostdlib -nostartfiles
 
 OBJ=$(addprefix $(BUILD_DIR)/,$(notdir $(patsubst %.c,%.o,$(wildcard $(SRC_DIR)/*.c))))
