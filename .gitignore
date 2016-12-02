@@ -8,3 +8,5 @@ patched_modem.img
 fw_wrapper.lcs
 *.pyc
 disasm*.txt
+fw_org_functions.*
+symtab.json

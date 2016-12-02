@@ -25,23 +25,6 @@ import struct
 
 from elf_functions import *
 
-def get_offset_in_elf(metadata, address):
-    """
-    gets the offset in the target ELF file (file position)
-    of a memory address and the number segment
-    
-    :param metadata: parsed metdata information of the ELF file
-    :param address: address to resolve
-    """
-    for i, seg in enumerate(metadata['segments']):
-        start = seg['paddr']
-        size = seg['filesz']
-    
-        if (size != 0):
-            if ((address >= start) & (address < start+size)):
-                return (seg['offset'] + address - start), i
-    return 0, 0
-
 class BasePatch(object):
     """
     basis for all patches

@@ -15,14 +15,14 @@ IMAGE_DIR=./image
 BUILD_DIR=./build
 PATCHED_FW_DIR=./patched
 FW_BASE_DIR=./fw_base
+GEN_DIR=./gen
 
 .PHONY: clean
 
 default: all
 
-clean: clean_wrapper_lcs clean_compile clean_image clean_patched_fw
+clean: clean_compile clean_image clean_patched_fw
 
-include $(SEEMOO_FW_PATCH_DIR_ROOT)/scripts/build/create_wrapper_lcs.mk
 include $(SEEMOO_FW_PATCH_DIR_ROOT)/scripts/build/compile_patch.mk
 include $(SEEMOO_FW_PATCH_DIR_ROOT)/scripts/image/image.mk
 include $(SEEMOO_FW_PATCH_DIR_ROOT)/scripts/patching/bin_patch.mk

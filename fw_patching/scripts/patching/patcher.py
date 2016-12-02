@@ -15,42 +15,13 @@ author: Carsten Bruns (carst.bruns@gmx.de)
 import sys
 import time
 import glob
-import commands
 
 from binary_patcher import *
+from symtab import *
 
 from pycparser import c_ast, preprocess_file
 from pycparserext.ext_c_parser import GnuCParser
 
-def read_symtab(filename):
-    """
-    reads in the symbol table of an ELF file as dictonary
-    
-    :param filename: ELF file name
-    """
-    symtab = {}
-    table = commands.getstatusoutput('hexagon-readelf -s --wide ' + filename)
-    for line in table[1].split('\n'):
-        tokens = line.split()
-        if (len(tokens) >= 8):
-            if (tokens[1] != "Value"):
-                symtab[tokens[7]] = int(tokens[1], 16)
-    return symtab
-
-def resolve_symbol(symbol, symtab):
-    """
-    resolves a symbol to its value
-    
-    :param symbol: name of the symbol to resolve
-    :param symtab: symbol table
-    """
-    res = ""
-    try:
-        res = symtab[symbol]
-    except:
-        print "error: symbol is not defined in symbol table: %s" % (symbol)
-        exit(1)
-    return res
 
 class FuncDefVisitor(c_ast.NodeVisitor):
     """
@@ -131,7 +102,7 @@ if __name__ == "__main__":
         
     patches = [ElfPatch(sys.argv[2])]
     
-    symtab = read_symtab(sys.argv[2])
+    symtab = read_symtab_elf(sys.argv[2])
     patches.extend(generate_patch_list(symtab, sys.argv[4], sys.argv[5]))
     if (sys.argv[6] != ""):
         patches.extend(generate_version_string_patches(sys.argv[6], symtab))

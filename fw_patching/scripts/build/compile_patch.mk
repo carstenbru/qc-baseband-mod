@@ -13,20 +13,35 @@ LD=hexagon-ld
 RELF=hexagon-readelf
 OBJDUMP=hexagon-objdump
 EDITOR=kwrite
-CFLAGS=-mv5 -O2 -Wall -Wno-attributes
+CFLAGS=-mv5 -O2 -G0 -Wall -Wno-attributes
 LDFLAGS=-mv5 -nostdlib -nostartfiles
 
-OBJ=$(addprefix $(BUILD_DIR)/,$(notdir $(patsubst %.c,%.o,$(wildcard $(SRC_DIR)/*.c))))
-FW_WRAPPER=$(patsubst %.img,%_wrapper.h,$(abspath $(BASE_FW)))
+SRC_FILES=$(abspath $(wildcard $(SRC_DIR)/*.c))
+OBJ=$(addprefix $(BUILD_DIR)/,$(notdir $(patsubst %.c,%.o,$(SRC_FILES))))
+FW_IMG_WRAPPER=$(abspath $(patsubst %.img,%_wrapper.h,$(abspath $(BASE_FW))))
+
+WRAPPER_LCS_FILE=$(FW_BASE_DIR)/fw_wrapper.lcs
+
+FW_ORG=fw_org_functions
+FW_ORG_OBJ=$(BUILD_DIR)/$(FW_ORG).o
+FW_ORG_LCS=$(GEN_DIR)/$(FW_ORG).lcs
+FW_ORG_HEADER=$(abspath $(GEN_DIR)/$(FW_ORG).h)
+
+include $(SEEMOO_FW_PATCH_DIR_ROOT)/scripts/build/create_wrapper_lcs.mk
+include $(SEEMOO_FW_PATCH_DIR_ROOT)/scripts/build/generate_fw_org_functions.mk
 
 .PHONY: readelf-obj disasm-obj readelf-linked disasm-linked clean_compile
 
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c $(FW_ORG_OBJ)
 	mkdir -p $(BUILD_DIR)
-	$(CC) -c -DFW_WRAPPER="<$(FW_WRAPPER)>" -o $@ $< $(CFLAGS)
+	$(CC) -c -DFW_WRAPPER="<$(FW_ORG_HEADER)>" -DFW_IMG_WRAPPER="<$(FW_IMG_WRAPPER)>" -o $@ $< $(CFLAGS)
+	
+$(BUILD_DIR)/%.o: $(GEN_DIR)/%.c
+	mkdir -p $(BUILD_DIR)
+	$(CC) -c -o $@ $< $(CFLAGS)
 
-$(PATCH_ELF): $(OBJ) $(FW_BASE_DIR)/fw_wrapper.lcs
-	$(LD) -T$(FW_BASE_DIR)/fw_wrapper.lcs -T$(SEEMOO_FW_PATCH_DIR_ROOT)/scripts/build/patch.lcs $(LDFLAGS) $(OBJ) -o $(PATCH_ELF)
+$(PATCH_ELF): $(OBJ) $(FW_ORG_OBJ) $(WRAPPER_LCS_FILE) $(FW_ORG_SRC)
+	$(LD) -T$(WRAPPER_LCS_FILE) -T$(SEEMOO_FW_PATCH_DIR_ROOT)/scripts/build/patch.lcs -T$(FW_ORG_LCS) $(LDFLAGS) $(OBJ) $(FW_ORG_OBJ) -o $(PATCH_ELF)
 	@echo patch ELF file generated
 
 readelf-obj: $(OBJ)
@@ -43,8 +58,9 @@ disasm-linked: $(PATCH_ELF)
 	$(OBJDUMP) -D $(PATCH_ELF) > $(BUILD_DIR)/disasm_linked.txt
 	$(EDITOR) $(BUILD_DIR)/disasm_linked.txt &
 	
-clean_compile:
+clean_compile: clean_wrapper_lcs clean_fw_org_functions
 	rm -f $(PATCH_ELF)
 	rm -f $(OBJ)
+	rm -f $(FW_ORG_OBJ)
 	rm -f $(BUILD_DIR)/disasm*.txt
 	if [ -d $(BUILD_DIR) ]; then rmdir --ignore-fail-on-non-empty $(BUILD_DIR); fi

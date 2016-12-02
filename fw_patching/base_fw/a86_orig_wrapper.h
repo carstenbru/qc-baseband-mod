@@ -34,14 +34,12 @@ ADDRESS(0x0A0FB0E0) char* fw_date_string2;
 
 /* standard C functions */
 
-typedef unsigned int size_t;
-
-ADDRESS(0x09F88260) void* malloc(size_t size);
+ADDRESS(0x09F88260) void* malloc(unsigned int size);
 ADDRESS(0x09F87F40) void free(void* ptr);
 
 ADDRESS(0x092B9AB0) int printf(const char * format, ...);
-ADDRESS(0x09130360) void* memcpy(void* destination, const void* source, size_t num);
-ADDRESS(0x09130650) void* memset(void* ptr, int value, size_t num);
+ADDRESS(0x09130360) void* memcpy(void* destination, const void* source, unsigned int num);
+ADDRESS(0x09130650) void* memset(void* ptr, int value, unsigned int num);
 
 /* QMI functions */
 

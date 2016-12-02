@@ -11,6 +11,7 @@ FW_BASE_ELF=$(FW_BASE_DIR)/fw_base.elf
 PATCHED_MODEM_IMG=$(IMAGE_DIR)/patched_modem.img
 BLOB_DIR=$(PATCHED_FW_DIR)/blobs/
 PATCHED_ELF=$(PATCHED_FW_DIR)/patched.elf
+export PYTHONPATH=$(SEEMOO_FW_PATCH_DIR_ROOT)/scripts/utils
 
 .PHONY: all fix_hash_table clean_image
 

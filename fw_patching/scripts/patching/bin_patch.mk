@@ -7,7 +7,7 @@ PATCH_ELF=$(BUILD_DIR)/fw_patch.elf
 FW_BASE_ELF=$(FW_BASE_DIR)/fw_base.elf
 PATCHED_ELF=$(PATCHED_FW_DIR)/patched.elf
 FW_WRAPPER=$(patsubst %.img,%_wrapper.h,$(abspath $(BASE_FW)))
-export PYTHONPATH=$(SEEMOO_FW_PATCH_DIR_ROOT)/scripts/image
+export PYTHONPATH=$(SEEMOO_FW_PATCH_DIR_ROOT)/scripts/utils
 
 .PHONY: clean_patched_fw
 
