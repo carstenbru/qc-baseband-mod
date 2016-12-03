@@ -46,6 +46,10 @@ class FuncCallVisitor(c_ast.NodeVisitor):
     def visit_FuncCall(self, node):
         if (node.name.name.endswith(org_func_suffix)):
             self.req_org_funcs.add(node.name.name)
+        if (node.name.name == "__builtin_apply"):
+            func_name = node.args.exprs[0].expr.name
+            if (func_name.endswith(org_func_suffix)):
+                self.req_org_funcs.add(func_name)
  
 def generate_function(org_func_name, org_func, symtab, base_elf, metadata, func_symtab):
     """

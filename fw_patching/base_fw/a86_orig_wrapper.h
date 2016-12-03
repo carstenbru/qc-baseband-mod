@@ -37,7 +37,7 @@ ADDRESS(0x0A0FB0E0) char* fw_date_string2;
 ADDRESS(0x09F88260) void* malloc(unsigned int size);
 ADDRESS(0x09F87F40) void free(void* ptr);
 
-ADDRESS(0x092B9AB0) int printf(const char * format, ...);
+ADDRESS(0x092B9AB0) int snprintf(char* str, unsigned int size, const char* format, ...);
 ADDRESS(0x09130360) void* memcpy(void* destination, const void* source, unsigned int num);
 ADDRESS(0x09130650) void* memset(void* ptr, int value, unsigned int num);
 

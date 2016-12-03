@@ -195,11 +195,13 @@ class JumpPatch(BasePatch):
         self.pos = pos
         self.dst = dst
 
+#0b110011011010010111100000
+#0xCDA5E0
     def patch_gen(self, pos, dst):
         diff = (dst - pos) & 0xffffffff
         
         # check if the jump distance is small enough to encode in jump instruction
-        if ((diff > 0xFFFFFF) & (diff < 0xFF800000)):
+        if ((diff > 0x7FFFFF) & (diff < 0xFF800000)):
             opcode1 = 0x4000 # imext with parse bits 01 
             opcode1 |= (((diff >> 20) & 0xFFF) << 16)
             opcode1 |= ((diff >> 6) & 0x3FFF)

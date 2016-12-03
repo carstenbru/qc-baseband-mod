@@ -51,6 +51,8 @@ class DeclVisitor(c_ast.NodeVisitor):
             td = type_def
             ptr = False
         res = ""
+        for qual in td.quals:
+            res += "%s " % qual
         for s in td.type.names:
             res = "%s%s " % (res, s)
         res = res[:-1]
