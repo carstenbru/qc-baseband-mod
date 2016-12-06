@@ -44,21 +44,17 @@ class DeclVisitor(c_ast.NodeVisitor):
         
         :param type_def: type definition
         """
-        if (type(type_def) is c_ast.PtrDecl):
-            td = type_def.type
-            ptr = True
-        else:
-            td = type_def
-            ptr = False
+        ptr_str = ""
+        while (type(type_def) is c_ast.PtrDecl):
+            type_def = type_def.type
+            ptr_str += "*"
         res = ""
-        for qual in td.quals:
+        for qual in type_def.quals:
             res += "%s " % qual
-        for s in td.type.names:
+        for s in type_def.type.names:
             res = "%s%s " % (res, s)
-        res = res[:-1]
-        if (ptr):
-            res += "*"
-        return res, td.declname
+        res = res[:-1] + ptr_str
+        return res, type_def.declname
     
     def param_list_to_str(self, param_list):
         """

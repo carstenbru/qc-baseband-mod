@@ -105,10 +105,11 @@ void send_snprintf_ind(char* src, unsigned int len) {
         unsigned int* data32 = (unsigned int*)(ind->data);
         *data32 = SNPRINTF_SVC_ID;
         
+        //include src pointer to differ snprintf destinations
         *(data32 + 1) = (unsigned int)src;
         ind->data_len = 8 + len + 1;
         memcpy(ind->data + 8, src, len);
-        ind->data[8 + len] = 0;
+        ind->data[8 + len] = 0; //ensure 0 terminated string
         
         qmi_csi_send_ind(snprintf_svc_client, QMI_TEST_DATA_IND_V01, ind, sizeof(test_data_ind_msg_v01));
         
@@ -146,22 +147,25 @@ unsigned int services_response_handler (
 {
     test_data_req_msg_v01* req = (test_data_req_msg_v01 *)req_c_struct;
     
+    //decode service ID
     unsigned int svc_id = req->data[0] + (req->data[1] << 8) + (req->data[2] << 16) + (req->data[3] << 24);
     test_data_resp_msg_v01* resp = (test_data_resp_msg_v01*)malloc(sizeof(test_data_resp_msg_v01));
     
     memset(resp, 0, sizeof(test_data_resp_msg_v01));
+    //write service ID into response
     resp->data_valid = 1;
     resp->data_len = 4;
     memcpy(resp->data, req->data, 4);
     
+    //generate response depending on service
     if (svc_id == FUNC_COUNTER_SVC_ID) {
         generate_resp_func_counter_svc(resp);
     } else if (svc_id == SNPRINTF_SVC_ID) {
-        if (req->data[4] != 0) {
+        if (req->data[4] != 0) { //register client
             snprintf_svc_client = *((void**)clnt_info);
             resp->data_len += 4;
             *((void**)(resp->data + 4)) = snprintf_svc_client;
-        } else {
+        } else { //de-register client
             snprintf_svc_client = 0;
         }
     } else {
