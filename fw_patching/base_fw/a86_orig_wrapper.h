@@ -32,6 +32,21 @@ ADDRESS(0x0A0FB0D0) char* fw_time_string2;
 ADDRESS(0x0A0FB0B0) char* fw_date_string;
 ADDRESS(0x0A0FB0E0) char* fw_date_string2;
 
+/* hexagon helper functions */
+
+ADDRESS(0x09130000) void __save_r16_through_r27(void);
+ADDRESS(0x09130020) void __save_r16_through_r25(void);
+ADDRESS(0x09130008) void __save_r16_through_r23(void);
+ADDRESS(0x09130028) void __save_r16_through_r21(void);
+ADDRESS(0x09130010) void __save_r16_through_r19(void);
+
+ADDRESS(0x09130080) void __restore_r16_through_r27_and_deallocframe(void);
+ADDRESS(0x09130084) void __restore_r16_through_r25_and_deallocframe(void);
+ADDRESS(0x09130070) void __restore_r16_through_r23_and_deallocframe(void);
+ADDRESS(0x09130090) void __restore_r16_through_r21_and_deallocframe(void);
+ADDRESS(0x09130078) void __restore_r16_through_r19_and_deallocframe(void);
+ADDRESS(0x09130098) void __restore_r16_through_r17_and_deallocframe(void);
+
 /* standard C functions */
 
 ADDRESS(0x09F88260) void* malloc(unsigned int size);
@@ -44,22 +59,13 @@ ADDRESS(0x09130650) void* memset(void* ptr, int value, unsigned int num);
 /* QMI functions */
 
 ADDRESS(0x097A9E80) unsigned int qmi_csi_send_resp(void* req_handle, unsigned int msg_id, void* c_struct, unsigned int c_struct_len);
+ADDRESS(0x097A9D50) unsigned int qmi_csi_send_ind(void* client_handle, unsigned int msg_id, void* ind_c_struct, unsigned int c_struct_len);
 
 ADDRESS(0x097AF0B0) unsigned int qmi_ping_svc_ping_response (void* clnt_info, void* req_handle, unsigned int msg_id, void* req_c_struct, unsigned int req_c_struct_len, void* service_cookie);
 ADDRESS(0x097AF2D0) unsigned int qmi_ping_svc_ping_data_response (void* clnt_info, void* req_handle, unsigned int msg_id, void* req_c_struct, unsigned int req_c_struct_len, void* service_cookie);
 ADDRESS(0x097AF220) unsigned int qmi_ping_svc_ping_large_data_response (void* clnt_info, void* req_handle, unsigned int msg_id, void* req_c_struct, unsigned int req_c_struct_len, void* service_cookie);
 ADDRESS(0x097AF130) unsigned int qmi_ping_svc_ping_data_ind_registration (void* clnt_info, void* req_handle, unsigned int msg_id, void* req_c_struct, unsigned int req_c_struct_len, void* service_cookie);
 
-/*
-real function declaration data types:
- qmi_csi_cb_error (* const req_handle_table) (
-    client_info_type         *clnt_info,
-    qmi_req_handle           req_handle,
-    unsigned int             msg_id,
-    void                     *req_c_struct,
-    unsigned int             req_c_struct_len,
-    void                     *service_cookie);
- */
 ADDRESS(0x0A0FF620) unsigned int (*qmi_ping_svc_req_handle_table)(void* clnt_info, void* req_handle, unsigned int msg_id, void* req_c_struct, unsigned int req_c_struct_len, void* service_cookie);
 
 /* other */

@@ -8,7 +8,7 @@
 SEEMOO_FW_PATCH_DIR_ROOT=../../
 BASE_FW=../../base_fw/a86_orig.img
 # new Firmware version string, leave empty to leave version strings untouched
-FW_VERSION_STRING="SEEMOO Firmware Modding"
+FW_VERSION_STRING="SEEMOO Firmware fc_snp"
 
 SRC_DIR=./src
 IMAGE_DIR=./image
