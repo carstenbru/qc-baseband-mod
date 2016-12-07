@@ -1,84 +1,60 @@
-#/**************************************************************************
-#*                                                                         *
-#*          ###########   ###########   ##########    ##########           *
-#*         ############  ############  ############  ############          *
-#*         ##            ##            ##   ##   ##  ##        ##          *
-#*         ##            ##            ##   ##   ##  ##        ##          *
-#*         ###########   ####  ######  ##   ##   ##  ##    ######          *
-#*          ###########  ####  #       ##   ##   ##  ##    #    #          *
-#*                   ##  ##    ######  ##   ##   ##  ##    #    #          *
-#*                   ##  ##    #       ##   ##   ##  ##    #    #          *
-#*         ############  ##### ######  ##   ##   ##  ##### ######          *
-#*         ###########    ###########  ##   ##   ##   ##########           *
-#*                                                                         *
-#*            S E C U R E   M O B I L E   N E T W O R K I N G              *
-#*                                                                         *
-#* Warning:                                                                *
-#*                                                                         *
-#* Our software may damage your hardware and may void your hardware’s      *
-#* warranty! You use our tools at your own risk and responsibility!        *
-#*                                                                         *
-#* License:                                                                *
-#* Copyright (c) 2015 NexMon Team                                          *
-#*                                                                         *
-#* Permission is hereby granted, free of charge, to any person obtaining   *
-#* a copy of this software and associated documentation files (the         *
-#* "Software"), to deal in the Software without restriction, including     *
-#* without limitation the rights to use, copy, modify, merge, publish,     *
-#* distribute copies of the Software, and to permit persons to whom the    *
-#* Software is furnished to do so, subject to the following conditions:    *
-#*                                                                         *
-#* The above copyright notice and this permission notice shall be included *
-#* in all copies or substantial portions of the Software.                  *
-#*                                                                         *
-#* Any use of the Software which results in an academic publication or     *
-#* other publication which includes a bibliography must include a citation *
-#* to the author's publication "M. Schulz, D. Wegemer and M. Hollick.      *
-#* NexMon: A Cookbook for Firmware Modifications on Smartphones to Enable  *
-#* Monitor Mode.".                                                         *
-#*                                                                         *
-#* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS *
-#* OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF              *
-#* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  *
-#* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY    *
-#* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,    *
-#* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE       *
-#* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                  *
-#*                                                                         *
-#**************************************************************************/
+## @brief Android boot image Makefile
+##
+## This file contains rules to compile the Android kernel
+## and embed it into a bootable image file.
+##
+## @author Carsten Bruns (carst.bruns@gmx.de)
 
 KERNEL=PadFoneT004-10.12.3.94-kernel-src
+DEFCONFIG=a86_seemoo_defconfig
 
 MKBOOT=$(shell pwd)/buildtools/mkboot/mkboot
+BASE_FILES=./base_files
+BOOTIMG_TMP=./bootimg_tmp
+KERNEL_PATCH_DIR=./patches
+
+INCLUDE_PATH_FIX=-Idrivers/media/platform/msm/camera_v2/sensor -Idrivers/power/service -Isound/soc/msm/qdsp6v2
 
 all: boot.img
 
-.PHONY: cleanall cleanboot kernel
+.PHONY: patch_kernel clean clean_boot clean_kernel check-setup-env
 
-clean: cleanboot
+clean: clean_boot clean_kernel
 
-kernel: $(KERNEL)/arch/arm/boot/zImage
+patch_kernel: $(KERNEL)/Makefile $(wildcard $(KERNEL_PATCH_DIR)/**/*)
+	cp -a $(KERNEL_PATCH_DIR)/* $(KERNEL)/
 
-$(KERNEL)/arch/arm/boot/zImage: FORCE $(KERNEL)/.config check-setup-env
+$(KERNEL)/Makefile:
+	#extract kernel
+	mkdir -p ./$(KERNEL)
+	tar -xf $(BASE_FILES)/$(KERNEL).tar.gz --directory=./$(KERNEL)
+	#patch timeconst.pl file for python 2.7
+	sed -i 's/defined(@val)/@val/g' ./$(KERNEL)/kernel/timeconst.pl
+	#patch Makefile to include local directory (for includes with <>)
+	sed -i '/^KBUILD_AFLAGS_KERNEL :=/a\KBUILD_CFLAGS += $(INCLUDE_PATH_FIX)' ./$(KERNEL)/Makefile
+	
+$(KERNEL)/.config: patch_kernel check-setup-env
+	cd $(KERNEL) && make $(DEFCONFIG)
+
+$(KERNEL)/arch/arm/boot/zImage: FORCE $(KERNEL)/Makefile patch_kernel $(KERNEL)/.config check-setup-env
 	cd $(KERNEL) && make
 
 boot.img: $(KERNEL)/arch/arm/boot/zImage check-setup-env
-	rm -Rf bootimg_tmp
+	rm -Rf $(BOOTIMG_TMP)
 	#unpack source boot image and replace kernel
-	$(MKBOOT) bootimg_src/boot.img bootimg_tmp
-	rm -f bootimg_tmp/kernel
-	cp $(KERNEL)/arch/arm/boot/zImage bootimg_tmp/kernel
+	$(MKBOOT) $(BASE_FILES)/boot.img $(BOOTIMG_TMP)
+	rm -f $(BOOTIMG_TMP)/kernel
+	cp $(KERNEL)/arch/arm/boot/zImage $(BOOTIMG_TMP)/kernel
 	
 	#build new boot image
-	$(MKBOOT) bootimg_tmp boot.img
+	$(MKBOOT) $(BOOTIMG_TMP) boot.img
 
-cleanboot:
-	rm -Rf bootimg_tmp
+clean_boot:
+	rm -Rf $(BOOTIMG_TMP)
 	rm -f boot.img
-
-boot: boot.img
-	adb reboot bootloader
-	fastboot boot boot.img
+	
+clean_kernel:
+	rm -rf ./$(KERNEL)
 
 check-setup-env:
 ifndef QC_BASEBAND_SETUP_ENV
