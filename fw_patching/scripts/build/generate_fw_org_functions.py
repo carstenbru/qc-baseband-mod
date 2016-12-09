@@ -86,20 +86,22 @@ def generate_function(org_func_name, org_func, symtab, base_elf, metadata, func_
         disasm_output = hi.text.strip()
         # disassemble instruction again with position 0 to check for PC relative immediates
         hi0 = disasm.disasm_one_inst(data[pos], 0)
+        disasm_output_hi0 = hi0.text.strip()
         # if we have a realtive immediate
-        if (disasm_output != hi0.text.strip()):
+        if (disasm_output != disasm_output_hi0):
             # loop over all immediates
             for pos, imm in enumerate(hi.imm_ops):
                 imm0 = hi0.imm_ops[pos]
                 # check for difference -> PC relative immediate
                 if (imm0 != imm):
-                    # generate a dummy symbol at the original 
-                    # instruction address and write our target relative
-                    # to this, by this we force the compiler to generate
-                    # a relocation for the immediate for us
-                    symbol = "sym_0x%X" % address
-                    func_symtab[symbol] = address
-                    rel_adr = "%s + %s" % (symbol, imm0)
+                    # generate a dummy symbol at the destination address 
+                    # and write our target relative to this, by this we 
+                    # force the compiler to generate a relocation for 
+                    # the immediate for us
+                    dest_address = address + imm0.value
+                    symbol = "sym_0x%X" % dest_address
+                    func_symtab[symbol] = dest_address
+                    rel_adr = "%s" % symbol
                     disasm_output = disasm_output.replace("0x%X" % imm.value, rel_adr)
             
         # remove incorrect "{" at instructions inside the packet
