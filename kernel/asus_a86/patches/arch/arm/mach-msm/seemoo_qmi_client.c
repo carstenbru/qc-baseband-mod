@@ -21,6 +21,8 @@
  *
  */
 
+//TODO docs
+
 #include <stdarg.h>
 
 #include <linux/module.h>
@@ -30,6 +32,11 @@
 #include <linux/debugfs.h>
 #include <linux/qmi_encdec.h>
 
+#include <linux/fs.h>
+#include <linux/init.h>
+#include <linux/miscdevice.h>
+#include <linux/module.h>
+
 #include <asm/uaccess.h>
 
 #include <mach/msm_qmi_interface.h>
@@ -37,9 +44,6 @@
 #include "kernel_test_service_v01.h"
 
 #include "seemoo_qmi_client_int.h"
-
-/* Variable to initiate the test through debugfs interface */
-static struct dentry *dent;
 
 /* 
  * client ports for IPC Router 
@@ -63,12 +67,16 @@ static DECLARE_DELAYED_WORK(work_svc_exit, svc_exit);
 static struct workqueue_struct *workqueue;
 static int work_recv_msg_count, work_recv_msg_ind_count;
 
-/* write buffers for debugfs, will be returned on next read */
-char write_buf[WRITE_BUF_SIZE];
-int write_pos;
+/* write buffer for status device, will be returned on next read */
+unsigned char status_buf[WRITE_BUF_SIZE];
+int status_pos;
 
-char snprintf_buf[WRITE_BUF_SIZE];
-int snprintf_pos;
+/* read buffer for packets on data device */
+unsigned char read_buf[WRITE_BUF_SIZE];
+
+/* packet buffer for data device, one packet will be returned on next read */
+seemoo_qmi_packet_t* data_list;
+seemoo_qmi_packet_t** data_list_last_item_pointer;
 
 /* ############################### */
 
@@ -79,7 +87,7 @@ static void write_text(char* format, ...) {
 	va_list args;
 	va_start(args, format);
 	
-	write_pos += vsnprintf(write_buf+write_pos, sizeof(write_buf)-write_pos, format, args);
+	status_pos += vsnprintf(status_buf+status_pos, sizeof(status_buf)-status_pos, format, args);
 	
 	va_end(args);
 }
@@ -91,129 +99,38 @@ static void write_error(char* format, ...) {
 	va_list args;
 	va_start(args, format);
 	
-	write_pos += vsnprintf(write_buf+write_pos, sizeof(write_buf)-write_pos, format, args);
+	status_pos += vsnprintf(status_buf+status_pos, sizeof(status_buf)-status_pos, format, args);
 	
 	va_end(args);
 }
 
-/**
- * @brief writes a text into the "snprintf" (from modem) buffer, call like printf
- */
-static void write_snprintf(char* format, ...) {
-	va_list args;
-	va_start(args, format);
-	
-	snprintf_pos += vsnprintf(snprintf_buf+snprintf_pos, sizeof(snprintf_buf)-snprintf_pos, format, args);
-	
-	va_end(args);
-}
-
-/**
- * @brief sends a "ping" message to the modem and prints the result
- */
-static int ping_pong_send_sync_msg(void)
-{
-	struct test_ping_req_msg_v01 req;
-	struct test_ping_resp_msg_v01 resp;
-	struct msg_desc req_desc, resp_desc;
-	int rc;
-	
-	memcpy(req.ping, "ping", sizeof(req.ping));
-	req.client_name_valid = 0;
-	
-	req_desc.max_msg_len = TEST_PING_REQ_MAX_MSG_LEN_V01;
-	req_desc.msg_id = TEST_PING_REQ_MSG_ID_V01;
-	req_desc.ei_array = test_ping_req_msg_v01_ei;
-	
-	resp_desc.max_msg_len = TEST_PING_REQ_MAX_MSG_LEN_V01;
-	resp_desc.msg_id = TEST_PING_REQ_MSG_ID_V01;
-	resp_desc.ei_array = test_ping_resp_msg_v01_ei;
-	
-	rc = qmi_send_req_wait(seemoo_clnt, &req_desc, &req, sizeof(req),
-						   &resp_desc, &resp, sizeof(resp), 1000);
-	
-	if (rc < 0) {
-		write_error("%s: send req failed %d\n", __func__, rc);
-		return rc;
-	}
-	
-	write_text("%s: Received %.4s response\n", __func__, resp.pong);
-	return rc;
-}
-
-/**
- * @brief handler for responses of unknown services, prints the messages data payload raw bytes
- * 
- * @param resp_svc_id service ID indicated in the message
- * @param resp response message
- */
-static void unknown_svc_handler(unsigned int resp_svc_id, struct test_data_resp_msg_v01* resp) {
-	int i, f;
-	unsigned int d;
-	
-	write_text("unknown service ID 0x%08X, printing raw data from response\n", resp_svc_id);
-	write_text("data_valid %d\n", resp->data_valid);
-	write_text("data_len %d\n", resp->data_len);
-	for (i = 0; i+3 < resp->data_len; i+=4) {
-		write_text("0x%02X|", i);
-		d = 0;
-		for (f = 0; f < 4; f++) {
-			write_text("\t0x%02X", resp->data[i + f]);
-			d += resp->data[i + f] << (8*f);
-		}
-		write_text("\t| %d\n", d);
-	}
-	write_text("\n");
-}
-
-/**
- * @brief read integer as little endian
- * 
- * @param data array of bytes containing the little endian integer
- * @return resulting (unsigned) integer value
- */
-static unsigned int read_int_little_endian(char* data) {
-	return *data + (*(data + 1) << 8) + (*(data + 2) << 16) + (*(data + 3) << 24);
-}
-
-/**
- * @brief handler for responses of function counter service
- * 
- * @param resp response message
- */
-static void func_counter_svc_handler(struct test_data_resp_msg_v01* resp) {
-	write_text("function counter service:\n\n");
-	write_text("qmi_ping_svc_ping_response:\t%u\n", read_int_little_endian(resp->data+4));
-	write_text("memcpy:\t\t%u\n", read_int_little_endian(resp->data+8));
-	write_text("memset:\t\t%u\n", read_int_little_endian(resp->data+12));
-	write_text("snprintf:\t%u\n", read_int_little_endian(resp->data+16));
-}
-
-/**
- * @brief handler for responses of snprintf (registration) service
- * 
- * @param resp response message
- */
-static void snprintf_svc_handler(struct test_data_resp_msg_v01* resp) {
-	if (resp->data_len == 8) {
-		write_text("snprintf service success\n\n");
-	}
+static void received_message(unsigned char* data, unsigned int data_len, unsigned int indication) {
+    seemoo_qmi_packet_t* qmi_packet;
+    if (indication) {
+        *(data + 3) |= 0x80; //set first bit of SVC ID to 1 to indicate an indication
+    }
+    
+    qmi_packet = kzalloc(sizeof(seemoo_qmi_packet_t), GFP_KERNEL);
+    qmi_packet->next = NULL;
+    qmi_packet->length = data_len;
+    memcpy(qmi_packet->data, data, data_len);
+    
+    *data_list_last_item_pointer = qmi_packet;
+    data_list_last_item_pointer = &qmi_packet->next;
 }
 
 /**
  * @brief sends a synchronous (i.e. waits for the result) message to a service
  *
  * @param handle client handle to use
- * @param svc destination service ID
  * @param data_len payload data length
  * @param data payload data as array of bytes
  */
-static int services_send_sync_msg(struct qmi_handle* handle, unsigned int svc, unsigned int data_len, unsigned char* data) {
+static int services_send_sync_msg(struct qmi_handle* handle, unsigned int data_len, unsigned char* data) {
 	struct test_data_req_msg_v01* req;
 	struct test_data_resp_msg_v01* resp;
 	struct msg_desc req_desc, resp_desc;
 	int rc;
-	unsigned int resp_svc_id;
 	
 	/* allocate memory for request and response */
 	req = kzalloc(sizeof(struct test_data_req_msg_v01), GFP_KERNEL);
@@ -229,16 +146,11 @@ static int services_send_sync_msg(struct qmi_handle* handle, unsigned int svc, u
 		return -ENOMEM;
 	}
 	
-	/* include 322bit service ID as first 4 bytes of data */
-	req->data_len = 4 + data_len;
-	req->data[0] = svc & 0xFF;
-	req->data[1] = (svc >> 8) & 0xFF;
-	req->data[2] = (svc >> 16) & 0xFF;
-	req->data[3] = (svc >> 24) & 0xFF;
+	req->data_len = data_len;
 	if (data_len) { //include payload data (if passed)
-		memcpy(req->data + 4, data, data_len);
+		memcpy(req->data, data, data_len);
 	}
-	
+		
 	req_desc.max_msg_len = TEST_DATA_REQ_MAX_MSG_LEN_V01;
 	req_desc.msg_id = TEST_DATA_REQ_MSG_ID_V01;
 	req_desc.ei_array = test_data_req_msg_v01_ei;
@@ -259,21 +171,7 @@ static int services_send_sync_msg(struct qmi_handle* handle, unsigned int svc, u
 		goto data_send_err;
 	}
 	
-	//read response service ID (should be identical to send one but to check)
-	resp_svc_id = read_int_little_endian(resp->data);
-	
-	/* dispatch response to right handler function */
-	switch (resp_svc_id) {
-		case (FUNC_COUNTER_SVC_ID):
-			func_counter_svc_handler(resp);
-			break;
-		case (SNPRINTF_SVC_ID):
-			snprintf_svc_handler(resp);
-			break;
-		default:
-			unknown_svc_handler(resp_svc_id, resp);
-			break;
-	}
+	received_message(resp->data, resp->data_len, 0);
 data_send_err:
 	kfree(resp);
 	kfree(req);
@@ -289,8 +187,9 @@ static void recv_msg(struct work_struct *work) {
 	//receive all arrived messages (this handler is only called once)
 	do {
 		rc = qmi_recv_msg(seemoo_clnt);
-		if (rc < 0)
+		if (rc < 0) {
 			write_error("%s: Error receiving message\n", __func__);
+        }
 	} while (--work_recv_msg_count);
 }
 
@@ -314,20 +213,17 @@ static void recv_msg_ind(struct work_struct *work) {
  * counta messages as items are only added once to the workqueue
  */
 static void clnt_notify(struct qmi_handle *handle,
-						enum qmi_event_type event, void *notify_priv)
-{
+						enum qmi_event_type event, void *notify_priv) {
 	int handle_id = (int)notify_priv;
 	switch (event) {
 		case QMI_RECV_MSG:
 			// check for which handler this notification is
 			if (handle_id == HANDLE_ID_NORM) {
 				work_recv_msg_count++;
-				queue_delayed_work(workqueue,
-							   &work_recv_msg, 0);
+				queue_delayed_work(workqueue, &work_recv_msg, 0);
 			} else if (handle_id == HANDLE_ID_IND) {
 				work_recv_msg_ind_count++;
-				queue_delayed_work(workqueue,
-							   &work_recv_msg_ind, 0);
+				queue_delayed_work(workqueue, &work_recv_msg_ind, 0);
 			}
 			break;
 		default:
@@ -336,17 +232,16 @@ static void clnt_notify(struct qmi_handle *handle,
 }
 
 /**
- * @brief snprintf indication receive callback function
+ * @brief indication receive callback function
  * 
  * @param handle origin handle
  * @param msg_id message service ID
  * @param msg pointer to undecoded (!) message
  * @param msg_len length of the message in bytes
  */
-static void snprintf_ind_cb(struct qmi_handle* handle, unsigned int msg_id, void* msg, unsigned int msg_len, void* ind_cb_priv) {
+static void indication_cb(struct qmi_handle* handle, unsigned int msg_id, void* msg, unsigned int msg_len, void* ind_cb_priv) {
 	struct msg_desc ind_desc;
 	test_data_ind_msg_v01* ind;
-	unsigned int svc_id;
 	int rc;
 	
 	// check if the message originates from the snprintf server
@@ -372,16 +267,7 @@ static void snprintf_ind_cb(struct qmi_handle* handle, unsigned int msg_id, void
 			return;
 		}
 		
-		//check service ID in message data field
-		svc_id = read_int_little_endian(ind->data);
-		if (svc_id == SNPRINTF_SVC_ID) {
-			//decode snprintf write destination pointer
-			unsigned int write_dest = read_int_little_endian(ind->data + 4);
-			*(ind->data + ind->data_len - 1) = 0; //ensure 0 terminated string
-			write_snprintf("%u:\t%s\n", write_dest, ind->data + 8); //output message
-		} else {
-			write_error("%s: unknown service ID 0x%08X\n", __func__, svc_id);
-		}
+		received_message(ind->data, ind->data_len, 1);
 		kfree(ind);
 	}
 }
@@ -404,10 +290,8 @@ static void svc_arrive(struct work_struct *work)
 	}
 	
 	/* connect to service, check for errors */
-	rc = qmi_connect_to_service(seemoo_clnt, TEST_SERVICE_SVC_ID,
-								TEST_SERVICE_INS_ID);
-	qmi_connect_to_service(seemoo_clnt_ind, TEST_SERVICE_SVC_ID,
-								TEST_SERVICE_INS_ID);
+	rc = qmi_connect_to_service(seemoo_clnt, TEST_SERVICE_SVC_ID, TEST_SERVICE_INS_ID);
+	qmi_connect_to_service(seemoo_clnt_ind, TEST_SERVICE_SVC_ID, TEST_SERVICE_INS_ID);
 	if (rc < 0) {
 		write_error("%s: Server not found\n", __func__);
 		qmi_handle_destroy(seemoo_clnt);
@@ -416,7 +300,7 @@ static void svc_arrive(struct work_struct *work)
 	}
 	
 	/* register callback function for indications */
-	rc = qmi_register_ind_cb(seemoo_clnt_ind, snprintf_ind_cb, NULL);
+	rc = qmi_register_ind_cb(seemoo_clnt_ind, indication_cb, NULL);
 	if (rc < 0) {
 		write_error("%s: could not register indication callback\n", __func__);
 		return;
@@ -429,8 +313,7 @@ static void svc_arrive(struct work_struct *work)
 /**
  * @brief service leave handler
  */
-static void svc_exit(struct work_struct *work)
-{
+static void svc_exit(struct work_struct *work) {
 	write_text("service left\n");
 	
 	qmi_handle_destroy(seemoo_clnt);
@@ -444,18 +327,13 @@ static void svc_exit(struct work_struct *work)
 /**
  * @brief service event handler
  */
-static int svc_event_notify(struct notifier_block *this,
-							unsigned long code,
-							void *_cmd)
-{
+static int svc_event_notify(struct notifier_block *this, unsigned long code, void *_cmd) {
 	switch (code) {
 		case QMI_SERVER_ARRIVE:
-			queue_delayed_work(workqueue,
-							   &work_svc_arrive, 0);
+			queue_delayed_work(workqueue, &work_svc_arrive, 0);
 			break;
 		case QMI_SERVER_EXIT:
-			queue_delayed_work(workqueue,
-							   &work_svc_exit, 0);
+			queue_delayed_work(workqueue, &work_svc_exit, 0);
 			break;
 		default:
 			break;
@@ -463,10 +341,7 @@ static int svc_event_notify(struct notifier_block *this,
 	return 0;
 }
 
-/* TODO: these will be replaced by another user interface later */
-
-static int debugfs_open(struct inode *ip, struct file *fp)
-{
+static int dev_open(struct inode *ip, struct file *fp) {
 	if (!seemoo_clnt) {
 		write_error("%s SEEMOO client is not initialized\n", __func__);
 		return -ENODEV;
@@ -474,88 +349,52 @@ static int debugfs_open(struct inode *ip, struct file *fp)
 	return 0;
 }
 
-static ssize_t debugfs_read(struct file *fp, char __user *buf,
-							size_t count, loff_t *pos)
-{
-	ssize_t s = simple_read_from_buffer(buf, count, pos,
-										write_buf, strnlen(write_buf, WRITE_BUF_SIZE));
-	write_buf[0] = 0;
-	write_pos = 0;
+static ssize_t status_read(struct file *fp, char __user *buf, size_t count, loff_t *pos) {
+	ssize_t s = simple_read_from_buffer(buf, count, pos, status_buf, strnlen(status_buf, WRITE_BUF_SIZE));
+	status_buf[0] = 0;
+	status_pos = 0;
 	return s;
 }
 
-static ssize_t debugfs_snprintf(struct file *fp, char __user *buf,
-								size_t count, loff_t *pos)
-{
-	ssize_t s = simple_read_from_buffer(buf, count, pos,
-										snprintf_buf, strnlen(snprintf_buf, WRITE_BUF_SIZE));
-	snprintf_buf[0] = 0;
-	snprintf_pos = 0;
-	return s;
+static ssize_t data_read(struct file *fp, char __user *buf, size_t count, loff_t *pos) {
+    unsigned int len;
+    
+    if (data_list != NULL) {
+        seemoo_qmi_packet_t* packet = data_list;
+        data_list = data_list->next;
+        if (data_list == NULL) {
+            data_list_last_item_pointer = &data_list;
+        }
+        
+        len = packet->length;
+        if (copy_to_user(buf, packet->data, len)) {
+            write_error("error copying packet to user\n");
+        }
+        
+        kfree(packet);
+        
+        return len;
+    }
+    return 0;
 }
 
-static ssize_t debugfs_func_counter_read(struct file *fp, char __user *buf,
-										 size_t count, loff_t *pos)
-{
-	ssize_t s;
-	int write_pos_tmp = write_pos;
-	
-	//send message to read function counters
-	services_send_sync_msg(seemoo_clnt, FUNC_COUNTER_SVC_ID, 4, "dummy");
-	s = simple_read_from_buffer(buf, count, pos,
-								write_buf+write_pos_tmp, strnlen(write_buf+write_pos_tmp, WRITE_BUF_SIZE));
-	write_buf[write_pos_tmp] = 0;
-	write_pos = write_pos_tmp;
-	return s;
-}
-
-static int debugfs_release(struct inode *ip, struct file *fp)
-{
-	return 0;
-}
-
-static ssize_t debugfs_write(struct file *fp, const char __user *buf,
-							 size_t count, loff_t *pos)
-{
-	unsigned char cmd[64];
+static ssize_t data_write(struct file *fp, const char __user *buf, size_t count, loff_t *pos) {
 	int len;
-	int last_res;
 	
 	if (count < 1)
 		return 0;
 	
-	len = min(count, (sizeof(cmd) - 1));
+	len = min(count, (sizeof(read_buf) - 1));
 	
-	if (copy_from_user(cmd, buf, len))
+	if (copy_from_user(read_buf, buf, len))
 		return -EFAULT;
-	
-	cmd[len] = 0;
-	if (cmd[len-1] == '\n') {
-		cmd[len-1] = 0;
-		len--;
-	}
-	
-	last_res = 0;
-	/* check user input and send corresponding command to modem */
-	if (!strncmp(cmd, "pp", sizeof(cmd))) {
-		last_res = ping_pong_send_sync_msg();
-	} else if (!strncmp(cmd, "data", sizeof(cmd))) {
-		last_res = services_send_sync_msg(seemoo_clnt, FUNC_COUNTER_SVC_ID, 0, NULL);
-	} else if (!strncmp(cmd, "print0", sizeof(cmd))) {
-		char reg = 0;
-		last_res = services_send_sync_msg(seemoo_clnt, SNPRINTF_SVC_ID, 1, &reg);
-	} else if (!strncmp(cmd, "print1", sizeof(cmd))) {
-		char reg = 1;
-		last_res = services_send_sync_msg(seemoo_clnt_ind, SNPRINTF_SVC_ID, 1, &reg);
-	} else {
-		last_res = -EINVAL;
-	}
-	
-	if (last_res == -ENETRESET || seemoo_clnt_reset || seemoo_clnt_ind_reset) {
-		do {
-			msleep(50);
-		} while (seemoo_clnt_reset || seemoo_clnt_ind_reset);
-	}
+    	
+    if ((read_buf[3] & 0x80) == 0) {
+        services_send_sync_msg(seemoo_clnt, len, read_buf);
+    } else {
+        read_buf[3] &= 0x7F;
+        services_send_sync_msg(seemoo_clnt_ind, len, read_buf);
+    }
 	
 	return count;
 }
@@ -564,28 +403,29 @@ static struct notifier_block seemoo_clnt_nb = {
 	.notifier_call = svc_event_notify,
 };
 
-static const struct file_operations debug_ops = {
+static const struct file_operations status_fops = {
 	.owner = THIS_MODULE,
-	.open = debugfs_open,
-	.read = debugfs_read,
-	.write = debugfs_write,
-	.release = debugfs_release,
+	.open = dev_open,
+	.read = status_read,
 };
 
-static const struct file_operations debug_func_counter_ops = {
-	.owner = THIS_MODULE,
-	.open = debugfs_open,
-	.read = debugfs_func_counter_read,
-	.write = debugfs_write,
-	.release = debugfs_release,
+static struct miscdevice status_dev = {
+	MISC_DYNAMIC_MINOR,
+	"seemoo_qmi_status",
+	&status_fops
 };
 
-static const struct file_operations debug_snprintf_ops = {
+static const struct file_operations data_fops = {
 	.owner = THIS_MODULE,
-	.open = debugfs_open,
-	.read = debugfs_snprintf,
-	.write = debugfs_write,
-	.release = debugfs_release,
+	.open = dev_open,
+	.read = data_read,
+	.write = data_write,
+};
+
+static struct miscdevice data_dev = {
+	MISC_DYNAMIC_MINOR,
+	"seemoo_qmi_data",
+	&data_fops
 };
 
 /**
@@ -593,8 +433,11 @@ static const struct file_operations debug_snprintf_ops = {
  */
 static int __init seemoo_qmi_init(void)
 {
-	int rc;
+	int rc, ret_status, ret_data;
 	
+    data_list = NULL;
+    data_list_last_item_pointer = &data_list;
+    
 	/* create workqueue for event handling */
 	work_recv_msg_count = 0;
 	work_recv_msg_ind_count = 0;
@@ -603,28 +446,20 @@ static int __init seemoo_qmi_init(void)
 		return -EFAULT;
 	
 	/* register event notifier */
-	rc = qmi_svc_event_notifier_register(TEST_SERVICE_SVC_ID,
-										 TEST_SERVICE_INS_ID, &seemoo_clnt_nb);
+	rc = qmi_svc_event_notifier_register(TEST_SERVICE_SVC_ID, TEST_SERVICE_INS_ID, &seemoo_clnt_nb);
 	if (rc < 0) {
 		write_error("%s: notifier register failed\n", __func__);
 		destroy_workqueue(workqueue);
 		return rc;
 	}
 	
-	/* create debugfs files, check for error */
-	dent = debugfs_create_file("seemoo_qmi_client", 0444, 0,
-							   NULL, &debug_ops);
-	debugfs_create_file("seemoo_func_counter", 0444, 0,
-						NULL, &debug_func_counter_ops);
-	debugfs_create_file("seemoo_snprintf", 0444, 0,
-						NULL, &debug_snprintf_ops);
+	/* create device files, check for error */
+	ret_status = misc_register(&status_dev);
+    ret_data = misc_register(&data_dev);
 	
-	if (IS_ERR(dent)) {
-		pr_err("%s: unable to create debugfs %ld\n",
-			   __func__, IS_ERR(dent));
-		dent = NULL;
-		qmi_svc_event_notifier_unregister(TEST_SERVICE_SVC_ID,
-										  TEST_SERVICE_INS_ID, &seemoo_clnt_nb);
+	if (ret_status | ret_data) {
+		pr_err("%s: unable to create device files (%d, %d)\n", __func__, ret_status, ret_data);
+		qmi_svc_event_notifier_unregister(TEST_SERVICE_SVC_ID, TEST_SERVICE_INS_ID, &seemoo_clnt_nb);
 		destroy_workqueue(workqueue);
 		return -EFAULT;
 	}
@@ -635,12 +470,11 @@ static int __init seemoo_qmi_init(void)
 /**
  * @brief module exit function
  */
-static void __exit seemoo_qmi_exit(void)
-{
-	qmi_svc_event_notifier_unregister(TEST_SERVICE_SVC_ID,
-									  TEST_SERVICE_INS_ID, &seemoo_clnt_nb);
+static void __exit seemoo_qmi_exit(void) {
+	qmi_svc_event_notifier_unregister(TEST_SERVICE_SVC_ID, TEST_SERVICE_INS_ID, &seemoo_clnt_nb);
 	destroy_workqueue(workqueue);
-	debugfs_remove(dent);
+	misc_deregister(&status_dev);
+    misc_deregister(&data_dev);
 }
 
 module_init(seemoo_qmi_init);

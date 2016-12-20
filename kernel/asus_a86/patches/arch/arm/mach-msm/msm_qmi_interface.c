@@ -485,7 +485,7 @@ int qmi_connect_to_service(struct qmi_handle *handle,
 			   uint32_t service_id, uint32_t instance_id)
 {
 	struct msm_ipc_port_name svc_name;
-	struct msm_ipc_server_info svc_info[2];
+	struct msm_ipc_server_info svc_info[4];
 	struct msm_ipc_addr *svc_dest_addr;
 	int rc;
 
@@ -502,20 +502,19 @@ int qmi_connect_to_service(struct qmi_handle *handle,
 	svc_name.service = service_id;
 	svc_name.instance = instance_id;
 
-	rc = msm_ipc_router_lookup_server_name(&svc_name, svc_info, 2, 0xFF);
+	rc = msm_ipc_router_lookup_server_name(&svc_name, svc_info, 4, 0xFF);
 	if (rc <= 0) {
 		pr_err("%s: Server not found\n", __func__);
 		return -ENODEV;
 	}
 	svc_dest_addr->addrtype = MSM_IPC_ADDR_ID;
-        // quick fix: if we find more than two matches always return 2nd match
-        if (rc > 1) {
-            svc_dest_addr->addr.port_addr.node_id = svc_info[1].node_id;
-            svc_dest_addr->addr.port_addr.port_id = svc_info[1].port_id;
-        } else {
-            svc_dest_addr->addr.port_addr.node_id = svc_info[0].node_id;
-            svc_dest_addr->addr.port_addr.port_id = svc_info[0].port_id;
+        // quick fix: if we find more than one match always return 2nd match
+        if (rc > 4) {
+            rc = 4;
         }
+        svc_dest_addr->addr.port_addr.node_id = svc_info[rc-1].node_id;
+        svc_dest_addr->addr.port_addr.port_id = svc_info[rc-1].port_id;
+            
 	mutex_lock(&handle->handle_lock);
 	if (handle->handle_reset) {
 		mutex_unlock(&handle->handle_lock);

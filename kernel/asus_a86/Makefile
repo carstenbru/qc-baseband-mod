@@ -6,12 +6,13 @@
 ## @author Carsten Bruns (carst.bruns@gmx.de)
 
 KERNEL=PadFoneT004-10.12.3.94-kernel-src
-DEFCONFIG=a86_seemoo_defconfig
+DEFCONFIG=a86-perf_seemoo_defconfig
 
 MKBOOT=$(shell pwd)/buildtools/mkboot/mkboot
 BASE_FILES=./base_files
 BOOTIMG_TMP=./bootimg_tmp
 KERNEL_PATCH_DIR=./patches
+RAMDISK_PATCH_DIR=./patches_ramdisk
 
 INCLUDE_PATH_FIX=-Idrivers/media/platform/msm/camera_v2/sensor -Idrivers/power/service -Isound/soc/msm/qdsp6v2
 
@@ -43,6 +44,7 @@ boot.img: $(KERNEL)/arch/arm/boot/zImage check-setup-env
 	rm -Rf $(BOOTIMG_TMP)
 	#unpack source boot image and replace kernel
 	$(MKBOOT) $(BASE_FILES)/boot.img $(BOOTIMG_TMP)
+	if [ -d $(RAMDISK_PATCH_DIR) ]; then cp -a $(RAMDISK_PATCH_DIR)/* $(BOOTIMG_TMP)/ramdisk; fi
 	rm -f $(BOOTIMG_TMP)/kernel
 	cp $(KERNEL)/arch/arm/boot/zImage $(BOOTIMG_TMP)/kernel
 	

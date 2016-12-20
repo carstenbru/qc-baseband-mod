@@ -24,9 +24,6 @@
 #define TEST_SERVICE_SVC_ID 0x0000000f
 #define TEST_SERVICE_INS_ID 1
 
-#define FUNC_COUNTER_SVC_ID 0x4675436F //"FuCo" in ASCII
-#define SNPRINTF_SVC_ID 0x736E7066 //"snpf" in ASCII
-
 #define QMI_TEST_DATA_IND_V01 0x24
 #define TEST_DATA_IND_MAX_MSG_LEN_V01 8461
 #define DATA_IND1_TLV_TYPE 0x1
@@ -36,6 +33,14 @@
 #define WRITE_BUF_SIZE 65536
 #define HANDLE_ID_NORM 0
 #define HANDLE_ID_IND 1
+
+struct seemoo_qmi_packet_struct_t {
+    unsigned int length;
+    unsigned char data[TEST_MED_DATA_SIZE_V01];
+    struct seemoo_qmi_packet_struct_t* next;
+};
+
+typedef struct seemoo_qmi_packet_struct_t seemoo_qmi_packet_t;
 
 /* ############################### */
 
