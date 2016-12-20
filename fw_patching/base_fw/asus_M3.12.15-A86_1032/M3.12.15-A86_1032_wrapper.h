@@ -14,6 +14,7 @@
 #define ADDRESS(x) __attribute__ ((address (x)))
 
 #include "qmi_functions_wrapper.h"
+#include "lte_mac_wrapper.h"
 
 /* ########################################### */
 
