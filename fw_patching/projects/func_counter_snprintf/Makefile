@@ -10,6 +10,9 @@ BASE_FW=../../base_fw/asus_M3.12.15-A86_1032/M3.12.15-A86_1032.img
 # new Firmware version string, leave empty to leave version strings untouched
 FW_VERSION_STRING="SEEMOO Firmware fc_snp"
 
+CUSTOM_BASE_DIR=../
+CUSTOM_SRCS=common/seemoo_qmi/seemoo_qmi_services.c
+
 SRC_DIR=./src
 IMAGE_DIR=./image
 BUILD_DIR=./build

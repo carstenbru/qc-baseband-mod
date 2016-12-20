@@ -5,13 +5,16 @@
  * @author Carsten Bruns (carst.bruns@gmx.de)
  */ 
 
+#ifndef __QMI_MESSAGE_STRUCTS_H
+#define __QMI_MESSAGE_STRUCTS_H
+
 #define QMI_TEST_DATA_IND_V01 0x24
 #define TEST_MAX_NAME_SIZE_V01 255
 #define TEST_MED_DATA_SIZE_V01 8192
 #define TEST_DATA_REQ_MAX_MSG_LEN_V01 8456
 
-typedef unsigned char   uint8_t;
-typedef unsigned int    uint32_t;
+typedef unsigned char uint8_t;
+typedef unsigned int uint32_t;
 
 typedef struct {
     int result;
@@ -73,3 +76,5 @@ typedef struct {
     uint8_t sum_valid;
     uint32_t sum;
 } test_data_ind_msg_v01;
+
+#endif

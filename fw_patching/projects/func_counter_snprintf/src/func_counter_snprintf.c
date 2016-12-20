@@ -1,8 +1,8 @@
 /**
  * @file func_counter_snprintf.c
- * @brief framework capabilities demonstration example
- * 
- * Shows:
+ * @brief function counters and snprintf example main source file
+ *
+ * framework capabilities demonstration example, shows:
  * -function overwriting
  * -placement in pointer tables
  * -calling of firmware function
@@ -12,11 +12,8 @@
  */
 
 #include FW_WRAPPER
-#include "qmi_message_structs.h"
-
-/* service ID definitions (on top of QMI) */
-#define FUNC_COUNTER_SVC_ID 0x4675436F //"FuCo" in ASCII
-#define SNPRINTF_SVC_ID 0x736E7066 //"snpf" in ASCII
+#include "../../common/seemoo_qmi/qmi_message_structs.h"
+#include "func_counter_snprintf.h"
 
 /* function counters */
 unsigned int memcpy_counter = 0;
@@ -80,24 +77,50 @@ void* memset_hook(void* ptr, int value, unsigned int num) {
 /**
  * @brief generates a response message to a function counter reading request
  */
-void generate_resp_func_counter_svc(test_data_resp_msg_v01* resp) {
-    resp->data_len += 16;    
-    
+int func_counter_svc_req(
+    void* clnt_info,
+    unsigned char* req_data,
+    unsigned int req_data_len,
+    unsigned char* resp_data) 
+{    
     //be careful with alignment when casting! hexagon will produce an exception for unaligned accesses!
-    unsigned int* data32 = (unsigned int*)(resp->data + 4);
+    unsigned int* data32 = (unsigned int*)(resp_data);
     *(data32 + 0) = ping_counter;
     *(data32 + 1) = memcpy_counter;
     *(data32 + 2) = memset_counter;
     *(data32 + 3) = snprintf_counter;
+    
+    return 16;
 }
 
 /**
- * @brief  sends an indication with the data printed in an snprintf call to a previously registered client
+ * @brief snprintf register request handler
+ */
+int snprintf_svc_req(
+    void* clnt_info,
+    unsigned char* req_data,
+    unsigned int req_data_len,
+    unsigned char* resp_data) 
+{    
+    if (*req_data != 0) {
+        snprintf_svc_client = *((void**)clnt_info);
+        *((void**)(resp_data)) = snprintf_svc_client;
+        return 4;
+    } else {
+        snprintf_svc_client = 0;
+        return 0;
+    }
+    
+    return 0;
+}
+
+/**
+ * @brief sends an indication with the data printed in an snprintf call to a previously registered client
  */
 void send_snprintf_ind(char* src, unsigned int len) {
     if (snprintf_svc_client != 0) {
-        if (len > TEST_MED_DATA_SIZE_V01-1) {
-            len = TEST_MED_DATA_SIZE_V01-1;
+        if (len > TEST_MED_DATA_SIZE_V01-9) {
+            len = TEST_MED_DATA_SIZE_V01-9;
         }
         
         test_data_ind_msg_v01* ind = (test_data_ind_msg_v01*)malloc(sizeof(test_data_ind_msg_v01));
@@ -119,6 +142,8 @@ void send_snprintf_ind(char* src, unsigned int len) {
 
 /**
  * @brief snprintf hook, call original function and send QMI indication
+ * 
+ * This is a quite complex example as snprintf is a variadic function.
  */
 __attribute__ ((overwrite ("snprintf")))
 int snprintf_hook(char* str, unsigned int size, const char* format, ...) {
@@ -131,50 +156,4 @@ int snprintf_hook(char* str, unsigned int size, const char* format, ...) {
     send_snprintf_ind(str, written);
     
     __builtin_return(ret);
-}
-
-/**
- * @brief QMI ping data request hook, decode message and generate response for our own implemented services
- */
-__attribute__ ((pointer_table ("qmi_ping_svc_req_handle_table", 0x21)))
-unsigned int services_response_handler (
-    void*             clnt_info,
-    void*             req_handle,
-    unsigned int      msg_id,
-    void*             req_c_struct,
-    unsigned int      req_c_struct_len,
-    void*             service_cookie)
-{
-    test_data_req_msg_v01* req = (test_data_req_msg_v01 *)req_c_struct;
-    
-    //decode service ID
-    unsigned int svc_id = req->data[0] + (req->data[1] << 8) + (req->data[2] << 16) + (req->data[3] << 24);
-    test_data_resp_msg_v01* resp = (test_data_resp_msg_v01*)malloc(sizeof(test_data_resp_msg_v01));
-    
-    memset(resp, 0, sizeof(test_data_resp_msg_v01));
-    //write service ID into response
-    resp->data_valid = 1;
-    resp->data_len = 4;
-    memcpy(resp->data, req->data, 4);
-    
-    //generate response depending on service
-    if (svc_id == FUNC_COUNTER_SVC_ID) {
-        generate_resp_func_counter_svc(resp);
-    } else if (svc_id == SNPRINTF_SVC_ID) {
-        if (req->data[4] != 0) { //register client
-            snprintf_svc_client = *((void**)clnt_info);
-            resp->data_len += 4;
-            *((void**)(resp->data + 4)) = snprintf_svc_client;
-        } else { //de-register client
-            snprintf_svc_client = 0;
-        }
-    } else {
-        memset(resp->data, 0, 4);
-    }
-    
-    qmi_csi_send_resp(req_handle, msg_id, resp, sizeof(test_data_resp_msg_v01));
-    
-    free(resp);
-    
-    return 0;
 }
