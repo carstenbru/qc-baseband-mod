@@ -52,16 +52,16 @@ class FuncDefVisitor(c_ast.NodeVisitor):
                     print('function "%s" should be placed in pointer table "%s" at %d' % (node.decl.name, destName, destOffset))
                     print('-> function "0x%X" should be placed in pointer table at "0x%X"' % (pointer, pos))
 
-def generate_patch_list(symtab, fw_wrapper, src_dir):
+def generate_patch_list(symtab, fw_wrapper, src_files):
     """
     generates a list of patches needed to be applied in order to patch the ELF file
     
     :param symtab: symbol table
     :param fw_wrapper: firmware wrapper header file
-    :param src_dir: directory containing patch source code
+    :param src_files: list of patch source code files
     """
     patches = []
-    for filename in glob.glob(src_dir + "/*.c"):
+    for filename in src_files:
         text = preprocess_file(filename, 'hexagon-cpp', '-DFW_WRAPPER="' + fw_wrapper + '"')
 
         parser = GnuCParser()
@@ -90,20 +90,20 @@ def generate_version_string_patches(fw_name, symtab):
         ]
 
 def usage():
-  print "Usage: %s <base-elf> <patch-elf> <dest-elf> <FW_WRAPPER> <src-dir> <fw_version_string>" % sys.argv[0]
+  print "Usage: %s <base-elf> <patch-elf> <dest-elf> <FW_WRAPPER> <fw_version_string> <src-file1> [src-file2..]" % sys.argv[0]
   exit(1)
 	
 if __name__ == "__main__":
     """
     main function: create and apply all needed patches
     """
-    if len(sys.argv) != 7:
+    if len(sys.argv) < 7:
         usage()
         
     patches = [ElfPatch(sys.argv[2])]
     
     symtab = read_symtab_elf(sys.argv[2])
-    patches.extend(generate_patch_list(symtab, sys.argv[4], sys.argv[5]))
+    patches.extend(generate_patch_list(symtab, sys.argv[4], sys.argv[6:]))
     if (sys.argv[6] != ""):
-        patches.extend(generate_version_string_patches(sys.argv[6], symtab))
+        patches.extend(generate_version_string_patches(sys.argv[5], symtab))
     patch_firmware(sys.argv[1], sys.argv[3], patches)

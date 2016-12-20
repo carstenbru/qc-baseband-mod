@@ -44,6 +44,10 @@ class FuncCallVisitor(c_ast.NodeVisitor):
         return self.req_org_funcs
 
     def visit_FuncCall(self, node):
+        if (type(node.name) is c_ast.UnaryOp):
+            return
+        if (type(node.name.name) is c_ast.ArrayRef):
+            return
         if (node.name.name.endswith(org_func_suffix)):
             self.req_org_funcs.add(node.name.name)
         if (node.name.name == "__builtin_apply"):

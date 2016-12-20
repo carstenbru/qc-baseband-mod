@@ -13,7 +13,7 @@ export PYTHONPATH=$(SEEMOO_FW_PATCH_DIR_ROOT)/scripts/utils
 
 $(PATCHED_FW_DIR)/patched.elf: $(PATCH_ELF) $(FW_BASE_ELF)
 	mkdir -p $(PATCHED_FW_DIR)
-	python $(SEEMOO_FW_PATCH_DIR_ROOT)/scripts/patching/patcher.py $(FW_BASE_ELF) $(PATCH_ELF) $(PATCHED_ELF) $(FW_WRAPPER) $(SRC_DIR) $(FW_VERSION_STRING)
+	python $(SEEMOO_FW_PATCH_DIR_ROOT)/scripts/patching/patcher.py $(FW_BASE_ELF) $(PATCH_ELF) $(PATCHED_ELF) $(FW_WRAPPER) $(FW_VERSION_STRING) $(SRC_FILES)
 	
 clean_patched_fw:
 	rm -f $(PATCHED_FW_DIR)/*.elf

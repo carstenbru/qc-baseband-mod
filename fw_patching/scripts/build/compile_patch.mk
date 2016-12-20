@@ -16,8 +16,13 @@ EDITOR=kwrite
 CFLAGS=-mv5 -O2 -G0 -Wall -Wno-attributes
 LDFLAGS=-mv5 -nostdlib -nostartfiles
 
-SRC_FILES=$(abspath $(wildcard $(SRC_DIR)/*.c))
-OBJ=$(addprefix $(BUILD_DIR)/,$(notdir $(patsubst %.c,%.o,$(SRC_FILES))))
+CUSTOM_OBJS=$(addprefix $(BUILD_DIR)/,$(patsubst %.c,%.o,$(CUSTOM_SRCS)))
+
+SRC_FILES_PROJECT=$(abspath $(wildcard $(SRC_DIR)/*.c))
+SRC_FILES_CUSTOM=$(addprefix $(CUSTOM_BASE_DIR)/,$(CUSTOM_SRCS))
+SRC_FILES=$(SRC_FILES_PROJECT) $(SRC_FILES_CUSTOM)
+OBJ=$(addprefix $(BUILD_DIR)/,$(notdir $(patsubst %.c,%.o,$(SRC_FILES_PROJECT))))
+OBJ+=$(CUSTOM_OBJS)
 FW_IMG_WRAPPER=$(abspath $(patsubst %.img,%_wrapper.h,$(abspath $(BASE_FW))))
 
 WRAPPER_LCS_FILE=$(FW_BASE_DIR)/fw_wrapper.lcs
@@ -34,6 +39,10 @@ include $(SEEMOO_FW_PATCH_DIR_ROOT)/scripts/build/generate_fw_org_functions.mk
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c $(FW_ORG_OBJ)
 	mkdir -p $(BUILD_DIR)
+	$(CC) -c -DFW_WRAPPER="<$(FW_ORG_HEADER)>" -DFW_IMG_WRAPPER="<$(FW_IMG_WRAPPER)>" -o $@ $< $(CFLAGS)
+	
+$(BUILD_DIR)/%.o: $(CUSTOM_BASE_DIR)/%.c $(FW_ORG_OBJ)
+	mkdir -p $(dir $@)
 	$(CC) -c -DFW_WRAPPER="<$(FW_ORG_HEADER)>" -DFW_IMG_WRAPPER="<$(FW_IMG_WRAPPER)>" -o $@ $< $(CFLAGS)
 	
 $(BUILD_DIR)/%.o: $(GEN_DIR)/%.c
@@ -63,4 +72,4 @@ clean_compile: clean_wrapper_lcs clean_fw_org_functions
 	rm -f $(OBJ)
 	rm -f $(FW_ORG_OBJ)
 	rm -f $(BUILD_DIR)/disasm*.txt
-	if [ -d $(BUILD_DIR) ]; then rmdir --ignore-fail-on-non-empty $(BUILD_DIR); fi
+	rm -rf $(BUILD_DIR)
