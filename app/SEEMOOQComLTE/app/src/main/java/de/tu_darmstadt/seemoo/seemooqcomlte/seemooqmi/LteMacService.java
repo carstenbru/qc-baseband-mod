@@ -1,3 +1,8 @@
+/**
+ * LTE MAC frames service
+ *
+ * @author Carsten Bruns (carst.bruns@gmx.de)
+ */
 package de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi;
 
 import android.content.Context;
@@ -47,9 +52,16 @@ public class LteMacService extends SeemooQmiService {
     private String udpIpAdress;
     private int udpPort;
 
+    /**
+     * constructor
+     *
+     * @param seemooQmiP SeemooQmi instance
+     * @param appContextP application context
+     */
     public LteMacService(SeemooQmi seemooQmiP, Context appContextP) {
         super(seemooQmiP, appContextP);
 
+        //add listener for service registration change responses
         seemooQmi.addPacketListener(LTE_MAC_DL_SVC_ID, false, new SeemooQmi.PacketListener() {
             @Override
             public void packetReceived(SeemooQmi.PacketReceiveEvent e) {
@@ -60,6 +72,7 @@ public class LteMacService extends SeemooQmiService {
                 }
             }
         });
+        //add listener for snprintf call indication messages
         seemooQmi.addPacketListener(LTE_MAC_DL_SVC_ID, true, new SeemooQmi.PacketListener() {
             @Override
             public void packetReceived(SeemooQmi.PacketReceiveEvent e) {
@@ -70,17 +83,27 @@ public class LteMacService extends SeemooQmiService {
         });
     }
 
+    /**
+     * translates a RNTI type value from the values used by Qualcomm to the ones used by Wireshark
+     *
+     * @param rntiModem RNTI type value received from modem
+     * @return RNTI tyoe value to use for Wireshark
+     */
     private int translateRnti(int rntiModem) {
         //see lte/api/lte_as.h for codes
         int decodeTable[] = {3,5,1,2,-1,4,-1,-1,-1};
         int res = ((rntiModem >= 0) && (rntiModem < decodeTable.length)) ? decodeTable[rntiModem] : -1;
         if (res < 0) {
+            //unknown RNTI type value
             res = 0;
             seemooQmi.notifyStatusListeners(String.format(appContext.getResources().getString(R.string.ltemac_rnti_error), rntiModem), 1);
         }
         return res;
     }
 
+    /**
+     * class for metadata containing additional information for LTE MAC messages
+     */
     private class LteMacMetadata {
         //TODO decode other information of metadata
         private int rntiType;
@@ -94,20 +117,28 @@ public class LteMacService extends SeemooQmiService {
         }
     }
 
+    /**
+     * send a LTE MAC frame over UDP
+     *
+     * @param data MAC frame PDU
+     * @param dataLength length of data
+     */
     private void sendPacketOverUdp(byte[] data, int dataLength) {
         try {
             ByteArrayOutputStream dataStream = new ByteArrayOutputStream();
 
             LteMacMetadata metadata = new LteMacMetadata(data);
 
+            //start string so that Wireshark recognizes it as LTE MAC frame
             dataStream.write(MAC_LTE_START_STRING.getBytes());
+            //mandatory metainformation
             dataStream.write(FDD_RADIO); //TODO
             dataStream.write(DIRECTION_DOWNLINK); //TODO
-
             dataStream.write(metadata.getRntiType());
 
             //TODO include optional data fields in UDP LTE-MAC payload header
 
+            //include PDU
             dataStream.write(MAC_LTE_PAYLOAD_TAG);
             dataStream.write(data, 12, dataLength - 12);
 
@@ -124,17 +155,31 @@ public class LteMacService extends SeemooQmiService {
         }
     }
 
+    /**
+     * register/deregister for indications in modem
+     *
+     * @param state new registration state
+     */
     public void register(boolean state) {
         byte register[] = {(byte)(state ? 1 : 0)};
         seemooQmi.sendMessage(LTE_MAC_DL_SVC_ID, true, register, 1);
     }
 
+    /**
+     * enable forwarding of incoming LTE MAC frames over UDP
+     *
+     * @param udpIpAdress UDP destination IP address
+     * @param udpPort UDP destination port
+     */
     public void startSendPacketsOverUdp(String udpIpAdress, int udpPort) {
         this.udpIpAdress = udpIpAdress;
         this.udpPort = udpPort;
         this.udpEnable = true;
     }
 
+    /**
+     * stop forwarding LTE MAC frames over UDP
+     */
     public void stopUdp() {
         this.udpEnable = false;
     }

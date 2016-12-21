@@ -1,3 +1,8 @@
+/**
+ * Main Activity of the App
+ *
+ * @author Carsten Bruns (carst.bruns@gmx.de)
+ */
 package de.tu_darmstadt.seemoo.seemooqcomlte;
 
 import android.content.Context;
@@ -77,6 +82,9 @@ public class MainActivity extends AppCompatActivity {
     private static Handler funcCountersPollHandler = new Handler();
     private static boolean snprintfDeregister;
 
+    /**
+     * runnable to read function counters automatically at a specified interval
+     */
     private static Runnable funcCountersPollRunnable = new Runnable() {
         @Override
         public void run() {
@@ -87,18 +95,32 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    /**
+     * sets the snprintf service buffer size from the value in the preferneces
+     */
     private void snprintfSetBufferSizeFromSharedPrefs() {
         snprintfService.setMaxOldMessagesSize(Integer.parseInt(sharedPreferences.getString("snprintf_buffer_size", "65536")));
     }
 
+    /**
+     * sets the SeemooQMI poll rate from the value in the preferneces
+     */
     private void seemooQmiSetPollRateFromSharedPrefs() {
         seemooQmi.setPollRate(Integer.parseInt(sharedPreferences.getString("poll_interval", "100")));
     }
 
+    /**
+     * sets the Seemoo QMI status messages buffer size from the value in the preferneces
+     */
     private void seemooQmiSetStatusBufferSizeFromSharedPrefs() {
         seemooQmi.setMaxOldMessagesSize(Integer.parseInt(sharedPreferences.getString("status_buffer_size", "1024")));
     }
 
+    /**
+     * sets the snprintf registration option from the value in the preferneces,
+     * registers or deregisters from the service depending on the setting and the current
+     * GUI state
+     */
     private void snprintfDeregisterFromSharedPrefs() {
         snprintfDeregister = sharedPreferences.getBoolean("snprintf_deregister", true);
         if (snprintfDeregister) {
@@ -109,6 +131,10 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    /**
+     * sets the function counter service poll tyope and rate from the value in the preferneces,
+     * starts polling if it should be started and was not before
+     */
     private void funcCountersPollFromSharedPrefs() {
         funcCountersPollRate = Integer.parseInt(sharedPreferences.getString("func_counter_poll_interval", "200"));
 
@@ -125,6 +151,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * configures the status log level from the value in the preferneces
+     */
     private void statusLogLevelFromSharedPrefs() {
         int messageMask = 0;
         Set<String> options = (sharedPreferences.getStringSet("log_level", null));
@@ -144,6 +173,10 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * registers a listener for changes on the SharedPrefernces to trigger reconfiguration
+     * of the corresponding parameters
+     */
     private void registerOnSharedPreferenceChangedLister() {
         if (onSharedPrederencesChangeListener == null) {
             onSharedPrederencesChangeListener = new SharedPreferences.OnSharedPreferenceChangeListener() {
@@ -176,6 +209,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * initializes all parameters from the shared preferences
+     */
     private void initParameters() {
         seemooQmiSetPollRateFromSharedPrefs();
         seemooQmiSetStatusBufferSizeFromSharedPrefs();
@@ -184,6 +220,9 @@ public class MainActivity extends AppCompatActivity {
         funcCountersPollFromSharedPrefs();
     }
 
+    /**
+     * creates the QMI services (including SeemooQmi which are not yet running
+     */
     private void createServices() {
         seemooQmi = SeemooQmi.getInstance(getApplicationContext());
         statusLogLevelFromSharedPrefs();
@@ -201,6 +240,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * stores a value in the default shared preferences
+     *
+     * @param key name of the value
+     * @param value actual value
+     */
     private static void storeStringInSharedPrefs(String key, String value) {
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putString(key, value);
@@ -212,6 +257,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        //set-up tabs
         SeemooPagerAdapter seemooPagerAdapter = new SeemooPagerAdapter(getSupportFragmentManager(), getApplicationContext());
         ViewPager viewPager = (ViewPager) findViewById(R.id.viewPager);
         viewPager.setAdapter(seemooPagerAdapter);
@@ -234,6 +280,7 @@ public class MainActivity extends AppCompatActivity {
 
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
 
+        //start services, initialize everything
         createServices();
         initParameters();
         registerOnSharedPreferenceChangedLister();
@@ -252,6 +299,9 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
+    /**
+     * fragment containing the settings screen
+     */
     public static class MainSettingsFragment extends PreferenceFragment {
         private LinearLayout root;
 
@@ -265,9 +315,11 @@ public class MainActivity extends AppCompatActivity {
         public void onActivityCreated(Bundle savedInstanceState) {
             super.onActivityCreated(savedInstanceState);
 
+            //set frgaments background color,otherwise it is transparent!
             getView().setBackgroundColor(getResources().getColor(android.R.color.background_light));
             getView().setClickable(true);
 
+            //add the toolbar with back button
             root = (LinearLayout) getView().findViewById(android.R.id.list).getParent().getParent().getParent();
             Toolbar bar = (Toolbar) getActivity().getLayoutInflater().inflate(R.layout.prefernce_toolbar, root, false);
             root.addView(bar, 0);
@@ -283,6 +335,7 @@ public class MainActivity extends AppCompatActivity {
         public void onDestroy() {
             super.onDestroy();
 
+            //remove toolbar
             root.removeViewAt(0);
         }
     }
@@ -291,6 +344,7 @@ public class MainActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
 
+        //start settings screen
         if (id == R.id.action_settings) {
             getFragmentManager()
                     .beginTransaction()
@@ -303,11 +357,20 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
+    /**
+     * pager adapter to handle tabs consisting of fragments for the different pages
+     */
     public static class SeemooPagerAdapter extends FragmentPagerAdapter {
         private static int NUM_TABS = 4;
 
         private Context appContext;
 
+        /**
+         * Constructor
+         *
+         * @param fm the FragmentManager
+         * @param appContext application context
+         */
         public SeemooPagerAdapter(FragmentManager fm, Context appContext) {
             super(fm);
 
@@ -354,6 +417,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Fragment showing status messages
+     */
     public static class StatusLogFragment extends Fragment {
         private SeemooQmi.StatusListener statusListener;
 
@@ -361,6 +427,8 @@ public class MainActivity extends AppCompatActivity {
         public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
             View rootView = inflater.inflate(R.layout.content_status, container, false);
 
+            //put old messages in the log (received before creation of this fragment
+            //or when activity was send to background)
             final TextView statusLog = (TextView) rootView.findViewById(R.id.statusLog);
             for (String m : seemooQmi.getOldStatusMessages()) {
                 statusLog.append(m);
@@ -371,11 +439,17 @@ public class MainActivity extends AppCompatActivity {
                     statusLog.append(e.getStatus());
                 }
             };
+            //register listner for incoming messages
             reregisterStatusListener(statusMessageMask);
 
             return rootView;
         }
 
+        /**
+         * reregisters (or registers) the StatusLister to SeemooQmi
+         *
+         * @param messageMask mask defining which message types should be send to the listener
+         */
         public void reregisterStatusListener(int messageMask) {
             seemooQmi.removeStatusListener(statusListener);
             seemooQmi.addStatusListener(statusListener, messageMask);
@@ -389,6 +463,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * fragment showing the readings of the function counter service
+     */
     public static class FunctionCountersFragment extends Fragment {
         FunctionCounterService.CounterUpdateListener counterUpdateListener;
 
@@ -396,6 +473,7 @@ public class MainActivity extends AppCompatActivity {
         public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
             final View rootView = inflater.inflate(R.layout.content_func_counters, container, false);
 
+            //configure request button
             Button readFuncCountersButton = (Button) rootView.findViewById(R.id.readFuncCountersButton);
             readFuncCountersButton.setOnClickListener(new OnClickListener() {
                 @Override
@@ -405,6 +483,7 @@ public class MainActivity extends AppCompatActivity {
             });
             readFuncCountersButton.setVisibility(funcCountersPoll ? View.GONE : View.VISIBLE);
 
+            //update listener
             counterUpdateListener = new FunctionCounterService.CounterUpdateListener() {
                 @Override
                 public void counterUpdate(FunctionCounterService.CounterUpdateEvent e) {
@@ -420,6 +499,7 @@ public class MainActivity extends AppCompatActivity {
             };
             functionCounterService.addListener(counterUpdateListener);
 
+            //send a first request to have an initial value
             functionCounterService.sendFuncCountersRequest();
 
             return rootView;
@@ -430,8 +510,10 @@ public class MainActivity extends AppCompatActivity {
             super.setUserVisibleHint(isVisibleToUser);
 
             if (isVisibleToUser) {
+                //start polling
                 funcCountersPollHandler.postDelayed(funcCountersPollRunnable, funcCountersPollRate);
 
+                //set button visibility correctly when tab is opened
                 if (getView() != null) {
                     Button readFuncCountersButton = (Button) getView().findViewById(R.id.readFuncCountersButton);
                     readFuncCountersButton.setVisibility(funcCountersPoll ? View.GONE : View.VISIBLE);
@@ -447,6 +529,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * fragment showing snprintf messages
+     */
     public static class SnprintfFragment extends Fragment {
         private boolean firstSetVisible = true;
         private SnprintfService.SnprintfListener snprintfListener;
@@ -474,8 +559,10 @@ public class MainActivity extends AppCompatActivity {
         public void setUserVisibleHint(boolean isVisibleToUser) {
             super.setUserVisibleHint(isVisibleToUser);
 
+            //do not trigger this code at creation of the fragment..
             if (!firstSetVisible) {
                 if (snprintfDeregister) {
+                    //de(register) on tab changes
                     snprintfService.register(isVisibleToUser);
                 }
             }
@@ -490,6 +577,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * fragment for GUI for LTE MAC
+     */
     public static class LteMacFragment extends Fragment {
         private static final Pattern PARTIAl_IP_ADDRESS =
                 Pattern.compile("^((25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[1-9][0-9]|[0-9])\\.){0,3}" +
@@ -500,6 +590,12 @@ public class MainActivity extends AppCompatActivity {
 
         private static boolean lteMacUdpActive = false;
 
+        /**
+         * sets the states of all GUI elements according to the UDP forwarding state
+         *
+         * @param view root view of the fragment
+         * @param udpActive UDP forwarding state
+         */
         private void setLteMacUdpGuiState(View view, boolean udpActive) {
             EditText lteMacDestIp = (EditText) view.findViewById(R.id.destIp);
             EditText lteMacDestPort = (EditText) view.findViewById(R.id.destPort);
@@ -511,6 +607,12 @@ public class MainActivity extends AppCompatActivity {
             lteMacUdpActive = udpActive;
         }
 
+        /**
+         * configures the destination IP address edit field,
+         * including a pattern to allow only valid IP addresses
+         *
+         * @param rootView root view of the fragment
+         */
         private void setupDestIpEdit(View rootView) {
             EditText lteMacDestIp = (EditText) rootView.findViewById(R.id.destIp);
             lteMacDestIp.setText(sharedPreferences.getString("LteMacServiceIp", ""));
@@ -537,6 +639,12 @@ public class MainActivity extends AppCompatActivity {
             });
         }
 
+        /**
+         * configures the destination port address edit field,
+         * allowing only valid ports
+         *
+         * @param rootView root view of the fragment
+         */
         private void setupDestPortEdit(View rootView) {
             EditText lteMacDestPort = (EditText) rootView.findViewById(R.id.destPort);
             lteMacDestPort.setText(sharedPreferences.getString("LteMacServiceUdpPort", ""));
@@ -569,6 +677,11 @@ public class MainActivity extends AppCompatActivity {
             });
         }
 
+        /**
+         * configures the UDP enable checkbox
+         *
+         * @param rootView root view of the fragment
+         */
         private void setupUdpCheckbox(View rootView) {
             final CheckBox lteMacUdpEnable = (CheckBox) rootView.findViewById(R.id.activateUdp);
             lteMacUdpEnable.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
@@ -587,11 +700,12 @@ public class MainActivity extends AppCompatActivity {
                             Integer port = Integer.parseInt(lteMacDestPort.getText().toString());
                             lteMacService.register(true);
                             lteMacService.startSendPacketsOverUdp(ip, port);
-                        } else {
+                        } else { //on errors..
                             lteMacUdpEnable.setChecked(false);
                             Toast.makeText(compoundButton.getContext(), getResources().getString(R.string.ipPortInvalid), Toast.LENGTH_SHORT).show();
                         }
                     } else {
+                        //when un-checked stop UDP forwarding
                         lteMacService.stopUdp();
                         lteMacService.register(false);
 

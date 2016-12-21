@@ -1,3 +1,8 @@
+/**
+ * function counter service implementation
+ *
+ * @author Carsten Bruns (carst.bruns@gmx.de)
+ */
 package de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi;
 
 import android.content.Context;
@@ -12,6 +17,9 @@ public class FunctionCounterService extends SeemooQmiService {
 
     private List<CounterUpdateListener> counterUpdateListeners = new LinkedList<CounterUpdateListener>();
 
+    /**
+     * listener for incoming packages for this service
+     */
     private SeemooQmi.PacketListener packetListener = new SeemooQmi.PacketListener() {
         @Override
         public void packetReceived(SeemooQmi.PacketReceiveEvent e) {
@@ -24,10 +32,16 @@ public class FunctionCounterService extends SeemooQmiService {
         }
     };
 
+    /**
+     * listsner for function counter updates
+     */
     public interface CounterUpdateListener extends EventListener {
         void counterUpdate(CounterUpdateEvent e);
     }
 
+    /**
+     * function counter update event
+     */
     public class CounterUpdateEvent extends EventObject {
         private long funcCounters[];
 
@@ -59,6 +73,7 @@ public class FunctionCounterService extends SeemooQmiService {
 
     public void addListener(CounterUpdateListener counterUpdateListener) {
         if (counterUpdateListeners.isEmpty()) {
+            //if this is the first listener attached to us, register at seemooQmi to receive messages
             seemooQmi.addPacketListener(FUNC_COUNTER_SVC_ID, false, packetListener);
         }
         counterUpdateListeners.add(counterUpdateListener);
@@ -67,6 +82,7 @@ public class FunctionCounterService extends SeemooQmiService {
     public void removeListener(CounterUpdateListener counterUpdateListener) {
         counterUpdateListeners.remove(counterUpdateListener);
         if (counterUpdateListeners.isEmpty()) {
+            //if this is the last listener attached to us, deregister at seemooQmi
             seemooQmi.removePacketListener(FUNC_COUNTER_SVC_ID, false, packetListener);
         }
     }
@@ -77,6 +93,9 @@ public class FunctionCounterService extends SeemooQmiService {
         }
     }
 
+    /**
+     * sends a QMI message to request for a function counter update
+     */
     public void sendFuncCountersRequest() {
         seemooQmi.sendMessage(FUNC_COUNTER_SVC_ID, false, new byte[0], 0);
     }

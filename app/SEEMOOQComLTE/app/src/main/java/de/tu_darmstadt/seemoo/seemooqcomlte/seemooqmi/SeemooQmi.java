@@ -1,3 +1,10 @@
+/**
+ * Seemoo QMI device interface
+ *
+ * use this class to receive and send QMI packets
+ *
+ * @author Carsten Bruns (carst.bruns@gmx.de)
+ */
 package de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi;
 
 import android.content.Context;
@@ -40,6 +47,9 @@ public class SeemooQmi {
 
     private List<SeemooQmiService> services = new LinkedList<SeemooQmiService>();
 
+    /**
+     * runnable to handle polling od messages from the kernel driver
+     */
     private Runnable pollRunnable = new Runnable() {
         @Override
         public void run() {
@@ -61,14 +71,23 @@ public class SeemooQmi {
         this.oldStatusMessagesMask = oldStatusMessagesMask;
     }
 
+    /**
+     * interface for a listener for status messages
+     */
     public interface StatusListener extends EventListener {
         void statusUpdate(StatusUpdateEvent e);
     }
 
+    /**
+     * interface for a listener for incoming QMI packages
+     */
     public interface PacketListener extends EventListener {
         void packetReceived(PacketReceiveEvent e);
     }
 
+    /**
+     * new status message event
+     */
     public class StatusUpdateEvent extends EventObject {
         private String status;
 
@@ -82,6 +101,9 @@ public class SeemooQmi {
         }
     }
 
+    /**
+     * QMI packet receive event
+     */
     public class PacketReceiveEvent extends EventObject {
         private byte data[];
         private int dataLength;
@@ -101,6 +123,14 @@ public class SeemooQmi {
         }
     }
 
+    /**
+     * reads an integer (32bit unsigned) from a byte array as little endian
+     * (byte order e.g. on hexagon used in modem)
+     *
+     * @param data byte array
+     * @param offset position of the first byte to read in the data array
+     * @return the read value, as long as java has no unsigned integer
+     */
     public static long readIntLittleEndian(byte data[], int offset) {
         return (data[offset] & 0xFF)
                 + ((data[offset + 1] & 0xFF) << 8)
@@ -108,6 +138,13 @@ public class SeemooQmi {
                 + ((data[offset + 3] & 0xFF) << 24);
     }
 
+    /**
+     * gets an instance of the SeemooQmi
+     * this class is a singleton, only one instance will ever exist
+     *
+     * @param appContext application context
+     * @return the SeemooQmi instance
+     */
     public static SeemooQmi getInstance(Context appContext) {
         if (singletonInstance == null) {
             singletonInstance = new SeemooQmi(appContext);
@@ -115,6 +152,11 @@ public class SeemooQmi {
         return singletonInstance;
     }
 
+    /**
+     * private constructor, use getInstance instead!
+     *
+     * @param appContext application context
+     */
     private SeemooQmi(Context appContext) {
         this.appContext = appContext;
     }
@@ -134,6 +176,13 @@ public class SeemooQmi {
         this.pollRate = pollRate;
     }
 
+    /**
+     * adds a new packet listener
+     *
+     * @param svcId id of the service
+     * @param indications true if we want to listen for indications, false for normal services
+     * @param listener the listener to add
+     */
     public void addPacketListener(int svcId, boolean indications, PacketListener listener) {
         if (indications) {
             svcId |= (1 << 31);
@@ -147,6 +196,13 @@ public class SeemooQmi {
         }
     }
 
+    /**
+     * removes a packet listener
+     *
+     * @param svcId id of the service
+     * @param indications true if we want to listen for indications, false for normal services
+     * @param listener the listener to add
+     */
     public void removePacketListener(int svcId, boolean indications, PacketListener listener) {
         if (indications) {
             svcId |= (1 << 31);
@@ -156,6 +212,13 @@ public class SeemooQmi {
         }
     }
 
+    /**
+     * send a message to all (matching) packet listeners
+     *
+     * @param svcId id of the destination service
+     * @param data payload data to send
+     * @param dataLength length of the data
+     */
     private void notifyPacketListeners(int svcId, byte[] data, int dataLength) {
         if (packetListeners.containsKey(svcId)) {
             for (PacketListener pl : packetListeners.get(svcId)) {
@@ -164,15 +227,33 @@ public class SeemooQmi {
         }
     }
 
+    /**
+     * adds a status listener
+     *
+     * @param listener listener to add
+     * @param messageMask mask of status messages which should be send to the listener
+     */
     public void addStatusListener(StatusListener listener, int messageMask) {
         statusListeners.put(listener, messageMask);
     }
 
+    /**
+     * removes a status listener
+     *
+     * @param listener the listener to remove
+     */
     public void removeStatusListener(StatusListener listener) {
         statusListeners.remove(listener);
     }
 
+    /**
+     * send a message to all (matching) status listeners
+     *
+     * @param message the message to send
+     * @param levelMask log level mask
+     */
     public void notifyStatusListeners(String message, int levelMask) {
+        //send to matching listeners
         if (!statusListeners.isEmpty()) {
             for (Map.Entry<StatusListener, Integer> entry : statusListeners.entrySet()) {
                 if ((entry.getValue() & levelMask) != 0) {
@@ -180,6 +261,7 @@ public class SeemooQmi {
                 }
             }
         }
+        //write to old messages storage
         if ((oldStatusMessagesMask & levelMask) != 0) {
             oldStatusMessages.add(message + "\n");
             int length = oldStatusMessages.size();
@@ -189,10 +271,19 @@ public class SeemooQmi {
         }
     }
 
+    /**
+     * return all status messages received until now that match the mask defined with
+     * setOldStatusMessagesMask()
+     *
+     * @return
+     */
     public List<String> getOldStatusMessages() {
         return oldStatusMessages;
     }
 
+    /**
+     * reads status messages from the device
+     */
     private void readStatus() {
         try {
             File file = new File(STATUS_FILE);
@@ -218,6 +309,9 @@ public class SeemooQmi {
         }
     }
 
+    /**
+     * reads QMI packets from the device
+     */
     private void readMessages() {
         int read = 1;
         do {
@@ -237,16 +331,27 @@ public class SeemooQmi {
         } while (read > 0);
     }
 
+    /**
+     * sends a QMI packet to the device
+     *
+     * @param svc service ID
+     * @param indicationRegister true if the message is an indication register message, otherwise false
+     * @param payloadData payload bytes
+     * @param payloadLength payload length
+     */
     public void sendMessage(int svc, boolean indicationRegister, byte[] payloadData, int payloadLength) {
         byte data[] = new byte[payloadLength + 4];
+        //put service ID
         data[0] = (byte)(svc & 0xFF);
         data[1] = (byte)((svc >> 8) & 0xFF);
         data[2] = (byte)((svc >> 16) & 0xFF);
         data[3] = (byte)((svc >> 24) & 0xFF);
         if (indicationRegister) {
+            //set highest bit one to tell kerne module we want to register indications
             data[3] |= 0x80;
         }
 
+        //copy payload
         System.arraycopy(payloadData, 0, data, 4, payloadLength);
 
         notifyStatusListeners(String.format(appContext.getResources().getString(R.string.packet_send), readIntLittleEndian(data, 0), payloadLength + 4), 16);
@@ -259,10 +364,18 @@ public class SeemooQmi {
         }
     }
 
+    /**
+     * add a service to the SeemooQmi, this is neccessary to finalize it at app exit
+     *
+     * @param seemooQmiService service to add
+     */
     public void addService(SeemooQmiService seemooQmiService) {
         services.add(seemooQmiService);
     }
 
+    /**
+     * finalize all service, i.e. give them the chance to clean-up (e.g. de-register in modem)
+     */
     public void finalizeAllServices() {
         for (SeemooQmiService service : services) {
             service.finalizeService();
