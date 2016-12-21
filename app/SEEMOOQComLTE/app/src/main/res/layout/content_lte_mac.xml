@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/contentLteMac"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingBottom="@dimen/activity_vertical_margin"
+    android:paddingLeft="@dimen/activity_horizontal_margin"
+    android:paddingRight="@dimen/activity_horizontal_margin"
+    android:paddingTop="@dimen/activity_vertical_margin"
+    app:layout_behavior="@string/appbar_scrolling_view_behavior"
+    android:clickable="true"
+    android:focusableInTouchMode="true"
+    android:focusable="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:focusable="false"
+        android:focusableInTouchMode="false"
+        android:clickable="false">
+
+        <CheckBox
+            android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/activateUdp"
+            android:text="@string/activateUdpBoxString"
+            android:checked="false"
+            android:layout_weight="0" />
+
+        <android.support.design.widget.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <EditText
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number|numberDecimal"
+                android:digits="0123456789."
+                android:ems="10"
+                android:id="@+id/destIp"
+                android:text="0.0.0.0"
+                android:hint="@string/destIp"
+                android:layout_weight="1" />
+
+        </android.support.design.widget.TextInputLayout>
+
+        <android.support.design.widget.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="0">
+
+            <EditText
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                android:ems="10"
+                android:id="@+id/destPort"
+                android:text="42"
+                android:hint="@string/destPortString"
+                android:layout_weight="1" />
+
+        </android.support.design.widget.TextInputLayout>
+
+
+    </LinearLayout>
+
+</RelativeLayout>

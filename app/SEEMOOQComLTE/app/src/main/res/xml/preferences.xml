@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory android:title="General">
+        <EditTextPreference
+            android:defaultValue="100"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="poll interval"
+            android:key="poll_interval"
+            android:inputType="number"
+            android:summary="interval to poll messages from kernel driver"
+            android:icon="@android:drawable/ic_menu_recent_history" />
+        <MultiSelectListPreference
+            android:title="status log level"
+            android:defaultValue="@array/log_options_default"
+            android:entries="@array/log_options"
+            android:entryValues="@array/log_options_values"
+            android:key="log_level"
+            android:summary="types of messages to show in status log"
+            android:icon="@android:drawable/ic_menu_edit" />
+        <EditTextPreference
+            android:defaultValue="1024"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:inputType="number"
+            android:title="status buffer size"
+            android:key="status_buffer_size"
+            android:summary="maximum number of stored status messages"
+            android:icon="@android:drawable/ic_menu_save" />
+
+    </PreferenceCategory>
+    <PreferenceCategory android:title="Function Counter Service">
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:title="poll automatically"
+            android:key="func_counter_poll"
+            android:summary="function counters are polled regularly if checked"
+            android:icon="@android:drawable/ic_menu_rotate" />
+        <EditTextPreference
+            android:defaultValue="200"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="counter poll interval"
+            android:key="func_counter_poll_interval"
+            android:inputType="number"
+            android:summary="interval to poll messages from kernel driver"
+            android:icon="@android:drawable/ic_menu_recent_history"
+            android:dependency="func_counter_poll" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="Snprintf Service">
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:title="only when tab active"
+            android:key="snprintf_deregister"
+            android:summary="deregister from service when the active tab is changed, no new messages will be received"
+            android:icon="@android:drawable/ic_media_pause" />
+        <EditTextPreference
+            android:defaultValue="65536"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:inputType="number"
+            android:title="snprintf buffer size"
+            android:key="snprintf_buffer_size"
+            android:summary="maximum number of stored snprintf messages"
+            android:icon="@android:drawable/ic_menu_save" />
+    </PreferenceCategory>
+</PreferenceScreen>
