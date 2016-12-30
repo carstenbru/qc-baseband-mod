@@ -89,6 +89,8 @@ def generate_function(org_func_name, org_func, symtab, base_elf, metadata, func_
         packet_size += 1
         # disassemble instruction with correct position
         hi = disasm.disasm_one_inst(data[pos], address+pos*4)
+        # disassemble instruction again with position 0 to check for PC relative immediates
+        hi0 = disasm0.disasm_one_inst(data[pos], pos*4)
         
         if (hi.immext is not None):
             next_prefix = "{ "
@@ -96,8 +98,6 @@ def generate_function(org_func_name, org_func, symtab, base_elf, metadata, func_
             
         
         disasm_output = hi.text.strip()
-        # disassemble instruction again with position 0 to check for PC relative immediates
-        hi0 = disasm0.disasm_one_inst(data[pos], pos*4)
         disasm_output_hi0 = hi0.text.strip()
         # if we have a realtive immediate
         if (disasm_output != disasm_output_hi0):
