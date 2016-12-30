@@ -75,6 +75,8 @@ def generate_function(org_func_name, org_func, symtab, base_elf, metadata, func_
     data = struct.unpack("<IIII", base_elf.read(16))
     
     disasm = HexagonDisassembler(objdump_compatible=True)
+    disasm0 = HexagonDisassembler(objdump_compatible=True)
+    next_prefix = ""
     
     # generate function start text
     function_decl = "%s %s(%s)" % (ret_type, org_func_name, param_str)
@@ -86,16 +88,22 @@ def generate_function(org_func_name, org_func, symtab, base_elf, metadata, func_
     for pos in range(0, 4):
         packet_size += 1
         # disassemble instruction with correct position
-        hi = disasm.disasm_one_inst(data[pos], address+pos)
+        hi = disasm.disasm_one_inst(data[pos], address+pos*4)
+        
+        if (hi.immext is not None):
+            next_prefix = "{ "
+            continue
+            
+        
         disasm_output = hi.text.strip()
         # disassemble instruction again with position 0 to check for PC relative immediates
-        hi0 = disasm.disasm_one_inst(data[pos], 0)
+        hi0 = disasm0.disasm_one_inst(data[pos], pos*4)
         disasm_output_hi0 = hi0.text.strip()
         # if we have a realtive immediate
         if (disasm_output != disasm_output_hi0):
             # loop over all immediates
-            for pos, imm in enumerate(hi.imm_ops):
-                imm0 = hi0.imm_ops[pos]
+            for pos_imm, imm in enumerate(hi.imm_ops):
+                imm0 = hi0.imm_ops[pos_imm]
                 # check for difference -> PC relative immediate
                 if (imm0 != imm):
                     # generate a dummy symbol at the destination address 
@@ -106,13 +114,10 @@ def generate_function(org_func_name, org_func, symtab, base_elf, metadata, func_
                     symbol = "sym_0x%X" % dest_address
                     func_symtab[symbol] = dest_address
                     rel_adr = "%s" % symbol
-                    disasm_output = disasm_output.replace("0x%X" % imm.value, rel_adr)
+                    disasm_output = disasm_output.replace(("0x%X" % imm.value).lower(), rel_adr)
             
-        # remove incorrect "{" at instructions inside the packet
-        if (pos > 0):
-            disasm_output = disasm_output[1:]
-            
-        function_def += '\t\t"%s\\n\\t" \n' % disasm_output
+        function_def += '\t\t"%s%s\\n\\t" \n' % (next_prefix, disasm_output)
+        next_prefix = ""
         
         if (hi.end_packet):
             break

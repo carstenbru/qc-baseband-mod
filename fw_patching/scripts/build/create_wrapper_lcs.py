@@ -63,6 +63,8 @@ class DeclVisitor(c_ast.NodeVisitor):
         :param param_list: parameter list
         """
         res = ""
+        if (param_list is None):
+            return res
         for param in param_list.params:
             if ((type(param) is c_ast.Decl) | (type(param) is c_ast.Typename)):
                 ptype, name = self.type_to_str(param.type)
