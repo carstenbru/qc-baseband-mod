@@ -93,7 +93,8 @@ def generate_function(org_func_name, org_func, symtab, base_elf, metadata, func_
         hi0 = disasm0.disasm_one_inst(data[pos], pos*4)
         
         if (hi.immext is not None):
-            next_prefix = "{ "
+            if (hi.start_packet):
+                next_prefix = "{ "
             continue
             
         
