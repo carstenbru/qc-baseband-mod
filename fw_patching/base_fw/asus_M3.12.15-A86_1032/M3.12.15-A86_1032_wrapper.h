@@ -50,6 +50,13 @@ ADDRESS(0x09130090) void __restore_r16_through_r21_and_deallocframe(void);
 ADDRESS(0x09130078) void __restore_r16_through_r19_and_deallocframe(void);
 ADDRESS(0x09130098) void __restore_r16_through_r17_and_deallocframe(void);
 
+ADDRESS(0x09130048) void __restore_r16_through_r27_and_deallocframe_before_tailcall(void);
+ADDRESS(0x09130050) void __restore_r16_through_r25_and_deallocframe_before_tailcall(void);
+ADDRESS(0x09130038) void __restore_r16_through_r23_and_deallocframe_before_tailcall(void);
+ADDRESS(0x09130058) void __restore_r16_through_r21_and_deallocframe_before_tailcall(void);
+ADDRESS(0x09130040) void __restore_r16_through_r19_and_deallocframe_before_tailcall(void);
+ADDRESS(0x09130060) void __restore_r16_through_r17_and_deallocframe_before_tailcall(void);
+
 /* standard C functions */
 
 ADDRESS(0x09F88260) void* malloc(unsigned int size);

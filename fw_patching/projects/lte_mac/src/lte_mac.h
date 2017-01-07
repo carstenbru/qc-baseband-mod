@@ -13,6 +13,7 @@
 /* service ID definitions (on top of QMI) */
 #define LTE_MAC_DL_SVC_ID 0x4D414364 //"MACd" in ASCII
 #define LTE_MAC_UL_SVC_ID 0x4D414375 //"MACu" in ASCII
+#define LTE_MAC_UL_RACH_SVC_ID 0x4D414372 //"MACr" in ASCII
 
 /* SEEMOO QMI service request handlers */
 int lte_mac_svc_req(

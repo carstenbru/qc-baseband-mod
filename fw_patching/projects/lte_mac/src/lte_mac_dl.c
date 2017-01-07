@@ -1,6 +1,6 @@
 /**
- * @file lte_mac.c
- * @brief LTE MAC Layer messages forwarding (over QMI) patches
+ * @file lte_mac_dl.c
+ * @brief LTE MAC Layer messages forwarding (over QMI) patches - downlink and service registration part
  *
  * This projects also includes the features of the func_counter_snprintf project.
  *
@@ -29,14 +29,16 @@ typedef struct {
 /* LTE MAC client pointer, NULL when no client is set */
 void* lte_mac_svc_client;
 
+/* structure used to build QMI indications */
+test_data_ind_msg_v01 indication_buf;
+
 /**
  * @brief sends an QMI indication containing a LTE MAC downlink frame
  * 
  * @param transport_block received downlink transport block
  */
 void send_lte_mac_ind(a2_dl_phy_transport_block_t* transport_block) {
-    //TODO generate indication struct only once (e.g. on registration) and then only change data
-    test_data_ind_msg_v01* ind = (test_data_ind_msg_v01*)malloc(sizeof(test_data_ind_msg_v01));
+    test_data_ind_msg_v01* ind = &indication_buf;
     memset(ind, 0, sizeof(test_data_ind_msg_v01));
     unsigned int* data32 = (unsigned int*)(ind->data);
     *data32 = LTE_MAC_DL_SVC_ID;
@@ -53,9 +55,7 @@ void send_lte_mac_ind(a2_dl_phy_transport_block_t* transport_block) {
     ind->data_len = 12 + len ;
     dsm_extract(transport_block->tb_dsm_ptr, 0, ind->data + 12, TEST_MED_DATA_SIZE_V01-12);
     
-    qmi_csi_send_ind(lte_mac_svc_client, QMI_TEST_DATA_IND_V01, ind, sizeof(test_data_ind_msg_v01));
-    
-    free(ind);
+    qmi_csi_send_ind(lte_mac_svc_client, QMI_TEST_DATA_IND_V01, ind, sizeof(test_data_ind_msg_v01));    
 }
 
 /**
@@ -89,6 +89,3 @@ int lte_mac_svc_req(
     
     return 0;
 }
-
-//TODO also get uplink messages...
-
