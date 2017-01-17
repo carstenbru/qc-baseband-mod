@@ -2,8 +2,6 @@
  * @file lte_mac_ul.c
  * @brief LTE MAC Layer messages forwarding (over QMI) patches - uplink part
  *
- * This projects also includes the features of the func_counter_snprintf project.
- *
  * @author Carsten Bruns (carst.bruns@gmx.de)
  */
 
@@ -292,10 +290,4 @@ void lte_mac_rach_retry_preamble_hook() {
     }
 }
 
-//TODO SR (scheduling request) / Uplink grant (DCI0)?
-
 //TODO frame injection: add new frames, replace frames?, send RACH preamble, disable original modem frames, disable downlink to modem communication (to completly takeover the modem), send at arbitrary times? maybe also changing used blocks in frequency domain in phy layer possible?
-
-//TODO possible to get all messages (for other UEs) from Phy layer? only possible for phones with same frequency ressources assigned?
-//and for sure not other Uplink messages as we cannot receive them with the phone (different modulation scheme used)...
-

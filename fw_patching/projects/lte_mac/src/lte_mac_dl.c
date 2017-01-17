@@ -2,8 +2,6 @@
  * @file lte_mac_dl.c
  * @brief LTE MAC Layer messages forwarding (over QMI) patches - downlink and service registration part
  *
- * This projects also includes the features of the func_counter_snprintf project.
- *
  * @author Carsten Bruns (carst.bruns@gmx.de)
  */
 

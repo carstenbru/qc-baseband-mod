@@ -8,10 +8,12 @@
 SEEMOO_FW_PATCH_DIR_ROOT=../../
 BASE_FW=../../base_fw/asus_M3.12.15-A86_1032/M3.12.15-A86_1032.img
 # new Firmware version string, leave empty to leave version strings untouched
-FW_VERSION_STRING="SEEMOO Firmware LTE MAC"
+FW_VERSION_STRING="SEEMOO Firmware all App"
 
 CUSTOM_BASE_DIR=../
 CUSTOM_SRCS=common/seemoo_qmi/seemoo_qmi_services.c 
+CUSTOM_SRCS+=func_counter_snprintf/src/func_counter_snprintf.c
+CUSTOM_SRCS+=lte_mac/src/lte_mac_dl.c lte_mac/src/lte_mac_ul.c
 
 SRC_DIR=./src
 IMAGE_DIR=./image
