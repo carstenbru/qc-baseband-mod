@@ -21,8 +21,6 @@
  *
  */
 
-//TODO docs
-
 #include <stdarg.h>
 
 #include <linux/module.h>

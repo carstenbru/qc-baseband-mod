@@ -69,10 +69,12 @@ def generate_function(org_func_name, org_func, symtab, base_elf, metadata, func_
     addr_str, ret_type, param_str = resolve_symbol_all(org_func, symtab)
     address = int(addr_str, 0)
     
-    # read first 4 instruction of destination function
+    # read first 5 instruction of destination function
+    # we have to read 5 instructions in case the first packet contains only 1 instruction,
+    # then the we have to relocate 2 packages (with up to 5 instructions in total)
     elf_pos, elf_blob = get_offset_in_elf(metadata, address)
     base_elf.seek(elf_pos)
-    data = struct.unpack("<IIII", base_elf.read(16))
+    data = struct.unpack("<IIIII", base_elf.read(20))
     
     disasm = HexagonDisassembler(objdump_compatible=True)
     disasm0 = HexagonDisassembler(objdump_compatible=True)
@@ -84,9 +86,9 @@ def generate_function(org_func_name, org_func, symtab, base_elf, metadata, func_
     function_decl += ";"
     
     # iterate over the four instructions fetched
-    packet_size = 0;
-    for pos in range(0, 4):
-        packet_size += 1
+    reloc_size = 0;
+    for pos in range(0, 5):
+        reloc_size += 1
         # disassemble instruction with correct position
         hi = disasm.disasm_one_inst(data[pos], address+pos*4)
         # disassemble instruction again with position 0 to check for PC relative immediates
@@ -120,11 +122,11 @@ def generate_function(org_func_name, org_func, symtab, base_elf, metadata, func_
         function_def += '\t\t"%s%s\\n\\t" \n' % (next_prefix, disasm_output)
         next_prefix = ""
         
-        if (hi.end_packet):
+        if ((pos != 0) & (hi.end_packet)):
             break
     
     # generate a jump instruction to the start of remaining original function
-    org_func_start = (address + (packet_size << 2))
+    org_func_start = (address + (reloc_size << 2))
     symbol = "sym_0x%X" % org_func_start
     func_symtab[symbol] = org_func_start
     function_def += '\t\t"{ jump %s }"\n' % symbol
