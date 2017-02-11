@@ -33,23 +33,39 @@ import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.RadioButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.AtCommandService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.FunctionCounterService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.LteMacService;
+import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.LteSecService;
+import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.MemAccessService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SeemooQmi;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SnprintfService;
 
-//TODO check if LTE MAC UDP still works
+//TODO MemAccess address output when read
+//TODO MemAccess options (addresses in output, output dest (file with different formats, syso, direct))
+//TODO MemAccess settings: start with last or empty fields, seperation of output data (e.g. after 4 bytes)
 
-//TODO RNTI type 4 error
+//TODO Tab headers in a nice way
 
-//TODO document code
+//TODO draw graphs in App
+//TODO send indication on CSI log event (new project/change test project
+//TODO CSI service implementation
+//TODO draw graph with real incoming data
+
+
+
+
+//TODO divide messages in status log better, now hard to see start and end of messages
+
 //TODO nice GUI
+// -tab headers readable (scrolling!)
 // -move settings icon (too far right, too close to text
 // -when changing to a not scrollable tab and title bar is removed we cannot get it again
 // -keyboard shows up when de-focusing edit texts in lte mac tab
@@ -58,7 +74,6 @@ import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SnprintfService;
 
 //TODO snprintf show write destination, choose destinations to show from list of received ones (filter)
 //->store snprintf messages in service WITH destination ID
-//TODO try to decode messages on phone with "shark for root" or Tshark lib
 
 //TODO TODOs
 
@@ -67,6 +82,9 @@ public class MainActivity extends AppCompatActivity {
     private static FunctionCounterService functionCounterService = null;
     private static SnprintfService snprintfService = null;
     private static LteMacService lteMacService = null;
+    private static LteSecService lteSecService = null;
+    private static AtCommandService atCommandService = null;
+    private static MemAccessService memAccessService = null;
 
     private static SharedPreferences sharedPreferences = null;
     private static SharedPreferences.OnSharedPreferenceChangeListener onSharedPrederencesChangeListener = null;
@@ -94,6 +112,27 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     };
+
+    //TODO document (also other stuff!)
+    public static String byteArrToHexString(byte[] byteArr, boolean pythonString, int seperation) {
+        StringBuilder sb = new StringBuilder();
+        if (!pythonString) {
+            int count = 0;
+            for (byte b : byteArr) {
+                sb.append(String.format("%02X", b));
+                count++;
+                if ((seperation != 0) && ((count % seperation) == 0)) {
+                    sb.append(" ");
+                }
+            }
+        } else {
+            for (byte b : byteArr) {
+                sb.append(String.format("\\x%02X", b));
+            }
+        }
+
+        return sb.toString();
+    }
 
     /**
      * sets the snprintf service buffer size from the value in the preferneces
@@ -238,6 +277,18 @@ public class MainActivity extends AppCompatActivity {
         if (lteMacService == null) {
             lteMacService = new LteMacService(seemooQmi, getApplicationContext());
         }
+
+        if (lteSecService == null) {
+            lteSecService = new LteSecService(seemooQmi, getApplicationContext());
+        }
+
+        if (atCommandService == null) {
+            atCommandService = new AtCommandService(seemooQmi, getApplicationContext());
+        }
+
+        if (memAccessService == null) {
+            memAccessService = new MemAccessService(seemooQmi, getApplicationContext());
+        }
     }
 
     /**
@@ -261,7 +312,7 @@ public class MainActivity extends AppCompatActivity {
         SeemooPagerAdapter seemooPagerAdapter = new SeemooPagerAdapter(getSupportFragmentManager(), getApplicationContext());
         ViewPager viewPager = (ViewPager) findViewById(R.id.viewPager);
         viewPager.setAdapter(seemooPagerAdapter);
-        viewPager.setOffscreenPageLimit(4);
+        viewPager.setOffscreenPageLimit(7);
         viewPager.setCurrentItem(openTab);
         viewPager.addOnPageChangeListener(new ViewPager.SimpleOnPageChangeListener() {
             @Override
@@ -361,7 +412,7 @@ public class MainActivity extends AppCompatActivity {
      * pager adapter to handle tabs consisting of fragments for the different pages
      */
     public static class SeemooPagerAdapter extends FragmentPagerAdapter {
-        private static int NUM_TABS = 4;
+        private static int NUM_TABS = 7;
 
         private Context appContext;
 
@@ -377,7 +428,7 @@ public class MainActivity extends AppCompatActivity {
             this.appContext = appContext;
         }
 
-        @Override
+        @Override //TODO re-order?
         public Fragment getItem(int i) {
             switch (i) {
                 case 0:
@@ -390,6 +441,12 @@ public class MainActivity extends AppCompatActivity {
                     return new SnprintfFragment();
                 case 3:
                     return new LteMacFragment();
+                case 4:
+                    return new LteSecFragment();
+                case 5:
+                    return new AtCommandsFragment();
+                case 6:
+                    return new MemAccessFragment();
                 default:
                     return null;
             }
@@ -400,7 +457,7 @@ public class MainActivity extends AppCompatActivity {
             return NUM_TABS;
         }
 
-        @Override
+        @Override //TODO re-order?
         public CharSequence getPageTitle(int position) {
             switch (position) {
                 case 0:
@@ -411,6 +468,12 @@ public class MainActivity extends AppCompatActivity {
                     return appContext.getResources().getString(R.string.tab_snprintf);
                 case 3:
                     return appContext.getResources().getString(R.string.tab_lte_mac);
+                case 4:
+                    return appContext.getResources().getString(R.string.tab_lte_sec);
+                case 5:
+                    return appContext.getResources().getString(R.string.tab_at_commands);
+                case 6:
+                    return appContext.getResources().getString(R.string.tab_mem_access);
                 default:
                     return "error";
             }
@@ -725,6 +788,303 @@ public class MainActivity extends AppCompatActivity {
             setupUdpCheckbox(rootView);
 
             return rootView;
+        }
+    }
+
+    /**
+     * fragment showing LTE security messages
+     */
+    public static class LteSecFragment extends Fragment {
+        private LteSecService.LteSecListener lteSecListener;
+
+        @Override
+        public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+            View rootView = inflater.inflate(R.layout.content_lte_sec, container, false);
+
+            final TextView lteSecLog = (TextView) rootView.findViewById(R.id.lteSecLog);
+
+            lteSecListener = new LteSecService.LteSecListener() {
+                private String byteArrToHexStringCipher(byte[] data) { //TODO
+                    return byteArrToHexString(data, false, 0) + ", " + byteArrToHexString(data, true, 0);
+                }
+
+                @Override
+                public void newAlgorithmKey(LteSecService.NewAlgorithmKeyEvent e) {
+                    String key = byteArrToHexStringCipher(e.getKey());
+                    String s = String.format("new algorithm key for %s, used algorithm %s: %s\n\n", e.getKeyUse().name(), e.getKeyAlgorithm().name(), key);
+                    lteSecLog.append(s);
+                    System.out.println(s); //TODO remove
+                }
+
+                private void writeCryptoCall(String type, LteSecService.CryptoCallEvent e) {
+                    String s = String.format("%s: algorithm: %s, bearer: %d, count: %d, message bytes: %d\n", type, e.getKeyAlgorithm().name(), e.getBearer(), e.getCount(), e.getMsgLength());
+                    //TODO change to use GUI settings
+                    if (e.getUsedKey() != null) {
+                        s = String.format("%sused key: %s\n", s, byteArrToHexStringCipher(e.getUsedKey()));
+                    }
+                    if (e.getInMsg() != null) {
+                        s = String.format("%sinput message: %s\n", s, byteArrToHexStringCipher(e.getInMsg()));
+                    }
+                    if (e.getOutMsg() != null) {
+                        s = String.format("%soutput data: %s\n", s, byteArrToHexStringCipher(e.getOutMsg()));
+                    }
+                    s += "\n";
+
+                    lteSecLog.append(s);
+                    System.out.println(s); //TODO remove
+                }
+
+                @Override
+                public void cipherCall(LteSecService.CryptoCallEvent e) {
+                    writeCryptoCall("cipher call", e);
+                }
+
+                @Override
+                public void decipherCall(LteSecService.CryptoCallEvent e) {
+                    writeCryptoCall("decipher call", e);
+                }
+
+                @Override
+                public void maciCall(LteSecService.CryptoCallEvent e) {
+                    writeCryptoCall((e.isDirectionDownlink() ? "MAC-i call downlink" : "MAC-i call uplink"), e);
+                }
+            };
+            lteSecService.addListener(lteSecListener);
+
+            return rootView;
+        }
+
+        @Override
+        public void onDestroy() {
+            super.onDestroy();
+
+            lteSecService.removeListener(lteSecListener);
+        }
+    }
+
+    /**
+     * fragment showing AT commands GUI
+     */
+    public static class AtCommandsFragment extends Fragment {
+        private AtCommandService.AtCommandListener atCommandListener;
+
+        @Override
+        public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+            View rootView = inflater.inflate(R.layout.content_at_commands, container, false);
+
+            final TextView atTerminal = (TextView) rootView.findViewById(R.id.atTerminal);
+            for (String m : atCommandService.getCachedMessages()) {
+                atTerminal.append(m);
+            }
+
+            final Button atSendButton = (Button) rootView.findViewById(R.id.atSendButton);
+            atSendButton.setEnabled(false);
+            final EditText atCommandInput = (EditText) rootView.findViewById(R.id.atCommandInput);
+            atCommandInput.addTextChangedListener(new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+                }
+
+                @Override
+                public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+                }
+
+                @Override
+                public void afterTextChanged(Editable editable) {
+                    atSendButton.setEnabled(editable.length() != 0);
+                }
+            });
+            atSendButton.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    String command = atCommandInput.getText().toString();
+                    if (!command.isEmpty()) {
+                        atCommandService.invokeCommand(command);
+                        atCommandInput.setText("");
+                    }
+                }
+            });
+
+            atCommandListener = new AtCommandService.AtCommandListener() {
+                @Override
+                public void statusUpdate(AtCommandService.AtCommandEvent e) {
+                    atTerminal.append(e.getMessage());
+                }
+            };
+            atCommandService.addListener(atCommandListener);
+
+            return rootView;
+        }
+
+        @Override
+        public void onDestroy() {
+            super.onDestroy();
+
+            atCommandService.removeListener(atCommandListener);
+        }
+    }
+
+    //TODO implement mem write in GUI
+    /**
+     * fragment showing memory access service GUI
+     */
+    public static class MemAccessFragment extends Fragment {
+        private MemAccessService.MemAccessListener memAccessListener;
+
+        private boolean memAddressInputValid(EditText memAddressInput) {
+            return ((memAddressInput.getText().length() > 0) && (memAddressInput.getText().length() <= 8));
+        }
+
+        private boolean memLengthInputValid(EditText memLengthInput) {
+            return (memLengthInput.getText().length() > 0);
+        }
+
+        private boolean memDataInputValid(EditText memDataInput) {
+            return ((memDataInput.getText().length() > 0) && ((memDataInput.getText().length() % 2 == 0)));
+        }
+
+        private void setReadButtonState(Button memReadButton, EditText memAddressInput, EditText memLengthInput) {
+            memReadButton.setEnabled(memAddressInputValid(memAddressInput) && memLengthInputValid(memLengthInput));
+        }
+
+        private void setWriteButtonState(Button memReadButton, EditText memAddressInput, EditText memDataInput) {
+            memReadButton.setEnabled(memAddressInputValid(memAddressInput) && memDataInputValid(memDataInput));
+        }
+
+        @Override
+        public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+            View rootView = inflater.inflate(R.layout.content_mem_access, container, false);
+
+            final TextView memAccessTerminal = (TextView) rootView.findViewById(R.id.memAccessTerminal);
+
+            final RadioButton readSelect = (RadioButton) rootView.findViewById(R.id.readSelectButton);
+            final RadioButton writeSelect = (RadioButton) rootView.findViewById(R.id.writeSelectButton);
+
+            final LinearLayout readLayout = (LinearLayout) rootView.findViewById(R.id.readLayout);
+            final LinearLayout writeLayout = (LinearLayout) rootView.findViewById(R.id.writeLayout);
+            writeLayout.setVisibility(View.GONE);
+
+            readSelect.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                @Override
+                public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                    readLayout.setVisibility(!b ? View.GONE : View.VISIBLE);
+                    writeLayout.setVisibility(b ? View.GONE : View.VISIBLE);
+                    if (b) {
+                        writeSelect.setChecked(false);
+                    }
+                }
+            });
+            writeSelect.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                @Override
+                public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                    if (b) {
+                        readSelect.setChecked(false);
+                    }
+                }
+            });
+
+            final Button memReadButton = (Button) rootView.findViewById(R.id.memReadButton);
+            final Button memWriteButton = (Button) rootView.findViewById(R.id.memWriteButton);
+
+            final EditText memAddressInput = (EditText) rootView.findViewById(R.id.memAddressInput);
+            final EditText memLengthInput = (EditText) rootView.findViewById(R.id.memLengthInput);
+            final EditText memDataInput = (EditText) rootView.findViewById(R.id.memDataInput);
+           // memAddressInput.setText("0CCBFD78"); //TODO remove, instead load last value? or leave empty? (maybe as option in settings?)
+            memAddressInput.setText("0CCBFD5C");
+            memLengthInput.setText("8"); //TODO remove
+
+            setReadButtonState(memReadButton, memAddressInput, memLengthInput);
+            setWriteButtonState(memWriteButton, memAddressInput, memDataInput);
+
+            TextWatcher readWatcher = new TextWatcher() {
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                }
+
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                }
+
+                @Override
+                public void afterTextChanged(Editable s) {
+                    setReadButtonState(memReadButton, memAddressInput, memLengthInput);
+                }
+            };
+
+            TextWatcher writeWatcher = new TextWatcher() {
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                }
+
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                }
+
+                @Override
+                public void afterTextChanged(Editable s) {
+                    setWriteButtonState(memWriteButton, memAddressInput, memDataInput);
+                }
+            };
+
+            memAddressInput.addTextChangedListener(readWatcher);
+            memAddressInput.addTextChangedListener(writeWatcher);
+            memLengthInput.addTextChangedListener(readWatcher);
+            memDataInput.addTextChangedListener(writeWatcher);
+
+            memReadButton.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    long address = Long.parseLong(memAddressInput.getText().toString(), 16);
+                    int length = Integer.parseInt(memLengthInput.getText().toString());
+                    memAccessService.readMemory((int)address, length);
+                }
+            });
+
+            memWriteButton.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    long address = Long.parseLong(memAddressInput.getText().toString(), 16);
+                    String s = memDataInput.getText().toString();
+                    int numBytes = s.length() / 2;
+                    byte[] data = new byte[numBytes];
+
+                    for (int i = 0; i < numBytes; i++) {
+                        byte b = (byte)Integer.parseInt(s.substring(i*2, i*2+2), 16);
+                        data[i] = b;
+                    }
+
+                    memAccessService.writeMemory((int)address, data, 0);
+                }
+            });
+
+            memAccessListener = new MemAccessService.MemAccessListener() {
+                @Override
+                public void memoryData(MemAccessService.MemoryReadEvent e) {
+                    //TODO seperation as option in settings
+                    String s = String.format("Memory read, start address: 0x%1$08X, length: %2$d bytes\n%3$s", e.getStartAddress(), e.getLength(), byteArrToHexString(e.getData(), false, 4));
+                    memAccessTerminal.setText(s); //TODO print destination depending on settings, also support write to (binary or other format with addresses) file
+                    System.out.println(s);
+                }
+
+                @Override
+                public void writeDone(MemAccessService.MemoryDataEvent e) {
+                    String s = String.format("Memory write executed, start address: 0x%1$08X, length: %2$d bytes\n", e.getStartAddress(), e.getLength());
+                    memAccessTerminal.setText(s); //TODO print destination depending on settings, also support write to (binary or other format with addresses) file
+                    System.out.println(s);
+                }
+            };
+            memAccessService.addListener(memAccessListener);
+
+            return rootView;
+        }
+
+        @Override
+        public void onDestroy() {
+            super.onDestroy();
+
+            memAccessService.removeListener(memAccessListener);
         }
     }
 }

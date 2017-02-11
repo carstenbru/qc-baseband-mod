@@ -5,6 +5,9 @@
     <string name="tab_func_counters">Function counters</string>
     <string name="tab_snprintf">snprintf</string>
     <string name="tab_lte_mac">LTE MAC</string>
+    <string name="tab_lte_sec">LTE security</string>
+    <string name="tab_at_commands">AT commands</string>
+    <string name="tab_mem_access">Memory access</string>
     <string name="packet_receive">got packet from svc: 0x%1$08X, len: %2$d</string>
     <string name="packet_send">sending message to svc: 0x%1$08X, len: %2$d</string>
     <string name="error_msg_read">error reading QMI message:</string>
@@ -16,11 +19,15 @@
     <string name="snprintf_dereg_success">snprintf service deregistration success</string>
     <string name="ltemac_reg_success">LTE MAC service registration success</string>
     <string name="ltemac_dereg_success">LTE MAC service deregistration success</string>
+    <string name="lte_sec_reg_success">LTE security service registration success</string>
+    <string name="lte_sec_dereg_success">LTE security service deregistration success</string>
     <string name="ltemac_rnti_error">error: unknown RNTI type in LTE MAC service: %1$d</string>
     <string name="activateUdpBoxString">forward frames over UDP</string>
     <string name="destPortString">destination port</string>
     <string name="destIp">destination IP</string>
     <string name="ipPortInvalid">error: destination IP and/or port invalid</string>
+    <string name="at_command_executed">AT command executed</string>
+    <string name="at_command_dereg_success">AT commands service deregistration success</string>
     <string name="preference_title">Settings</string>
     <string-array name="log_options">
         <item>errors</item>
