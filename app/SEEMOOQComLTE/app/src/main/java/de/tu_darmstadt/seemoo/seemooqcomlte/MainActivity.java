@@ -48,9 +48,7 @@ import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.MemAccessService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SeemooQmi;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SnprintfService;
 
-//TODO MemAccess address output when read
-//TODO MemAccess options (addresses in output, output dest (file with different formats, syso, direct))
-//TODO MemAccess settings: start with last or empty fields, seperation of output data (e.g. after 4 bytes)
+//TODO MemAccess: write to file
 
 //TODO Tab headers in a nice way
 
@@ -59,7 +57,12 @@ import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SnprintfService;
 //TODO CSI service implementation
 //TODO draw graph with real incoming data
 
+//TODO refactor MainActivity class: put code in multiple files, maybe put GUI fragments in seperate files? one for each?
 
+
+//TODO finish lte_sec
+//TODO lte_sec output options
+//TODO at_commands
 
 
 //TODO divide messages in status log better, now hard to see start and end of messages
@@ -113,21 +116,26 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-    //TODO document (also other stuff!)
     public static String byteArrToHexString(byte[] byteArr, boolean pythonString, int seperation) {
+        return  byteArrToHexString(byteArr, pythonString, seperation, 0, byteArr.length);
+    }
+
+
+    //TODO document (also other stuff!)
+    public static String byteArrToHexString(byte[] byteArr, boolean pythonString, int seperation, int startOffset, int length) {
         StringBuilder sb = new StringBuilder();
         if (!pythonString) {
             int count = 0;
-            for (byte b : byteArr) {
-                sb.append(String.format("%02X", b));
+            for (int i = startOffset; i < startOffset + length; i++) {
+                sb.append(String.format("%02X", byteArr[i]));
                 count++;
                 if ((seperation != 0) && ((count % seperation) == 0)) {
                     sb.append(" ");
                 }
             }
         } else {
-            for (byte b : byteArr) {
-                sb.append(String.format("\\x%02X", b));
+            for (int i = startOffset; i < startOffset + length; i++) {
+                sb.append(String.format("\\x%02X", byteArr[i]));
             }
         }
 
@@ -831,7 +839,7 @@ public class MainActivity extends AppCompatActivity {
                     s += "\n";
 
                     lteSecLog.append(s);
-                    System.out.println(s); //TODO remove
+                    System.out.println(s); //TODO remove/as option
                 }
 
                 @Override
@@ -991,9 +999,16 @@ public class MainActivity extends AppCompatActivity {
             final EditText memAddressInput = (EditText) rootView.findViewById(R.id.memAddressInput);
             final EditText memLengthInput = (EditText) rootView.findViewById(R.id.memLengthInput);
             final EditText memDataInput = (EditText) rootView.findViewById(R.id.memDataInput);
-           // memAddressInput.setText("0CCBFD78"); //TODO remove, instead load last value? or leave empty? (maybe as option in settings?)
-            memAddressInput.setText("0CCBFD5C");
-            memLengthInput.setText("8"); //TODO remove
+
+            if (sharedPreferences.getBoolean("mem_access_keep_last_values", false)) {
+                memAddressInput.setText(sharedPreferences.getString("memAddressInput", ""));
+                memLengthInput.setText(sharedPreferences.getString("memLengthInput", ""));
+                memDataInput.setText(sharedPreferences.getString("memDataInput", ""));
+            } else {
+                memAddressInput.setText("");
+                memLengthInput.setText("");
+                memDataInput.setText("");
+            }
 
             setReadButtonState(memReadButton, memAddressInput, memLengthInput);
             setWriteButtonState(memWriteButton, memAddressInput, memDataInput);
@@ -1010,6 +1025,8 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void afterTextChanged(Editable s) {
                     setReadButtonState(memReadButton, memAddressInput, memLengthInput);
+                    storeStringInSharedPrefs("memAddressInput", memAddressInput.getText().toString());
+                    storeStringInSharedPrefs("memLengthInput", memLengthInput.getText().toString());
                 }
             };
 
@@ -1025,6 +1042,8 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void afterTextChanged(Editable s) {
                     setWriteButtonState(memWriteButton, memAddressInput, memDataInput);
+                    storeStringInSharedPrefs("memAddressInput", memAddressInput.getText().toString());
+                    storeStringInSharedPrefs("memDataInput", memDataInput.getText().toString());
                 }
             };
 
@@ -1062,17 +1081,49 @@ public class MainActivity extends AppCompatActivity {
             memAccessListener = new MemAccessService.MemAccessListener() {
                 @Override
                 public void memoryData(MemAccessService.MemoryReadEvent e) {
-                    //TODO seperation as option in settings
-                    String s = String.format("Memory read, start address: 0x%1$08X, length: %2$d bytes\n%3$s", e.getStartAddress(), e.getLength(), byteArrToHexString(e.getData(), false, 4));
-                    memAccessTerminal.setText(s); //TODO print destination depending on settings, also support write to (binary or other format with addresses) file
-                    System.out.println(s);
+                    int separation;
+                    try {
+                        separation = Integer.parseInt(sharedPreferences.getString("mem_access_data_seperate", "4"));
+                    } catch (Exception exc) {
+                        separation = 4;
+                    }
+                    String dataString = "";
+                    if (sharedPreferences.getBoolean("mem_access_include_address", true)) {
+                        byte[] data = e.getData();
+
+                        int bytesPerLine;
+                        try {
+                            bytesPerLine = Integer.parseInt(sharedPreferences.getString("mem_access_bytes_per_line", "4"));
+                        } catch (Exception exc) {
+                            bytesPerLine = 8;
+                        }
+
+                        StringBuilder sb = new StringBuilder();
+                        for (int pos = 0; pos < data.length; pos += bytesPerLine) {
+                            sb.append(String.format("0x%1$08X: ", e.getStartAddress() + pos));
+                            sb.append(byteArrToHexString(data, false, separation, pos, bytesPerLine));
+                            sb.append("\n");
+                        }
+                        dataString = sb.toString();
+                    } else {
+                        dataString = byteArrToHexString(e.getData(), false, separation);
+                    }
+                    String s = String.format("Memory read, start address: 0x%1$08X, length: %2$d bytes\n%3$s", e.getStartAddress(), e.getLength(), dataString);
+                    memAccessTerminal.setText(s);
+                    if (sharedPreferences.getBoolean("mem_access_write_to_syso", false)) {
+                        System.out.println(s);
+                    }
+                    //TODO write to file stuff
                 }
 
                 @Override
                 public void writeDone(MemAccessService.MemoryDataEvent e) {
                     String s = String.format("Memory write executed, start address: 0x%1$08X, length: %2$d bytes\n", e.getStartAddress(), e.getLength());
-                    memAccessTerminal.setText(s); //TODO print destination depending on settings, also support write to (binary or other format with addresses) file
-                    System.out.println(s);
+                    memAccessTerminal.setText(s);
+                    if (sharedPreferences.getBoolean("mem_access_write_to_syso", false)) {
+                        System.out.println(s);
+                    }
+                    //TODO write from file stuff
                 }
             };
             memAccessService.addListener(memAccessListener);

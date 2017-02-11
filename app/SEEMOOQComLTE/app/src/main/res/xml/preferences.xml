@@ -64,4 +64,38 @@
             android:summary="maximum number of stored snprintf messages"
             android:icon="@android:drawable/ic_menu_save" />
     </PreferenceCategory>
+    <PreferenceCategory android:title="Memory Access Sevice">
+
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:title="keep last values"
+            android:key="mem_access_keep_last_values"
+            android:summary="start with last input values instead of empty fields" />
+        <EditTextPreference
+            android:defaultValue="4"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:inputType="number"
+            android:title="data separation"
+            android:key="mem_access_data_seperate"
+            android:summary="number of bytes grouped together in data output" />
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:title="addresses in output"
+            android:key="mem_access_include_address"
+            android:summary="include addresses in output lines" />
+        <EditTextPreference
+            android:defaultValue="8"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="bytes per line"
+            android:key="mem_access_bytes_per_line"
+            android:dependency="mem_access_include_address"
+            android:summary="number of bytes shown in a single line" />
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:title="write to System.out"
+            android:key="mem_access_write_to_syso"
+            android:summary="forward all generated messages to System.out" />
+    </PreferenceCategory>
 </PreferenceScreen>
