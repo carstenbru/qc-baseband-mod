@@ -33,7 +33,7 @@ public class FunctionCounterService extends SeemooQmiService {
     };
 
     /**
-     * listsner for function counter updates
+     * listener for function counter updates
      */
     public interface CounterUpdateListener extends EventListener {
         void counterUpdate(CounterUpdateEvent e);

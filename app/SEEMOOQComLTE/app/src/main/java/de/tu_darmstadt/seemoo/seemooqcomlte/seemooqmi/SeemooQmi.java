@@ -30,7 +30,7 @@ public class SeemooQmi {
 
     private static final String STATUS_FILE = "/dev/seemoo_qmi_status";
     private static final String DATA_FILE = "/dev/seemoo_qmi_data";
-    private static final int MAX_PACKAGE_LENGTH = 8192;
+    public static final int MAX_PACKAGE_LENGTH = 8192;
 
     private Map<Integer, List<PacketListener>> packetListeners = new HashMap<Integer, List<PacketListener>>();
     private Map<StatusListener, Integer> statusListeners = new HashMap<StatusListener, Integer>();
@@ -129,13 +129,28 @@ public class SeemooQmi {
      *
      * @param data byte array
      * @param offset position of the first byte to read in the data array
-     * @return the read value, as long as java has no unsigned integer
+     * @return the read value, as long integer as java has no unsigned integer
      */
     public static long readIntLittleEndian(byte data[], int offset) {
         return (data[offset] & 0xFF)
                 + ((data[offset + 1] & 0xFF) << 8)
                 + ((data[offset + 2] & 0xFF) << 16)
                 + ((data[offset + 3] & 0xFF) << 24);
+    }
+
+    /**
+     * writes an integer (32bit unsigned) to a byte array as little endian
+     * (byte order e.g. on hexagon used in modem)
+     *
+     * @param value value to write
+     * @param data destination byte array
+     * @param offset position of the first byte to write in the data array
+     */
+    public static void writeIntLittleEndian(long value, byte[] data, int offset) {
+        data[offset + 0] = (byte)(value & 0xFF);
+        data[offset + 1] = (byte)((value >> 8) & 0xFF);
+        data[offset + 2] = (byte)((value >> 16) & 0xFF);
+        data[offset + 3] = (byte)((value >> 24) & 0xFF);
     }
 
     /**
@@ -342,12 +357,9 @@ public class SeemooQmi {
     public void sendMessage(int svc, boolean indicationRegister, byte[] payloadData, int payloadLength) {
         byte data[] = new byte[payloadLength + 4];
         //put service ID
-        data[0] = (byte)(svc & 0xFF);
-        data[1] = (byte)((svc >> 8) & 0xFF);
-        data[2] = (byte)((svc >> 16) & 0xFF);
-        data[3] = (byte)((svc >> 24) & 0xFF);
+        writeIntLittleEndian(svc, data, 0);
         if (indicationRegister) {
-            //set highest bit one to tell kerne module we want to register indications
+            //set highest bit one to tell kernel module we want to register indications
             data[3] |= 0x80;
         }
 

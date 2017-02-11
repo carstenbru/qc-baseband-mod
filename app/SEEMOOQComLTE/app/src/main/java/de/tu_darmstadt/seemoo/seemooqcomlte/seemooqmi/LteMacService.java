@@ -81,7 +81,11 @@ public class LteMacService extends SeemooQmiService {
         super(seemooQmiP, appContextP);
 
         String deviceId = ((TelephonyManager)appContext.getSystemService(Context.TELEPHONY_SERVICE)).getSubscriberId();
-        wiresharkUeid = Integer.parseInt(deviceId.substring(deviceId.length()-4, deviceId.length()));
+        if (deviceId != null) {
+            wiresharkUeid = Integer.parseInt(deviceId.substring(deviceId.length() - 4, deviceId.length()));
+        } else {
+            wiresharkUeid = 0;
+        }
 
         try {
             datagramSocket = new DatagramSocket();
