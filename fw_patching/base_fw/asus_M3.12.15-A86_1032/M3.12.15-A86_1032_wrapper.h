@@ -15,6 +15,9 @@
 
 #include "qmi_functions_wrapper.h"
 #include "lte_mac_wrapper.h"
+#include "lte_sec_wrapper.h"
+#include "dsat_wrapper.h"
+#include "channel_est_wrapper.h"
 
 /* ########################################### */
 
