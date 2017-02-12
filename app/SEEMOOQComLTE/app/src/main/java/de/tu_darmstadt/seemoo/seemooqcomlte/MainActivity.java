@@ -39,13 +39,11 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -56,8 +54,6 @@ import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.LteSecService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.MemAccessService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SeemooQmi;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SnprintfService;
-
-//TODO MemAccess: ihex file type
 
 //TODO Tab headers in a nice way
 //TODO divide messages in status log better, now hard to see start and end of messages
@@ -948,8 +944,7 @@ public class MainActivity extends AppCompatActivity {
      */
     public static class MemAccessFragment extends Fragment {
         private MemAccessService.MemAccessListener memAccessListener;
-        private int lastStartAddress;
-        private byte[] lastData;
+        private MemDataFile lastData;
         private static final int MEM_WRITE_FILE_CHOOSE_INTENT_CODE = 47;
 
         private boolean memAddressInputValid(EditText memAddressInput) {
@@ -975,21 +970,17 @@ public class MainActivity extends AppCompatActivity {
         public void onActivityResult(int requestCode, int resultCode, Intent data) {
             if ((requestCode == MEM_WRITE_FILE_CHOOSE_INTENT_CODE) && (data != null)) {
                 Uri uri = data.getData();
-                //TODO detect ihex/hex extension, then write as ihex!
 
                 EditText memAddressInput = (EditText) getView().findViewById(R.id.memAddressInput);
                 if (memAddressInputValid(memAddressInput)) {
                     long address = Long.parseLong(memAddressInput.getText().toString(), 16);
 
-                    try {
-                        InputStream iss = getContext().getContentResolver().openInputStream(uri);
-                        byte[] bytes = new byte[iss.available()];
-                        iss.read(bytes);
-
-                        memAccessService.writeMemory((int) address, bytes, 0);
+                    MemDataFile content = MemDataFile.createMemDataFile(getContext(), uri, (int)address);
+                    if (content != null) {
+                        memAccessService.writeMemory(content.getStartAddress(), content.getData(), 0);
 
                         Toast.makeText(getActivity(), String.format("Wrote memory file starting from address 0x%1$08X!", address), Toast.LENGTH_LONG).show();
-                    } catch (IOException ioe) {
+                    } else {
                         Toast.makeText(getActivity(), "Error reading memory file!", Toast.LENGTH_LONG).show();
                     }
                 } else {
@@ -1145,39 +1136,67 @@ public class MainActivity extends AppCompatActivity {
                     input.setHint("enter filename");
                     input.setText(sharedPreferences.getString("mem_access_save_last_filename", ""));
                     til.addView(input);
-                    alertDialog.setView(til);
 
-                    //TODO support ihex format, choice between bin and ihex format
+                    LinearLayout dialogLayout = new LinearLayout(alertDialog.getContext());
+                    dialogLayout.setLayoutParams(lp);
+                    dialogLayout.setOrientation(LinearLayout.VERTICAL);
+
+
+                    RadioButton rawBinary = new RadioButton(alertDialog.getContext());
+                    rawBinary.setText("raw binary");
+                    final RadioButton iHex = new RadioButton(alertDialog.getContext());
+                    iHex.setText("ihex");
+                    RadioGroup fileFormatSelect = new RadioGroup(alertDialog.getContext());
+                    fileFormatSelect.setOrientation(RadioGroup.HORIZONTAL);
+                    fileFormatSelect.addView(rawBinary);
+                    fileFormatSelect.addView(iHex);
+                    if (!sharedPreferences.getBoolean("mem_access_save_last_format_ihex", false)) {
+                        fileFormatSelect.check(rawBinary.getId());
+                    } else {
+                        fileFormatSelect.check(iHex.getId());
+                    }
+                    fileFormatSelect.setLayoutParams(lp);
+
+                    dialogLayout.addView(fileFormatSelect);
+                    dialogLayout.addView(til);
+
+                    alertDialog.setView(dialogLayout);
+
                     alertDialog.setPositiveButton("Save",
                             new DialogInterface.OnClickListener() {
                                 public void onClick(DialogInterface dialog,int which) {
+                                    boolean formatIHex = iHex.isChecked();
+
                                     String fileName = input.getText().toString();
                                     if (!fileName.contains(".")) {
-                                        fileName += ".bin"; //TODO add extension depending on selected format
+                                        if (!formatIHex) {
+                                            fileName += ".bin";
+                                        } else {
+                                            fileName += ".ihex";
+                                        }
                                     }
 
                                     String dir = "/SEEMOOQComLTE/";
                                     File path = new File(System.getenv("EXTERNAL_STORAGE") + dir);
-                                    File file = new File(path, fileName);
 
-                                    boolean success = true;
-                                    try {
-                                        path.mkdirs();
-                                        file.createNewFile();
-                                        FileOutputStream stream = new FileOutputStream(file);
-                                        stream.write(lastData);
-                                        stream.close();
-                                    } catch (IOException ioe) {
-                                        success = false;
+                                    boolean success = false;
+                                    if (!formatIHex) {
+                                        success = lastData.writeToBinFile(path, fileName);
+                                    } else {
+                                        success = lastData.writeToIHexFile(path, fileName);
                                     }
                                     if (success) {
-                                        Toast.makeText(getActivity(), "Saved memory content to " + file.toString() + "!", Toast.LENGTH_LONG).show();
+                                        Toast.makeText(getActivity(), "Saved memory content to " + lastData.getFileName() + "!", Toast.LENGTH_LONG).show();
                                     } else {
                                         Toast.makeText(getActivity(), "Error saving memory file!", Toast.LENGTH_LONG).show();
                                     }
 
 
                                     storeStringInSharedPrefs("mem_access_save_last_filename", fileName);
+                                    SharedPreferences.Editor editor = sharedPreferences.edit();
+                                    editor.putBoolean("mem_access_save_last_format_ihex", iHex.isChecked());
+                                    editor.commit();
+
                                     dialog.dismiss();
                                 }
                             });
@@ -1195,8 +1214,7 @@ public class MainActivity extends AppCompatActivity {
             memAccessListener = new MemAccessService.MemAccessListener() {
                 @Override
                 public void memoryData(MemAccessService.MemoryReadEvent e) {
-                    lastStartAddress = e.getStartAddress();
-                    lastData = e.getData();
+                    lastData = new MemDataFile(e.getStartAddress(), e.getData());
                     saveToFileButton.setVisibility(View.VISIBLE);
 
                     int separation;
