@@ -55,7 +55,6 @@ import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.MemAccessService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SeemooQmi;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SnprintfService;
 
-//TODO Tab headers in a nice way
 //TODO divide messages in status log better, now hard to see start and end of messages
 
 //TODO draw graphs in App
@@ -507,11 +506,13 @@ public class MainActivity extends AppCompatActivity {
             final TextView statusLog = (TextView) rootView.findViewById(R.id.statusLog);
             for (String m : seemooQmi.getOldStatusMessages()) {
                 statusLog.append(m);
+                statusLog.append("\n");
             }
             statusListener = new SeemooQmi.StatusListener() {
                 @Override
                 public void statusUpdate(SeemooQmi.StatusUpdateEvent e) {
                     statusLog.append(e.getStatus());
+                    statusLog.append("\n");
                 }
             };
             //register listner for incoming messages

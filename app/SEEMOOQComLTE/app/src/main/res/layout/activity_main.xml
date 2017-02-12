@@ -27,7 +27,8 @@
             app:layout_scrollFlags="enterAlways"
             style="@style/Widget.Design.TabLayout"
             app:tabTextAppearance="@style/CustomTab"
-            tools:tabTextAppearance="@style/CustomTab">
+            tools:tabTextAppearance="@style/CustomTab"
+            app:tabMode="scrollable">
 
         </android.support.design.widget.TabLayout>
     </android.support.design.widget.AppBarLayout>

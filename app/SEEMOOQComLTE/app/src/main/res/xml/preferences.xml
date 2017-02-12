@@ -70,7 +70,8 @@
             android:defaultValue="false"
             android:title="keep last values"
             android:key="mem_access_keep_last_values"
-            android:summary="start with last input values instead of empty fields" />
+            android:summary="start with last input values instead of empty fields"
+            android:icon="@android:drawable/ic_menu_revert" />
         <EditTextPreference
             android:defaultValue="4"
             android:selectAllOnFocus="true"
@@ -78,12 +79,14 @@
             android:inputType="number"
             android:title="data separation"
             android:key="mem_access_data_seperate"
-            android:summary="number of bytes grouped together in data output" />
+            android:summary="number of bytes grouped together in data output"
+            android:icon="@android:drawable/ic_menu_view" />
         <CheckBoxPreference
             android:defaultValue="true"
             android:title="addresses in output"
             android:key="mem_access_include_address"
-            android:summary="include addresses in output lines" />
+            android:summary="include addresses in output lines"
+            android:icon="@android:drawable/ic_menu_add" />
         <EditTextPreference
             android:defaultValue="8"
             android:selectAllOnFocus="true"
@@ -91,11 +94,13 @@
             android:title="bytes per line"
             android:key="mem_access_bytes_per_line"
             android:dependency="mem_access_include_address"
-            android:summary="number of bytes shown in a single line" />
+            android:summary="number of bytes shown in a single line"
+            android:icon="@android:drawable/ic_menu_sort_by_size" />
         <CheckBoxPreference
             android:defaultValue="false"
             android:title="write to System.out"
             android:key="mem_access_write_to_syso"
-            android:summary="forward all generated messages to System.out" />
+            android:summary="forward all generated messages to System.out"
+            android:icon="@android:drawable/ic_menu_edit" />
     </PreferenceCategory>
 </PreferenceScreen>
