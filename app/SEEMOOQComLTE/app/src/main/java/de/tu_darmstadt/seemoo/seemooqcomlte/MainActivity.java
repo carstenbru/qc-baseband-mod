@@ -5,15 +5,19 @@
  */
 package de.tu_darmstadt.seemoo.seemooqcomlte;
 
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.StrictMode;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.support.design.widget.TabLayout;
+import android.support.design.widget.TextInputLayout;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
@@ -32,11 +36,16 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -48,12 +57,13 @@ import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.MemAccessService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SeemooQmi;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SnprintfService;
 
-//TODO MemAccess: write to file
+//TODO MemAccess: ihex file type
 
 //TODO Tab headers in a nice way
+//TODO divide messages in status log better, now hard to see start and end of messages
 
 //TODO draw graphs in App
-//TODO send indication on CSI log event (new project/change test project
+//TODO send indication on CSI log event (new project/change test project)
 //TODO CSI service implementation
 //TODO draw graph with real incoming data
 
@@ -64,8 +74,6 @@ import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SnprintfService;
 //TODO lte_sec output options
 //TODO at_commands
 
-
-//TODO divide messages in status log better, now hard to see start and end of messages
 
 //TODO nice GUI
 // -tab headers readable (scrolling!)
@@ -940,6 +948,9 @@ public class MainActivity extends AppCompatActivity {
      */
     public static class MemAccessFragment extends Fragment {
         private MemAccessService.MemAccessListener memAccessListener;
+        private int lastStartAddress;
+        private byte[] lastData;
+        private static final int MEM_WRITE_FILE_CHOOSE_INTENT_CODE = 47;
 
         private boolean memAddressInputValid(EditText memAddressInput) {
             return ((memAddressInput.getText().length() > 0) && (memAddressInput.getText().length() <= 8));
@@ -961,6 +972,33 @@ public class MainActivity extends AppCompatActivity {
             memReadButton.setEnabled(memAddressInputValid(memAddressInput) && memDataInputValid(memDataInput));
         }
 
+        public void onActivityResult(int requestCode, int resultCode, Intent data) {
+            if ((requestCode == MEM_WRITE_FILE_CHOOSE_INTENT_CODE) && (data != null)) {
+                Uri uri = data.getData();
+                //TODO detect ihex/hex extension, then write as ihex!
+
+                EditText memAddressInput = (EditText) getView().findViewById(R.id.memAddressInput);
+                if (memAddressInputValid(memAddressInput)) {
+                    long address = Long.parseLong(memAddressInput.getText().toString(), 16);
+
+                    try {
+                        InputStream iss = getContext().getContentResolver().openInputStream(uri);
+                        byte[] bytes = new byte[iss.available()];
+                        iss.read(bytes);
+
+                        memAccessService.writeMemory((int) address, bytes, 0);
+
+                        Toast.makeText(getActivity(), String.format("Wrote memory file starting from address 0x%1$08X!", address), Toast.LENGTH_LONG).show();
+                    } catch (IOException ioe) {
+                        Toast.makeText(getActivity(), "Error reading memory file!", Toast.LENGTH_LONG).show();
+                    }
+                } else {
+                    Toast.makeText(getActivity(), "Start address invalid!", Toast.LENGTH_LONG).show();
+                }
+            }
+            super.onActivityResult(requestCode, resultCode, data);
+        }
+
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
             View rootView = inflater.inflate(R.layout.content_mem_access, container, false);
@@ -972,13 +1010,18 @@ public class MainActivity extends AppCompatActivity {
 
             final LinearLayout readLayout = (LinearLayout) rootView.findViewById(R.id.readLayout);
             final LinearLayout writeLayout = (LinearLayout) rootView.findViewById(R.id.writeLayout);
+            final Button writeFromFileButton = (Button) rootView.findViewById(R.id.mem_access_load_button);
+            final ImageButton saveToFileButton = (ImageButton) rootView.findViewById(R.id.mem_access_save_button);
             writeLayout.setVisibility(View.GONE);
+            writeFromFileButton.setVisibility(View.GONE);
+            saveToFileButton.setVisibility(View.GONE);
 
             readSelect.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
                 @Override
                 public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
                     readLayout.setVisibility(!b ? View.GONE : View.VISIBLE);
                     writeLayout.setVisibility(b ? View.GONE : View.VISIBLE);
+                    writeFromFileButton.setVisibility(b ? View.GONE : View.VISIBLE);
                     if (b) {
                         writeSelect.setChecked(false);
                     }
@@ -1078,9 +1121,84 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
 
+            writeFromFileButton.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                    intent.setType("file/*");
+                    startActivityForResult(intent, MEM_WRITE_FILE_CHOOSE_INTENT_CODE);
+                }
+            });
+
+            saveToFileButton.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    AlertDialog.Builder alertDialog = new AlertDialog.Builder(getActivity());
+                    alertDialog.setTitle("Save memory content to file");
+
+                    TextInputLayout til = new TextInputLayout(alertDialog.getContext());
+                    final EditText input = new EditText(getContext());
+                    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.MATCH_PARENT);
+                    input.setLayoutParams(lp);
+                    input.setHint("enter filename");
+                    input.setText(sharedPreferences.getString("mem_access_save_last_filename", ""));
+                    til.addView(input);
+                    alertDialog.setView(til);
+
+                    //TODO support ihex format, choice between bin and ihex format
+                    alertDialog.setPositiveButton("Save",
+                            new DialogInterface.OnClickListener() {
+                                public void onClick(DialogInterface dialog,int which) {
+                                    String fileName = input.getText().toString();
+                                    if (!fileName.contains(".")) {
+                                        fileName += ".bin"; //TODO add extension depending on selected format
+                                    }
+
+                                    String dir = "/SEEMOOQComLTE/";
+                                    File path = new File(System.getenv("EXTERNAL_STORAGE") + dir);
+                                    File file = new File(path, fileName);
+
+                                    boolean success = true;
+                                    try {
+                                        path.mkdirs();
+                                        file.createNewFile();
+                                        FileOutputStream stream = new FileOutputStream(file);
+                                        stream.write(lastData);
+                                        stream.close();
+                                    } catch (IOException ioe) {
+                                        success = false;
+                                    }
+                                    if (success) {
+                                        Toast.makeText(getActivity(), "Saved memory content to " + file.toString() + "!", Toast.LENGTH_LONG).show();
+                                    } else {
+                                        Toast.makeText(getActivity(), "Error saving memory file!", Toast.LENGTH_LONG).show();
+                                    }
+
+
+                                    storeStringInSharedPrefs("mem_access_save_last_filename", fileName);
+                                    dialog.dismiss();
+                                }
+                            });
+                    alertDialog.setNegativeButton("Cancel",
+                            new DialogInterface.OnClickListener() {
+                                public void onClick(DialogInterface dialog, int which) {
+                                    dialog.cancel();
+                                }
+                            });
+
+                    alertDialog.show();
+                }
+            });
+
             memAccessListener = new MemAccessService.MemAccessListener() {
                 @Override
                 public void memoryData(MemAccessService.MemoryReadEvent e) {
+                    lastStartAddress = e.getStartAddress();
+                    lastData = e.getData();
+                    saveToFileButton.setVisibility(View.VISIBLE);
+
                     int separation;
                     try {
                         separation = Integer.parseInt(sharedPreferences.getString("mem_access_data_seperate", "4"));
@@ -1113,17 +1231,16 @@ public class MainActivity extends AppCompatActivity {
                     if (sharedPreferences.getBoolean("mem_access_write_to_syso", false)) {
                         System.out.println(s);
                     }
-                    //TODO write to file stuff
                 }
 
                 @Override
                 public void writeDone(MemAccessService.MemoryDataEvent e) {
                     String s = String.format("Memory write executed, start address: 0x%1$08X, length: %2$d bytes\n", e.getStartAddress(), e.getLength());
                     memAccessTerminal.setText(s);
+                    saveToFileButton.setVisibility(View.GONE);
                     if (sharedPreferences.getBoolean("mem_access_write_to_syso", false)) {
                         System.out.println(s);
                     }
-                    //TODO write from file stuff
                 }
             };
             memAccessService.addListener(memAccessListener);

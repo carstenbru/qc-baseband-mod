@@ -75,7 +75,8 @@
                         android:layout_height="wrap_content"
                         android:hint="length (in bytes)"
                         android:id="@+id/memLengthInput"
-                        android:inputType="number" />
+                        android:inputType="number"
+                        android:layout_weight="1" />
 
                 </android.support.design.widget.TextInputLayout>
 
@@ -84,7 +85,16 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:id="@+id/memReadButton"
-                    android:layout_weight="3" />
+                    android:layout_weight="2" />
+
+                <ImageButton
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:id="@+id/mem_access_save_button"
+                    android:layout_weight="2"
+                    android:elevation="1dp"
+                    tools:src="@android:drawable/ic_menu_save"
+                    android:src="@android:drawable/ic_menu_save" />
 
             </LinearLayout>
 
@@ -119,6 +129,14 @@
                     android:layout_weight="3" />
 
             </LinearLayout>
+
+            <Button
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/mem_access_load_button"
+                android:layout_weight="1"
+                android:elevation="1dp"
+                android:text="Write file content" />
 
             <TextView
                 android:layout_width="match_parent"
