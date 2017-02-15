@@ -10,6 +10,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -32,6 +33,8 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
@@ -40,22 +43,35 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.components.Description;
+import com.github.mikephil.charting.components.Legend;
+import com.github.mikephil.charting.components.XAxis;
+import com.github.mikephil.charting.components.YAxis;
+import com.github.mikephil.charting.data.Entry;
+import com.github.mikephil.charting.data.LineData;
+import com.github.mikephil.charting.data.LineDataSet;
+import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
+
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.AtCommandService;
+import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.ChannelEstimationService;
+import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.ComplexFixedPoint;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.FunctionCounterService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.LteMacService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.LteSecService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.MemAccessService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SeemooQmi;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SnprintfService;
-
-//TODO divide messages in status log better, now hard to see start and end of messages
 
 //TODO draw graphs in App
 //TODO send indication on CSI log event (new project/change test project)
@@ -71,7 +87,6 @@ import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SnprintfService;
 
 
 //TODO nice GUI
-// -tab headers readable (scrolling!)
 // -move settings icon (too far right, too close to text
 // -when changing to a not scrollable tab and title bar is removed we cannot get it again
 // -keyboard shows up when de-focusing edit texts in lte mac tab
@@ -91,6 +106,7 @@ public class MainActivity extends AppCompatActivity {
     private static LteSecService lteSecService = null;
     private static AtCommandService atCommandService = null;
     private static MemAccessService memAccessService = null;
+    private static ChannelEstimationService channelEstimationService = null;
 
     private static SharedPreferences sharedPreferences = null;
     private static SharedPreferences.OnSharedPreferenceChangeListener onSharedPrederencesChangeListener = null;
@@ -300,6 +316,10 @@ public class MainActivity extends AppCompatActivity {
         if (memAccessService == null) {
             memAccessService = new MemAccessService(seemooQmi, getApplicationContext());
         }
+
+        if (channelEstimationService == null) {
+            channelEstimationService = new ChannelEstimationService(seemooQmi, getApplicationContext());
+        }
     }
 
     /**
@@ -311,6 +331,30 @@ public class MainActivity extends AppCompatActivity {
     private static void storeStringInSharedPrefs(String key, String value) {
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putString(key, value);
+        editor.commit();
+    }
+
+    /**
+     * stores a integer in the default shared preferences
+     *
+     * @param key name of the value
+     * @param value actual value
+     */
+    private static void storeIntInSharedPrefs(String key, int value) {
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putInt(key, value);
+        editor.commit();
+    }
+
+    /**
+     * stores a boolean in the default shared preferences
+     *
+     * @param key name of the value
+     * @param value actual value
+     */
+    private static void storeBooleanInSharedPrefs(String key, boolean value) {
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putBoolean(key, value);
         editor.commit();
     }
 
@@ -423,7 +467,7 @@ public class MainActivity extends AppCompatActivity {
      * pager adapter to handle tabs consisting of fragments for the different pages
      */
     public static class SeemooPagerAdapter extends FragmentPagerAdapter {
-        private static int NUM_TABS = 7;
+        private static int NUM_TABS = 8;
 
         private Context appContext;
 
@@ -458,6 +502,8 @@ public class MainActivity extends AppCompatActivity {
                     return new AtCommandsFragment();
                 case 6:
                     return new MemAccessFragment();
+                case 7:
+                    return new ChannelEstimationFragment();
                 default:
                     return null;
             }
@@ -485,6 +531,8 @@ public class MainActivity extends AppCompatActivity {
                     return appContext.getResources().getString(R.string.tab_at_commands);
                 case 6:
                     return appContext.getResources().getString(R.string.tab_mem_access);
+                case 7:
+                    return appContext.getResources().getString(R.string.tab_channel_estimation);
                 default:
                     return "error";
             }
@@ -1272,6 +1320,298 @@ public class MainActivity extends AppCompatActivity {
             super.onDestroy();
 
             memAccessService.removeListener(memAccessListener);
+        }
+    }
+
+    /**
+     * fragment for showing channel estimation values
+     */
+    //TODO get channel freq and everything else to scale axis!
+
+    //TODO rx/tx antenna to matrix assignment (not here, in service)
+    public static class ChannelEstimationFragment extends Fragment {
+        private static final int MAX_RX_ANT = 2;
+        private static final int MAX_TX_ANT = 4;
+
+        private ChannelEstimationService.ChannelEstimationListener channelEstimationListener;
+
+        private LineChart channelChart;
+        private Spinner rxAntSel;
+        private Spinner txAntSel;
+
+        private int rxAntMode;
+        private int txAntMode;
+        private boolean complexModeSelected;
+        private boolean drawAmplitude;
+        private boolean drawPhase;
+
+        private LineDataSet lineDataSetFromChannelMatrix(int type, String label, ComplexFixedPoint[] channelMatrix, float colorAngle, boolean axisRight, boolean dashed) {
+            List<Entry> entries = new ArrayList<Entry>();
+
+            int pos = 0;
+            for (ComplexFixedPoint sample : channelMatrix) {
+                //TODO scale values
+                float sampleVal = 0.0f;
+                switch (type) {
+                    case 0:
+                        sampleVal = (float)sample.abs();
+                        break;
+                    case 1:
+                        sampleVal = (float)sample.angleInDegree();
+                        break;
+                    case 2:
+                        sampleVal = sample.getReal();
+                        break;
+                    case 3:
+                        sampleVal = sample.getImaginary();
+                        break;
+                }
+                entries.add(new Entry(pos++, sampleVal)); //TODO x-values
+            }
+
+            //TODO label axis
+            LineDataSet dataSet = new LineDataSet(entries, label);
+            dataSet.setAxisDependency(axisRight ? YAxis.AxisDependency.RIGHT : YAxis.AxisDependency.LEFT);
+            float[] hsv = {colorAngle,1.0f,1.0f};
+            int color = Color.HSVToColor(hsv);
+            dataSet.setColor(color);
+            dataSet.setCircleColor(color);
+
+            if (dashed) {
+                dataSet.enableDashedLine(10.0f, 10.0f, 0);
+            }
+
+            return dataSet;
+        }
+
+        private float getColorAngle(int index, int numColors) {
+            return 360 * (index / (float) numColors);
+        }
+
+        private void drawChart(ChannelEstimationService.ChannelMatrices channelMatrices) {
+            List<ILineDataSet> dataSets = new ArrayList<ILineDataSet>();
+
+            boolean twoColors = sharedPreferences.getBoolean("csi_visualization_use_different_colors", true);
+            if (!complexModeSelected) {
+                if (!(drawAmplitude && drawPhase)) {
+                    twoColors = false;
+                }
+            }
+
+            int color = 0;
+            int numRxAnt = (rxAntMode == 0) ? channelMatrices.getNumRxAnt() : 1;
+            int numTxAnt = (txAntMode == 0) ? channelMatrices.getNumTxAnt() : 1;
+            int numColors = numRxAnt * numTxAnt;
+            if (twoColors) {
+                numColors *= 2;
+            }
+            for (int rxAnt = 1; rxAnt <= channelMatrices.getNumRxAnt(); rxAnt++) {
+                if ((rxAntMode != 0) && (rxAntMode != rxAnt)) {
+                    continue;
+                }
+                for (int txAnt = 1; txAnt <= channelMatrices.getNumRxAnt(); txAnt++) {
+                    if ((txAntMode != 0) && (txAntMode != txAnt)) {
+                        continue;
+                    }
+
+                    ComplexFixedPoint[] curMatrix = channelMatrices.getChannelMatrix(rxAnt - 1, txAnt - 1);
+                    if (complexModeSelected) {
+                        String realLabel = String.format("Re Rx%d/Tx%d", rxAnt, txAnt);
+                        dataSets.add(lineDataSetFromChannelMatrix(2, realLabel, curMatrix, getColorAngle(color, numColors), false, false));
+                        if (twoColors) {
+                            color++;
+                        }
+                        String imgLabel = String.format("Im Rx%d/Tx%d", rxAnt, txAnt);
+                        dataSets.add(lineDataSetFromChannelMatrix(3, imgLabel, curMatrix, getColorAngle(color, numColors), false, !twoColors));
+                    } else {
+                        if (drawAmplitude) {
+                            String label = String.format("Abs Rx%d/Tx%d", rxAnt, txAnt);
+                            dataSets.add(lineDataSetFromChannelMatrix(0, label, curMatrix, getColorAngle(color, numColors), false, false));
+                            if (twoColors) {
+                                color++;
+                            }
+                        }
+                        if (drawPhase) {
+                            String label = String.format("Phase Rx%d/Tx%d", rxAnt, txAnt);
+                            dataSets.add(lineDataSetFromChannelMatrix(1, label, curMatrix, getColorAngle(color, numColors), drawAmplitude, !twoColors));
+                        }
+                    }
+                    color++;
+                }
+            }
+
+            LineData lineData = new LineData(dataSets);
+            channelChart.getAxisRight().setEnabled(false);
+            channelChart.getAxisLeft().resetAxisMinimum();
+            channelChart.getAxisLeft().resetAxisMaximum();
+
+            if (!complexModeSelected) {
+                channelChart.getAxisLeft().setAxisMinimum(0);
+                if (drawPhase) {
+                    if (drawAmplitude) {
+                        channelChart.getAxisRight().setEnabled(true);
+                    } else {
+                        channelChart.getAxisLeft().setAxisMaximum(360);
+                    }
+                }
+            }
+
+            Legend l = channelChart.getLegend();
+            if (complexModeSelected) {
+                l.setMaxSizePercent(1.0f);
+            } else {
+                l.setMaxSizePercent(0.7f);
+            }
+
+            channelChart.setData(lineData);
+
+            XAxis xAxis = channelChart.getXAxis();
+            xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+            //TODO axis titles..
+
+            channelChart.invalidate();
+        }
+
+        private void reDrawChartWithLastData() {
+            if (channelEstimationService.getLastChannelMatrices() != null) {
+                drawChart(channelEstimationService.getLastChannelMatrices());
+            }
+        }
+
+        private void initAntSpinner(Spinner spinner, int maxVal, String type) {
+            String options[] = new String[maxVal+1];
+            options[0] = String.format("%s all", type);
+            for (int i = 1; i <= maxVal; i++) {
+                options[i] = String.format("%s %d", type, i);
+            }
+            ArrayAdapter<String> adapter = new ArrayAdapter<String>(getContext(), android.R.layout.simple_spinner_item, options);
+            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            spinner.setAdapter(adapter);
+        }
+
+        //TODO show only available Rx/Tx antennas in selection or change to a valid setting if selection invalid when data arrives
+        @Override
+        public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+            View rootView = inflater.inflate(R.layout.content_channel_estimation, container, false);
+
+            rxAntSel = (Spinner) rootView.findViewById(R.id.rx_ant_select);
+            initAntSpinner(rxAntSel, MAX_RX_ANT, "Rx");
+            rxAntSel.setSelection(sharedPreferences.getInt("rx_ant_mode", 0));
+            rxAntSel.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                    rxAntMode = i;
+                    storeIntInSharedPrefs("rx_ant_mode", rxAntMode);
+                    reDrawChartWithLastData();
+                }
+
+                @Override
+                public void onNothingSelected(AdapterView<?> adapterView) {
+
+                }
+            });
+
+            txAntSel = (Spinner) rootView.findViewById(R.id.tx_ant_select);
+            initAntSpinner(txAntSel, MAX_TX_ANT, "Tx");
+            txAntSel.setSelection(sharedPreferences.getInt("tx_ant_mode", 0));
+            txAntSel.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                    txAntMode = i;
+                    storeIntInSharedPrefs("tx_ant_mode", txAntMode);
+                    reDrawChartWithLastData();
+                }
+
+                @Override
+                public void onNothingSelected(AdapterView<?> adapterView) {
+
+                }
+            });
+
+            final LinearLayout ampPhaseDetailOptions = (LinearLayout) rootView.findViewById(R.id.amp_phase_detail_options);
+            final RadioButton complexMode = (RadioButton) rootView.findViewById(R.id.complex_val);
+            RadioGroup visualizationMode = (RadioGroup) rootView.findViewById(R.id.visualization_mode);
+            complexModeSelected = sharedPreferences.getBoolean("csi_visualization_mode_complex", false);
+            if (complexModeSelected) {
+                visualizationMode.check(complexMode.getId());
+                ampPhaseDetailOptions.setVisibility(View.GONE);
+            }
+            visualizationMode.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+                @Override
+                public void onCheckedChanged(RadioGroup radioGroup, int i) {
+                    complexModeSelected = (i == complexMode.getId());
+                    storeBooleanInSharedPrefs("csi_visualization_mode_complex", complexModeSelected);
+                    ampPhaseDetailOptions.setVisibility(complexModeSelected ? View.GONE : View.VISIBLE);
+                    reDrawChartWithLastData();
+                }
+            });
+
+            drawAmplitude = sharedPreferences.getBoolean("csi_visualization_draw_amplitude", true);
+            drawPhase = sharedPreferences.getBoolean("csi_visualization_draw_phase", false);
+            final CheckBox amplitudeSelect = (CheckBox) rootView.findViewById(R.id.amplitude_select);
+            amplitudeSelect.setChecked(drawAmplitude);
+            final CheckBox phaseSelect = (CheckBox) rootView.findViewById(R.id.phase_select);
+            phaseSelect.setChecked(drawPhase);
+            amplitudeSelect.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                @Override
+                public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                    drawAmplitude = b;
+                    storeBooleanInSharedPrefs("csi_visualization_draw_amplitude", drawAmplitude);
+                    if (!drawAmplitude && ! drawPhase) {
+                        phaseSelect.setChecked(true);
+                    } else {
+                        reDrawChartWithLastData();
+                    }
+                }
+            });
+            phaseSelect.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                @Override
+                public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                    drawPhase = b;
+                    storeBooleanInSharedPrefs("csi_visualization_draw_phase", drawPhase);
+                    if (!drawAmplitude && ! drawPhase) {
+                        amplitudeSelect.setChecked(true);
+                    } else {
+                        reDrawChartWithLastData();
+                    }
+                }
+            });
+
+            ViewPager viewPager = (ViewPager) container.findViewById(R.id.viewPager);
+            LinearLayout chEstLayout = (LinearLayout) rootView.findViewById(R.id.ch_est_layout);
+            ViewGroup.LayoutParams lp = chEstLayout.getLayoutParams();
+            lp.height = viewPager.getMeasuredHeight() - 250;
+            chEstLayout.setLayoutParams(lp);
+
+            channelChart = (LineChart) rootView.findViewById(R.id.channel_chart);
+            Description descr = new Description();
+            descr.setText("");
+            channelChart.setDescription(descr);
+            channelChart.getAxisRight().setAxisMinimum(0);
+            channelChart.getAxisRight().setAxisMaximum(360);
+            channelChart.getAxisRight().setDrawGridLines(false);
+
+            Legend l = channelChart.getLegend();
+            l.setWordWrapEnabled(true);
+
+            channelEstimationListener = new ChannelEstimationService.ChannelEstimationListener() {
+                @Override
+                public void matricesReceived(ChannelEstimationService.ChannelMatrixEvent e) {
+                    drawChart(e.getChannelMatrices());
+                }
+            };
+            channelEstimationService.addListener(channelEstimationListener);
+
+            reDrawChartWithLastData();
+
+            return rootView;
+        }
+
+        @Override
+        public void onDestroy() {
+            super.onDestroy();
+
+            channelEstimationService.removeListener(channelEstimationListener);
         }
     }
 }

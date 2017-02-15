@@ -5,7 +5,7 @@ android {
     buildToolsVersion "25.0.1"
     defaultConfig {
         applicationId "de.tu_darmstadt.seemoo.seemooqcomlte"
-        minSdkVersion 15
+        minSdkVersion 16
         targetSdkVersion 25
         versionCode 1
         versionName "1.0"
@@ -28,4 +28,8 @@ dependencies {
     compile 'com.android.support:design:25.0.1'
     testCompile 'junit:junit:4.12'
     compile 'com.android.support:support-v4:25.0.1'
+}
+
+dependencies {
+    compile 'com.github.PhilJay:MPAndroidChart:v3.0.1'
 }

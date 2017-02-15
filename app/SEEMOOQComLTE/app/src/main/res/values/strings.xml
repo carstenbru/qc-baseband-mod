@@ -8,6 +8,7 @@
     <string name="tab_lte_sec">LTE security</string>
     <string name="tab_at_commands">AT commands</string>
     <string name="tab_mem_access">Memory access</string>
+    <string name="tab_channel_estimation">Channel estimation</string>
     <string name="packet_receive">got packet from svc: 0x%1$08X, len: %2$d</string>
     <string name="packet_send">sending message to svc: 0x%1$08X, len: %2$d</string>
     <string name="error_msg_read">error reading QMI message:</string>
@@ -17,6 +18,8 @@
     <string name="qmi_svc_start">Starting SEEMOO QMI service:</string>
     <string name="snprintf_reg_success">snprintf service registration success</string>
     <string name="snprintf_dereg_success">snprintf service deregistration success</string>
+    <string name="ch_est_reg_success">channel estimation service registration success</string>
+    <string name="ch_est_dereg_success">channel estimation service deregistration success</string>
     <string name="ltemac_reg_success">LTE MAC service registration success</string>
     <string name="ltemac_dereg_success">LTE MAC service deregistration success</string>
     <string name="lte_sec_reg_success">LTE security service registration success</string>

@@ -103,4 +103,13 @@
             android:summary="forward all generated messages to System.out"
             android:icon="@android:drawable/ic_menu_edit" />
     </PreferenceCategory>
+    <PreferenceCategory android:title="Channel estimation">
+
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:title="different colors"
+            android:key="csi_visualization_use_different_colors"
+            android:summary="use different colors for two component values (Amplitude/Phase and I/Q), otherwise a dashed line is used"
+            android:icon="@android:drawable/ic_menu_gallery" />
+    </PreferenceCategory>
 </PreferenceScreen>
