@@ -508,7 +508,7 @@ int qmi_connect_to_service(struct qmi_handle *handle,
 		return -ENODEV;
 	}
 	svc_dest_addr->addrtype = MSM_IPC_ADDR_ID;
-        // quick fix: if we find more than one match always return 2nd match
+        // quick fix: if we find more than one match always return last match
         if (rc > 4) {
             rc = 4;
         }

@@ -95,7 +95,8 @@
             android:key="mem_access_bytes_per_line"
             android:dependency="mem_access_include_address"
             android:summary="number of bytes shown in a single line"
-            android:icon="@android:drawable/ic_menu_sort_by_size" />
+            android:icon="@android:drawable/ic_menu_sort_by_size"
+            android:inputType="number" />
         <CheckBoxPreference
             android:defaultValue="false"
             android:title="write to System.out"
@@ -105,6 +106,15 @@
     </PreferenceCategory>
     <PreferenceCategory android:title="Channel estimation">
 
+        <EditTextPreference
+            android:defaultValue="1"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="Update interval"
+            android:key="csi_interval"
+            android:summary="Interval of channel estimation updates, 1 means send every time, n every n-th time"
+            android:icon="@android:drawable/ic_menu_recent_history"
+            android:inputType="number" />
         <CheckBoxPreference
             android:defaultValue="true"
             android:title="different colors"

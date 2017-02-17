@@ -73,11 +73,6 @@ import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.MemAccessService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SeemooQmi;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SnprintfService;
 
-//TODO draw graphs in App
-//TODO send indication on CSI log event (new project/change test project)
-//TODO CSI service implementation
-//TODO draw graph with real incoming data
-
 //TODO refactor MainActivity class: put code in multiple files, maybe put GUI fragments in seperate files? one for each?
 
 
@@ -268,6 +263,9 @@ public class MainActivity extends AppCompatActivity {
                         case "log_level":
                             statusLogLevelFromSharedPrefs();
                             return;
+                        case "csi_interval":
+                            channelEstimationService.setInterval(Integer.parseInt(sharedPreferences.getString("csi_interval", "1")));
+                            return;
                     }
                 }
             };
@@ -319,6 +317,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (channelEstimationService == null) {
             channelEstimationService = new ChannelEstimationService(seemooQmi, getApplicationContext());
+            channelEstimationService.setInterval(Integer.parseInt(sharedPreferences.getString("csi_interval", "1")));
         }
     }
 

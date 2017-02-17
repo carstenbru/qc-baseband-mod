@@ -14,10 +14,13 @@ import java.util.List;
 
 import de.tu_darmstadt.seemoo.seemooqcomlte.R;
 
+//TODO graph rescaling
+
 public class ChannelEstimationService extends SeemooQmiService {
     public static final int CHANNEL_ESTIMATION_SVC_ID = 0x43457374; //"CEst" in ASCII
 
     private ChannelMatrices lastChannelMatrices = null;
+    private int interval = 1;
 
     private List<ChannelEstimationListener> channelEstimationListeners = new LinkedList<ChannelEstimationListener>();
 
@@ -122,9 +125,16 @@ public class ChannelEstimationService extends SeemooQmiService {
         });
     }
 
+    public void setInterval(int interval) {
+        this.interval = interval;
+        if (!channelEstimationListeners.isEmpty()) {
+            register(interval);
+        }
+    }
+
     public void addListener(ChannelEstimationListener channelEstimationListener) {
         if (channelEstimationListeners.isEmpty()) {
-            register(true); //register when we add the first listener
+            register(interval); //register when we add the first listener
         }
         channelEstimationListeners.add(channelEstimationListener);
     }
@@ -132,7 +142,7 @@ public class ChannelEstimationService extends SeemooQmiService {
     public void removeListener(ChannelEstimationListener channelEstimationListener) {
         channelEstimationListeners.remove(channelEstimationListener);
         if (channelEstimationListeners.isEmpty()) {
-            register(false); //deregister when we remove the last listener
+            register(interval); //deregister when we remove the last listener
         }
     }
 
@@ -153,11 +163,11 @@ public class ChannelEstimationService extends SeemooQmiService {
     /**
      * register/deregister for indications in modem
      *
-     * @param state new registration state
+     * @param interval interval of indications
      */
-    private void register(boolean state) {
-        byte register[] = {(byte)(state ? 1 : 0)};
-        seemooQmi.sendMessage(CHANNEL_ESTIMATION_SVC_ID, true, register, 1);
+    private void register(int interval) {
+        byte register[] = {(byte)((interval) & 0xFF), (byte)((interval >> 8) & 0xFF)};
+        seemooQmi.sendMessage(CHANNEL_ESTIMATION_SVC_ID, true, register, register.length);
     }
 
     /**
@@ -171,6 +181,6 @@ public class ChannelEstimationService extends SeemooQmiService {
 
     @Override
     public void finalizeService() {
-        register(false);
+        register(0);
     }
 }

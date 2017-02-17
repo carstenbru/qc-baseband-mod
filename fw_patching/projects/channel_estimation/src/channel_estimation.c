@@ -12,6 +12,9 @@
 /* channel estimation client pointer, NULL when no client is set */
 void* ch_est_svc_client;
 
+/* interval in which indications are sent, e.g. 1 means every time, 100 every 100th time */
+unsigned short indication_interval;
+
 /* buffer to build indication messages*/
 test_data_ind_msg_v01 ind_buf;
 
@@ -35,7 +38,17 @@ void lte_LL1_log_csf_whitened_matrices_hook(unsigned int start_system_sub_frame_
         qmi_csi_send_ind(ch_est_svc_client, QMI_TEST_DATA_IND_V01, &ind_buf, sizeof(test_data_ind_msg_v01));
     }
     
-    lte_LL1_log_csf_whitened_matrices_fw_org(start_system_sub_frame_number_sfn, start_system_frame_number, num_whiten_matrices_for_csf, num_txant, num_rxant, matrices_address);
+    //lte_LL1_log_csf_whitened_matrices_fw_org(start_system_sub_frame_number_sfn, start_system_frame_number, num_whiten_matrices_for_csf, num_txant, num_rxant, matrices_address);
+}
+
+void set_indication_interval() {
+    *((unsigned short*)(lte_LL1_csf_config_pointer + 0xD44)) = indication_interval;
+}
+
+__attribute__ ((overwrite ("lte_LL1_csf_callback")))
+void lte_LL1_csf_callback_hook(unsigned int a, unsigned int b, unsigned int c) {
+    set_indication_interval();
+    lte_LL1_csf_callback_fw_org(a, b, c);
 }
 
 /**
@@ -50,7 +63,11 @@ int channel_estimation_svc_req(
     if (*req_data != 0) {
         ch_est_svc_client = *((void**)clnt_info);
         *((void**)(resp_data)) = ch_est_svc_client;
-        return 4;
+        
+        indication_interval = *((unsigned short*)req_data);
+        set_indication_interval();
+        
+        return 4; 
     } else {
         ch_est_svc_client = 0;
         return 0;

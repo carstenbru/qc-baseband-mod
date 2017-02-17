@@ -12,7 +12,9 @@
 
 ADDRESS(0x93A97F0) void lte_LL1_log_csf_whitened_matrices(unsigned int start_system_sub_frame_number_sfn, unsigned int start_system_frame_number, unsigned int num_whiten_matrices_for_csf, unsigned int num_txant, unsigned int num_rxant, unsigned char* matrices_address);
 
-ADDRESS(0x9381360) void sub_9381360();
+ADDRESS(0x9381360) void lte_LL1_csf_callback(unsigned int a, unsigned int b, unsigned int c); //TODO parameters
+
+ADDRESS(0xCCBFD5C) unsigned char* lte_LL1_csf_config_pointer; //actual pointer target type is some struct, not a char!
 
 #endif
  
