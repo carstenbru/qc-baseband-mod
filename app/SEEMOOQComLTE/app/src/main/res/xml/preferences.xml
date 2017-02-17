@@ -121,5 +121,28 @@
             android:key="csi_visualization_use_different_colors"
             android:summary="use different colors for two component values (Amplitude/Phase and I/Q), otherwise a dashed line is used"
             android:icon="@android:drawable/ic_menu_gallery" />
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:title="Auto scale"
+            android:key="csi_autoscale"
+            android:summary="automatically scale the graph"
+            android:icon="@android:drawable/ic_menu_search" />
+        <EditTextPreference
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="Graph maximum"
+            android:key="csi_graph_max"
+            android:defaultValue="1000"
+            android:summary="static maximum of the graphs y-axis"
+            android:icon="@android:drawable/ic_menu_add"
+            android:inputType="number" />
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:title="Downscale graph"
+            android:key="csi_downscale_graph"
+            android:summary="automatically downscale the graphs y-axis, otherwise it is scaled to fit the maximum occured value"
+            android:dependency="csi_autoscale"
+            android:disableDependentsState="false"
+            android:icon="@android:drawable/ic_menu_crop" />
     </PreferenceCategory>
 </PreferenceScreen>

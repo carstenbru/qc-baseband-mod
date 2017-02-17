@@ -14,8 +14,6 @@ import java.util.List;
 
 import de.tu_darmstadt.seemoo.seemooqcomlte.R;
 
-//TODO graph rescaling
-
 public class ChannelEstimationService extends SeemooQmiService {
     public static final int CHANNEL_ESTIMATION_SVC_ID = 0x43457374; //"CEst" in ASCII
 

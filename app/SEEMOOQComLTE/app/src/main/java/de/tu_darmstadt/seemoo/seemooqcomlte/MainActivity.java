@@ -15,6 +15,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.StrictMode;
+import android.preference.Preference;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.support.design.widget.TabLayout;
@@ -59,6 +60,7 @@ import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -105,6 +107,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static SharedPreferences sharedPreferences = null;
     private static SharedPreferences.OnSharedPreferenceChangeListener onSharedPrederencesChangeListener = null;
+    private static Preference graphMaxPreference = null;
 
     private static int openTab = 0;
 
@@ -265,6 +268,9 @@ public class MainActivity extends AppCompatActivity {
                             return;
                         case "csi_interval":
                             channelEstimationService.setInterval(Integer.parseInt(sharedPreferences.getString("csi_interval", "1")));
+                            return;
+                        case "csi_autoscale":
+                            graphMaxPreference.setEnabled(!sharedPreferences.getBoolean("csi_autoscale", true));
                             return;
                     }
                 }
@@ -434,6 +440,9 @@ public class MainActivity extends AppCompatActivity {
                     getActivity().getFragmentManager().popBackStack();
                 }
             });
+
+            graphMaxPreference = findPreference("csi_graph_max");
+            graphMaxPreference.setEnabled(!sharedPreferences.getBoolean("csi_autoscale", true));
         }
 
         @Override
@@ -1325,12 +1334,18 @@ public class MainActivity extends AppCompatActivity {
     /**
      * fragment for showing channel estimation values
      */
+    //TODO animate graph between two estimates?
+
     //TODO get channel freq and everything else to scale axis!
 
     //TODO rx/tx antenna to matrix assignment (not here, in service)
     public static class ChannelEstimationFragment extends Fragment {
         private static final int MAX_RX_ANT = 2;
         private static final int MAX_TX_ANT = 4;
+
+        private static final float SCALE_MAX_FACTOR = 1.2f;
+        private static final float DOWNSCALE_THRESHOLD = 0.7f;
+        private static final int LAST_MAX_MAX_SIZE = 40;
 
         private ChannelEstimationService.ChannelEstimationListener channelEstimationListener;
 
@@ -1344,6 +1359,10 @@ public class MainActivity extends AppCompatActivity {
         private boolean drawAmplitude;
         private boolean drawPhase;
 
+        float graphCurScaleMax;
+        List<Float> lastMax;
+        float curMax;
+
         private LineDataSet lineDataSetFromChannelMatrix(int type, String label, ComplexFixedPoint[] channelMatrix, float colorAngle, boolean axisRight, boolean dashed) {
             List<Entry> entries = new ArrayList<Entry>();
 
@@ -1354,15 +1373,18 @@ public class MainActivity extends AppCompatActivity {
                 switch (type) {
                     case 0:
                         sampleVal = (float)sample.abs();
+                        curMax = Math.max(curMax, sampleVal);
                         break;
                     case 1:
                         sampleVal = (float)sample.angleInDegree();
                         break;
                     case 2:
                         sampleVal = sample.getReal();
+                        curMax = Math.max(curMax, Math.abs(sampleVal));
                         break;
                     case 3:
                         sampleVal = sample.getImaginary();
+                        curMax = Math.max(curMax, Math.abs(sampleVal));
                         break;
                 }
                 entries.add(new Entry(pos++, sampleVal)); //TODO x-values
@@ -1387,6 +1409,37 @@ public class MainActivity extends AppCompatActivity {
             return 360 * (index / (float) numColors);
         }
 
+        private void resetGraphAxisScaling() {
+            graphCurScaleMax = 0.0f;
+            lastMax = new LinkedList<Float>();
+        }
+
+        private void scaleGraphAxis() {
+            if (sharedPreferences.getBoolean("csi_autoscale", true)) {
+                if (curMax > graphCurScaleMax) {
+                    graphCurScaleMax = curMax * SCALE_MAX_FACTOR;
+                }
+
+                if (sharedPreferences.getBoolean("csi_downscale_graph", true)) {
+                    lastMax.add(curMax);
+                    if (lastMax.size() > LAST_MAX_MAX_SIZE) {
+                        lastMax.remove(0);
+                    }
+
+                    float max = 0;
+                    for (float f : lastMax) {
+                        max = Math.max(max, f);
+                    }
+                    if (max < graphCurScaleMax * DOWNSCALE_THRESHOLD) {
+                        graphCurScaleMax = curMax * SCALE_MAX_FACTOR;
+                        lastMax.clear();
+                    }
+                }
+            } else {
+                graphCurScaleMax = Integer.parseInt(sharedPreferences.getString("csi_graph_max", "1000"));
+            }
+        }
+
         private void drawChart(ChannelEstimationService.ChannelMatrices channelMatrices) {
             List<ILineDataSet> dataSets = new ArrayList<ILineDataSet>();
 
@@ -1404,6 +1457,7 @@ public class MainActivity extends AppCompatActivity {
             if (twoColors) {
                 numColors *= 2;
             }
+            curMax = 0;
             for (int rxAnt = 1; rxAnt <= channelMatrices.getNumRxAnt(); rxAnt++) {
                 if ((rxAntMode != 0) && (rxAntMode != rxAnt)) {
                     continue;
@@ -1438,11 +1492,13 @@ public class MainActivity extends AppCompatActivity {
                     color++;
                 }
             }
+            if (complexModeSelected || drawAmplitude) {
+                scaleGraphAxis();
+            }
 
             LineData lineData = new LineData(dataSets);
             channelChart.getAxisRight().setEnabled(false);
-            channelChart.getAxisLeft().resetAxisMinimum();
-            channelChart.getAxisLeft().resetAxisMaximum();
+            channelChart.getAxisLeft().setAxisMaximum(graphCurScaleMax);
 
             if (!complexModeSelected) {
                 channelChart.getAxisLeft().setAxisMinimum(0);
@@ -1453,6 +1509,8 @@ public class MainActivity extends AppCompatActivity {
                         channelChart.getAxisLeft().setAxisMaximum(360);
                     }
                 }
+            } else {
+                channelChart.getAxisLeft().setAxisMinimum(-graphCurScaleMax);
             }
 
             Legend l = channelChart.getLegend();
@@ -1541,6 +1599,7 @@ public class MainActivity extends AppCompatActivity {
                     complexModeSelected = (i == complexMode.getId());
                     storeBooleanInSharedPrefs("csi_visualization_mode_complex", complexModeSelected);
                     ampPhaseDetailOptions.setVisibility(complexModeSelected ? View.GONE : View.VISIBLE);
+                    resetGraphAxisScaling();
                     reDrawChartWithLastData();
                 }
             });
@@ -1601,6 +1660,7 @@ public class MainActivity extends AppCompatActivity {
             };
             channelEstimationService.addListener(channelEstimationListener);
 
+            resetGraphAxisScaling();
             reDrawChartWithLastData();
 
             return rootView;
