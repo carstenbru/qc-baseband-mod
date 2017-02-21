@@ -1,5 +1,6 @@
 package de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi;
 
+//TODO change to just ComplexInteger, do fp somewhere else
 //TODO fixed point treatments?
 //TODO doc
 

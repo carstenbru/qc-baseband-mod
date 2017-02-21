@@ -75,6 +75,7 @@ import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.MemAccessService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SeemooQmi;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SnprintfService;
 
+//TODO do not always register for channel estimation and lte sec
 //TODO refactor MainActivity class: put code in multiple files, maybe put GUI fragments in seperate files? one for each?
 
 
@@ -1334,11 +1335,7 @@ public class MainActivity extends AppCompatActivity {
     /**
      * fragment for showing channel estimation values
      */
-    //TODO animate graph between two estimates?
-
     //TODO get channel freq and everything else to scale axis!
-
-    //TODO rx/tx antenna to matrix assignment (not here, in service)
     public static class ChannelEstimationFragment extends Fragment {
         private static final int MAX_RX_ANT = 2;
         private static final int MAX_TX_ANT = 4;
@@ -1535,7 +1532,27 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        private void initAntSpinner(Spinner spinner, int maxVal, String type) {
+        private void configRxTxSelects(ChannelEstimationService.ChannelMatrices channelMatrices) {
+            int rxAntCount = MAX_RX_ANT;
+            int txAntCount = MAX_TX_ANT;
+            if (channelMatrices != null) {
+                rxAntCount = channelMatrices.getNumRxAnt();
+                txAntCount = channelMatrices.getNumTxAnt();
+            }
+
+            if (rxAntCount + 1 != rxAntSel.getCount()) {
+                configAntSpinner(rxAntSel, rxAntCount, "Rx");
+                int selected = sharedPreferences.getInt("rx_ant_mode", 0);
+                rxAntSel.setSelection((selected > rxAntSel.getCount()-1) ? 0: selected);
+            }
+            if (txAntCount + 1 != txAntSel.getCount()) {
+                configAntSpinner(txAntSel, txAntCount, "Tx");
+                int selected = sharedPreferences.getInt("tx_ant_mode", 0);
+                txAntSel.setSelection((selected > txAntSel.getCount()-1) ? 0: selected);
+            }
+        }
+
+        private void configAntSpinner(Spinner spinner, int maxVal, String type) {
             String options[] = new String[maxVal+1];
             options[0] = String.format("%s all", type);
             for (int i = 1; i <= maxVal; i++) {
@@ -1546,14 +1563,11 @@ public class MainActivity extends AppCompatActivity {
             spinner.setAdapter(adapter);
         }
 
-        //TODO show only available Rx/Tx antennas in selection or change to a valid setting if selection invalid when data arrives
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
             View rootView = inflater.inflate(R.layout.content_channel_estimation, container, false);
 
             rxAntSel = (Spinner) rootView.findViewById(R.id.rx_ant_select);
-            initAntSpinner(rxAntSel, MAX_RX_ANT, "Rx");
-            rxAntSel.setSelection(sharedPreferences.getInt("rx_ant_mode", 0));
             rxAntSel.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                 @Override
                 public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
@@ -1569,8 +1583,6 @@ public class MainActivity extends AppCompatActivity {
             });
 
             txAntSel = (Spinner) rootView.findViewById(R.id.tx_ant_select);
-            initAntSpinner(txAntSel, MAX_TX_ANT, "Tx");
-            txAntSel.setSelection(sharedPreferences.getInt("tx_ant_mode", 0));
             txAntSel.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                 @Override
                 public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
@@ -1584,6 +1596,7 @@ public class MainActivity extends AppCompatActivity {
 
                 }
             });
+            configRxTxSelects(channelEstimationService.getLastChannelMatrices());
 
             final LinearLayout ampPhaseDetailOptions = (LinearLayout) rootView.findViewById(R.id.amp_phase_detail_options);
             final RadioButton complexMode = (RadioButton) rootView.findViewById(R.id.complex_val);
@@ -1655,6 +1668,7 @@ public class MainActivity extends AppCompatActivity {
             channelEstimationListener = new ChannelEstimationService.ChannelEstimationListener() {
                 @Override
                 public void matricesReceived(ChannelEstimationService.ChannelMatrixEvent e) {
+                    configRxTxSelects(e.getChannelMatrices());
                     drawChart(e.getChannelMatrices());
                 }
             };

@@ -105,7 +105,6 @@ public class ChannelEstimationService extends SeemooQmiService {
                 int numTxAnt = (data[7] >> 4) & 0xF;
 
                 int dataPos = 8;
-                //TODO check order of Tx/Rx antennas!!
                 ChannelMatrices channelMatrices = new ChannelMatrices(numRxAnt, numTxAnt, numWhitenMatricesForCsf);
                 for (int txAnt = 0; txAnt < numTxAnt; txAnt++) {
                     for (int rxAnt = 0; rxAnt < numRxAnt; rxAnt++) {

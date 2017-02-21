@@ -102,7 +102,7 @@ public class MemDataFile {
         while (dataPos < data.length) {
             if ((curAddr & (long) 0xFFFF0000) != addrHighBase) {
                 int checksum = 4 + (int) ((curAddr >> 16) & 0xFF) + (int) ((curAddr >> 24) & 0xFF);
-                checksum = ~(checksum) + 1; //TODO check
+                checksum = ~(checksum) + 1;
                 stream.write(String.format(":02000002%1$04X%2$02X\n", (curAddr >> 16) & 0xFFFF, checksum & 0xFF).getBytes());
 
                 addrHighBase = curAddr & (long) 0xFFFF0000;
