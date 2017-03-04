@@ -21,4 +21,6 @@ ADDRESS(0x872A898) int lte_security_stream_compute_integrity_maci(unsigned int a
 ADDRESS(0x872A5D8) int lte_security_generate_key(unsigned char* in_key, unsigned char* in_string_ptr, unsigned char* in_string_len, unsigned char* out_key);
 ADDRESS(0x872A7B4) int lte_security_generate_algorithm_key(unsigned char* in_key, unsigned int algorithm_distinguisher, unsigned char algorithm_type, unsigned char* out_key_ptr);
 
+ADDRESS(0x9F0F454) void a2_ul_sec_process_write_keys_req(unsigned char first_key_index, unsigned char* first_key, unsigned char second_key_index, unsigned char* second_key, unsigned char third_key_index, unsigned char* third_key);
+
 #endif

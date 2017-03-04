@@ -42,6 +42,8 @@ ADDRESS(0x9F1686C) void a2_ul_phy_write_fill_task(void* source_address, unsigned
 
 ADDRESS(0x9F164F4) void a2_ul_phy_write_padding_bits(unsigned short num_pad_bits);
 
+ADDRESS(0x9F168CC) void a2_ul_phy_write_cipher_task(unsigned int cipher_algo, unsigned char key_index, unsigned int count_c, unsigned short key_stream_offset, unsigned char bearer_id, unsigned short cipher_length);
+
 ADDRESS(0x9F1654C) void a2_ul_phy_write_done_task(unsigned char harq_id, unsigned short tb_size_in_bits, unsigned int interrupt_reqd);
 ADDRESS(0x9F165CC) void a2_ul_phy_commit_write_ptr(unsigned char harq_id);
 
