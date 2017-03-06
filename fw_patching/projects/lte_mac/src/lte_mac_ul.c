@@ -320,7 +320,7 @@ void a2_ul_phy_write_done_task_hook(unsigned char harq_id, unsigned short tb_siz
             }
             if (cipher != 0) {
                 cipher_task_t* cipher_task = &phy_task_queue[i-1].task_data.cipher_task;
-                mutils_security_stream_cipher(2, //mutils technology value for LTE is 1, use different value so that it does not interfere with lte_sec project (otherwise too slow?)
+                mutils_security_stream_cipher(2, //mutils technology value for LTE is 1, modem firmware crashes if we use this value, so use another one..
                                               cipher_task->cipher_algo, 
                                               ul_key_store[cipher_task->key_index],
                                               data_ptr, 

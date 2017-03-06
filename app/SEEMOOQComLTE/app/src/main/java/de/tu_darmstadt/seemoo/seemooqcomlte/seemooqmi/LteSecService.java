@@ -8,10 +8,13 @@ package de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi;
 import android.content.Context;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.EventListener;
 import java.util.EventObject;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 import de.tu_darmstadt.seemoo.seemooqcomlte.R;
 
@@ -43,7 +46,7 @@ import de.tu_darmstadt.seemoo.seemooqcomlte.R;
 public class LteSecService extends SeemooQmiService {
     public static final int LTE_SEC_SVC_ID = 0x4C544573; //"LTEs" in ASCII
 
-    private List<LteSecListener> lteSecListeners = new LinkedList<LteSecListener>();
+    private Map<LteSecListener, RegistrationFlag[]> lteSecListeners = new HashMap<LteSecListener, RegistrationFlag[]>();
 
     /**
      * listener for LTE security updates
@@ -325,36 +328,28 @@ public class LteSecService extends SeemooQmiService {
                 }
             }
         });
-
-        //TODO depending on listeners!
-        RegistrationFlag[] flags = {
-                RegistrationFlag.GENERATED_ALGO_KEYS,
-                RegistrationFlag.CIPHER_CALLS,
-                RegistrationFlag.CIPHER_CALLS_KEY,
-                RegistrationFlag.CIPHER_CALLS_IN_MSG,
-                RegistrationFlag.CIPHER_CALLS_OUT_MSG,
-                RegistrationFlag.DECIPHER_CALLS,
-                RegistrationFlag.DECIPHER_CALLS_KEY,
-                RegistrationFlag.DECIPHER_CALLS_IN_MSG,
-                RegistrationFlag.DECIPHER_CALLS_OUT_MSG,
-                RegistrationFlag.MACI_CALLS,
-                RegistrationFlag.MACI_CALLS_KEY,
-                RegistrationFlag.MACI_CALLS_IN_MSG,
-                RegistrationFlag.MACI_CALLS_MAC
-        };
-        register(flags);
     }
 
-    public void addListener(LteSecListener lteSecListener) {
-        lteSecListeners.add(lteSecListener);
+    private RegistrationFlag[] calculateRequiredFlags() {
+        Set<RegistrationFlag> requiredFlags = new HashSet<RegistrationFlag>();
+        for (Map.Entry<LteSecListener, RegistrationFlag[]> e : lteSecListeners.entrySet()) {
+            Collections.addAll(requiredFlags, e.getValue());
+        }
+        return requiredFlags.toArray(new RegistrationFlag[requiredFlags.size()]);
+    }
+
+    public void addListener(LteSecListener lteSecListener, RegistrationFlag[] flags) {
+        lteSecListeners.put(lteSecListener, flags);
+        register(calculateRequiredFlags()); //update registration in modem
     }
 
     public void removeListener(LteSecListener lteSecListener) {
         lteSecListeners.remove(lteSecListener);
+        register(calculateRequiredFlags()); //update registration in modem
     }
 
     private void notifyNewAlgorithmKey(byte[] key, byte keyUse, byte keyAlgorithm) {
-        for (LteSecListener ul : lteSecListeners) {
+        for (LteSecListener ul : lteSecListeners.keySet()) {
             KeyUse keyUseEnum = KeyUse.fromInt(keyUse);
             ul.newAlgorithmKey(new NewAlgorithmKeyEvent(this, key, keyUseEnum, KeyAlgorithm.fromInt(keyUseEnum.name().contains("INT"), keyAlgorithm)));
         }
@@ -370,7 +365,7 @@ public class LteSecService extends SeemooQmiService {
             byte[] inMsg,
             byte[] outMsg,
             boolean directionDownlink) {
-        for (LteSecListener ul : lteSecListeners) {
+        for (LteSecListener ul : lteSecListeners.keySet()) {
             CryptoCallEvent cce = new CryptoCallEvent(this,
                     KeyAlgorithm.fromInt(type == RegistrationFlag.MACI_CALLS, keyAlgorithm),
                     bearer,

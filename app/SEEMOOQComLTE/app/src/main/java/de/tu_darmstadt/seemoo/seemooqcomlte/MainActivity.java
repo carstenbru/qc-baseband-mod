@@ -874,8 +874,12 @@ public class MainActivity extends AppCompatActivity {
             final TextView lteSecLog = (TextView) rootView.findViewById(R.id.lteSecLog);
 
             lteSecListener = new LteSecService.LteSecListener() {
-                private String byteArrToHexStringCipher(byte[] data) { //TODO
-                    return byteArrToHexString(data, false, 0) + ", " + byteArrToHexString(data, true, 0);
+                private String byteArrToHexStringCipher(byte[] data) {
+                    if (sharedPreferences.getBoolean("lte_sec_python", false)) {
+                        return byteArrToHexString(data, false, 0) + ", " + byteArrToHexString(data, true, 0);
+                    } else {
+                        return byteArrToHexString(data, false, 0);
+                    }
                 }
 
                 @Override
@@ -883,7 +887,9 @@ public class MainActivity extends AppCompatActivity {
                     String key = byteArrToHexStringCipher(e.getKey());
                     String s = String.format("new algorithm key for %s, used algorithm %s: %s\n\n", e.getKeyUse().name(), e.getKeyAlgorithm().name(), key);
                     lteSecLog.append(s);
-                    System.out.println(s); //TODO remove
+                    if (sharedPreferences.getBoolean("lte_sec_write_to_syso", false)) {
+                        System.out.println(s);
+                    }
                 }
 
                 private void writeCryptoCall(String type, LteSecService.CryptoCallEvent e) {
@@ -901,7 +907,9 @@ public class MainActivity extends AppCompatActivity {
                     s += "\n";
 
                     lteSecLog.append(s);
-                    System.out.println(s); //TODO remove/as option
+                    if (sharedPreferences.getBoolean("lte_sec_write_to_syso", false)) {
+                        System.out.println(s);
+                    }
                 }
 
                 @Override
@@ -919,7 +927,24 @@ public class MainActivity extends AppCompatActivity {
                     writeCryptoCall((e.isDirectionDownlink() ? "MAC-i call downlink" : "MAC-i call uplink"), e);
                 }
             };
-            lteSecService.addListener(lteSecListener);
+            //TODO depending on GUI settings
+            //TODO options: generated keys, cipher, decipher, mac and include data: key, in, out
+            LteSecService.RegistrationFlag[] flags = {
+                    LteSecService.RegistrationFlag.GENERATED_ALGO_KEYS,
+                    LteSecService.RegistrationFlag.CIPHER_CALLS,
+                    LteSecService.RegistrationFlag.CIPHER_CALLS_KEY,
+                    LteSecService.RegistrationFlag.CIPHER_CALLS_IN_MSG,
+                    LteSecService.RegistrationFlag.CIPHER_CALLS_OUT_MSG,
+                    LteSecService.RegistrationFlag.DECIPHER_CALLS,
+                    LteSecService.RegistrationFlag.DECIPHER_CALLS_KEY,
+                    LteSecService.RegistrationFlag.DECIPHER_CALLS_IN_MSG,
+                    LteSecService.RegistrationFlag.DECIPHER_CALLS_OUT_MSG,
+                    LteSecService.RegistrationFlag.MACI_CALLS,
+                    LteSecService.RegistrationFlag.MACI_CALLS_KEY,
+                    LteSecService.RegistrationFlag.MACI_CALLS_IN_MSG,
+                    LteSecService.RegistrationFlag.MACI_CALLS_MAC
+            };
+            lteSecService.addListener(lteSecListener, flags);
 
             return rootView;
         }
@@ -996,7 +1021,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    //TODO implement mem write in GUI
     /**
      * fragment showing memory access service GUI
      */

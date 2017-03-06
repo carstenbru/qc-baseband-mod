@@ -5,13 +5,13 @@
             android:defaultValue="100"
             android:selectAllOnFocus="true"
             android:singleLine="true"
-            android:title="poll interval"
+            android:title="Poll interval"
             android:key="poll_interval"
             android:inputType="number"
             android:summary="interval to poll messages from kernel driver"
             android:icon="@android:drawable/ic_menu_recent_history" />
         <MultiSelectListPreference
-            android:title="status log level"
+            android:title="Status log level"
             android:defaultValue="@array/log_options_default"
             android:entries="@array/log_options"
             android:entryValues="@array/log_options_values"
@@ -23,7 +23,7 @@
             android:selectAllOnFocus="true"
             android:singleLine="true"
             android:inputType="number"
-            android:title="status buffer size"
+            android:title="Status buffer size"
             android:key="status_buffer_size"
             android:summary="maximum number of stored status messages"
             android:icon="@android:drawable/ic_menu_save" />
@@ -32,7 +32,7 @@
     <PreferenceCategory android:title="Function Counter Service">
         <CheckBoxPreference
             android:defaultValue="true"
-            android:title="poll automatically"
+            android:title="Poll automatically"
             android:key="func_counter_poll"
             android:summary="function counters are polled regularly if checked"
             android:icon="@android:drawable/ic_menu_rotate" />
@@ -40,7 +40,7 @@
             android:defaultValue="200"
             android:selectAllOnFocus="true"
             android:singleLine="true"
-            android:title="counter poll interval"
+            android:title="Counter poll interval"
             android:key="func_counter_poll_interval"
             android:inputType="number"
             android:summary="interval to poll messages from kernel driver"
@@ -50,7 +50,7 @@
     <PreferenceCategory android:title="Snprintf Service">
         <CheckBoxPreference
             android:defaultValue="true"
-            android:title="only when tab active"
+            android:title="Only when tab active"
             android:key="snprintf_deregister"
             android:summary="deregister from service when the active tab is changed, no new messages will be received"
             android:icon="@android:drawable/ic_media_pause" />
@@ -64,11 +64,26 @@
             android:summary="maximum number of stored snprintf messages"
             android:icon="@android:drawable/ic_menu_save" />
     </PreferenceCategory>
+    <PreferenceCategory android:title="LTE Security Sevice">
+
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:title="Write to System.out"
+            android:key="lte_sec_write_to_syso"
+            android:summary="forward all generated messages to System.out"
+            android:icon="@android:drawable/ic_menu_edit" />
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:title="Python strings"
+            android:key="lte_sec_python"
+            android:summary="adds Python compatible strings for binary data in output"
+            android:icon="@android:drawable/ic_menu_add" />
+    </PreferenceCategory>
     <PreferenceCategory android:title="Memory Access Sevice">
 
         <CheckBoxPreference
             android:defaultValue="false"
-            android:title="keep last values"
+            android:title="Keep last values"
             android:key="mem_access_keep_last_values"
             android:summary="start with last input values instead of empty fields"
             android:icon="@android:drawable/ic_menu_revert" />
@@ -77,13 +92,13 @@
             android:selectAllOnFocus="true"
             android:singleLine="true"
             android:inputType="number"
-            android:title="data separation"
+            android:title="Data separation"
             android:key="mem_access_data_seperate"
             android:summary="number of bytes grouped together in data output"
             android:icon="@android:drawable/ic_menu_view" />
         <CheckBoxPreference
             android:defaultValue="true"
-            android:title="addresses in output"
+            android:title="Addresses in output"
             android:key="mem_access_include_address"
             android:summary="include addresses in output lines"
             android:icon="@android:drawable/ic_menu_add" />
@@ -91,7 +106,7 @@
             android:defaultValue="8"
             android:selectAllOnFocus="true"
             android:singleLine="true"
-            android:title="bytes per line"
+            android:title="Bytes per line"
             android:key="mem_access_bytes_per_line"
             android:dependency="mem_access_include_address"
             android:summary="number of bytes shown in a single line"
@@ -99,7 +114,7 @@
             android:inputType="number" />
         <CheckBoxPreference
             android:defaultValue="false"
-            android:title="write to System.out"
+            android:title="Write to System.out"
             android:key="mem_access_write_to_syso"
             android:summary="forward all generated messages to System.out"
             android:icon="@android:drawable/ic_menu_edit" />
@@ -117,7 +132,7 @@
             android:inputType="number" />
         <CheckBoxPreference
             android:defaultValue="true"
-            android:title="different colors"
+            android:title="Different colors"
             android:key="csi_visualization_use_different_colors"
             android:summary="use different colors for two component values (Amplitude/Phase and I/Q), otherwise a dashed line is used"
             android:icon="@android:drawable/ic_menu_gallery" />
