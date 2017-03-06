@@ -34,6 +34,7 @@
 #include <linux/init.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
+#include <linux/mutex.h>
 
 #include <asm/uaccess.h>
 
@@ -75,6 +76,8 @@ unsigned char read_buf[WRITE_BUF_SIZE];
 /* packet buffer for data device, one packet will be returned on next read */
 seemoo_qmi_packet_t* data_list;
 seemoo_qmi_packet_t** data_list_last_item_pointer;
+unsigned int data_list_size;
+DEFINE_MUTEX(data_list_mutex);
 
 /* ############################### */
 
@@ -113,8 +116,19 @@ static void received_message(unsigned char* data, unsigned int data_len, unsigne
     qmi_packet->length = data_len;
     memcpy(qmi_packet->data, data, data_len);
     
+    mutex_lock(&data_list_mutex);
     *data_list_last_item_pointer = qmi_packet;
     data_list_last_item_pointer = &qmi_packet->next;
+    data_list_size++;
+    //if size of list gets too big drop first messages
+    while (data_list_size > DATA_LIST_MAX_ELEMENTS) {
+        seemoo_qmi_packet_t* packet = data_list;
+        data_list = data_list->next;
+        data_list_size--;
+        kfree(packet);
+        write_error("%s: packet list got too big, dropping packet\n", __func__);
+    }
+    mutex_unlock(&data_list_mutex);
 }
 
 /**
@@ -358,11 +372,15 @@ static ssize_t data_read(struct file *fp, char __user *buf, size_t count, loff_t
     unsigned int len;
     
     if (data_list != NULL) {
-        seemoo_qmi_packet_t* packet = data_list;
+        seemoo_qmi_packet_t* packet;
+        mutex_lock(&data_list_mutex);
+        packet = data_list;
         data_list = data_list->next;
+        data_list_size--;
         if (data_list == NULL) {
             data_list_last_item_pointer = &data_list;
         }
+        mutex_unlock(&data_list_mutex);
         
         len = packet->length;
         if (copy_to_user(buf, packet->data, len)) {
@@ -435,6 +453,7 @@ static int __init seemoo_qmi_init(void)
 	
     data_list = NULL;
     data_list_last_item_pointer = &data_list;
+    data_list_size = 0;
     
 	/* create workqueue for event handling */
 	work_recv_msg_count = 0;
