@@ -11,18 +11,17 @@
 
 #define is_registered(option) ((registration_flags & option) == option)
 
-//TODO implement all these!
 /**
  * @brief registration flags specifying what indications with which content should be sent
  */
 typedef enum {
     GENERATED_KEYS_MASK = ((1 << 0) | (1 << 1)), /* mask for all generated keys flags */
-    GENERATED_KEYS = (1 << 0), /* TODO generated keys */
-    GENERATED_KEYS_INPUT = ((1 << 0) | (1 << 1)), /* TODO include input data (in_key, in_string, in_string_length) for generated keys */
+    GENERATED_KEYS = (1 << 0), /* generated keys */
+    GENERATED_KEYS_INPUT = ((1 << 0) | (1 << 1)), /* include input data (in_key, in_string, in_string_length) for generated keys */
     
     GENERATED_ALGO_KEYS_MASK = ((1 << 2) | (1 << 3)), /* mask for all generated algorithm keys flags */
     GENERATED_ALGO_KEYS = (1 << 2), /* generated algorithm keys (includes KeyUse, KeyAlgorithm)) */
-    GENERATED_ALGO_KEYS_INPUT = ((1 << 2) | (1 << 3)), /* TODO include input data (in_key)  */
+    GENERATED_ALGO_KEYS_INPUT = ((1 << 2) | (1 << 3)), /* include input data (in_key)  */
     
     CIPHER_CALLS_MASK = ((1 << 4) | (1 << 5) | (1 << 6) | (1 << 7)), /* mask for all cipher call flags */
     CIPHER_CALLS = (1 << 4), /* cipher calls (includes used algorithm, bearer, count, msg_length) */
@@ -58,12 +57,38 @@ void lte_sec_prepare_ind(unsigned int flags_mask) {
     *(data32 + 1) = registration_flags & flags_mask;
 }
 
+__attribute__ ((overwrite ("lte_security_generate_key")))
+int lte_security_generate_key_hook(unsigned char* in_key, unsigned char* in_string_ptr, unsigned char* in_string_len, unsigned char* out_key) {
+    int res = lte_security_generate_key_fw_org(in_key, in_string_ptr, in_string_len, out_key);
+    
+    if ((lte_sec_svc_client != 0) && is_registered(GENERATED_KEYS)) {        
+        lte_sec_prepare_ind(GENERATED_KEYS_MASK);
+        
+        memcpy(indication_buf.data + 8, out_key, 32);
+        
+        int pos = 8 + 32;
+        if (is_registered(GENERATED_KEYS_INPUT)) {
+            memcpy(indication_buf.data + pos, in_key, 32);
+            pos += 32;
+            *(indication_buf.data + pos++) = *in_string_len;
+            memcpy(indication_buf.data + pos, in_string_ptr, *in_string_len);
+            pos += *in_string_len;
+        }
+        
+        indication_buf.data_len = pos;
+        
+        qmi_csi_send_ind(lte_sec_svc_client, QMI_TEST_DATA_IND_V01, &indication_buf, sizeof(test_data_ind_msg_v01));
+    }
+    
+    return res;
+}
+
 __attribute__ ((overwrite ("lte_security_generate_algorithm_key")))
 int lte_security_generate_algorithm_key_hook(unsigned char* in_key, unsigned int algorithm_distinguisher, unsigned char algorithm_type, unsigned char* out_key_ptr) {
     int res = lte_security_generate_algorithm_key_fw_org(in_key, algorithm_distinguisher, algorithm_type, out_key_ptr);
     
     if ((lte_sec_svc_client != 0) && is_registered(GENERATED_ALGO_KEYS)) {        
-        lte_sec_prepare_ind(GENERATED_ALGO_KEYS);
+        lte_sec_prepare_ind(GENERATED_ALGO_KEYS_MASK);
         
         memcpy(indication_buf.data + 8, out_key_ptr, 16);
         *(indication_buf.data + 24) = algorithm_distinguisher;
@@ -71,7 +96,13 @@ int lte_security_generate_algorithm_key_hook(unsigned char* in_key, unsigned int
         *(indication_buf.data + 26) = 0;
         *(indication_buf.data + 27) = 0;
         
-        indication_buf.data_len = 8 + 16 + 4;
+        int pos = 8 + 16 + 4;
+        if (is_registered(GENERATED_ALGO_KEYS_INPUT)) {
+            memcpy(indication_buf.data + pos, in_key, 32);
+            pos += 32;
+        }
+        
+        indication_buf.data_len = pos;
         
         qmi_csi_send_ind(lte_sec_svc_client, QMI_TEST_DATA_IND_V01, &indication_buf, sizeof(test_data_ind_msg_v01));
     }
@@ -213,9 +244,6 @@ int mutils_security_stream_compute_integrity_maci_hook(unsigned char technology,
     
     return res;
 }
-
-//TODO merge functions a bit? code is quite similar but lots of different parameters..
-//TODO check if functions with DSM items as inputs are used! -> cannot find them in binary
 
 /**
  * @brief LTE security register request handler
