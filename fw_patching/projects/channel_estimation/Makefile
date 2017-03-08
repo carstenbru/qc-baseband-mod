@@ -12,7 +12,6 @@ FW_VERSION_STRING="SEEMOO Firmware ch_est"
 
 CUSTOM_BASE_DIR=../
 CUSTOM_SRCS=common/seemoo_qmi/seemoo_qmi_services.c
-CUSTOM_SRCS+=mem_access/src/mem_access.c
 
 SRC_DIR=./src
 IMAGE_DIR=./image

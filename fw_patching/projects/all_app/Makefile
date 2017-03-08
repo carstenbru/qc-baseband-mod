@@ -16,6 +16,7 @@ CUSTOM_SRCS+=func_counter_snprintf/src/func_counter_snprintf.c
 CUSTOM_SRCS+=lte_mac/src/lte_mac_dl.c lte_mac/src/lte_mac_ul.c
 CUSTOM_SRCS+=lte_sec/src/lte_sec.c
 CUSTOM_SRCS+=mem_access/src/mem_access.c
+CUSTOM_SRCS+=channel_estimation/src/channel_estimation.c
 
 SRC_DIR=./src
 IMAGE_DIR=./image
