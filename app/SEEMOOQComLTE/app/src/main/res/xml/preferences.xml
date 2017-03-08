@@ -131,6 +131,12 @@
             android:icon="@android:drawable/ic_menu_recent_history"
             android:inputType="number" />
         <CheckBoxPreference
+            android:defaultValue="false"
+            android:title="Subcarrier index"
+            android:key="csi_visualization_subcarrier_index"
+            android:summary="scale x-axis with subcarrier indices, otherwise resource blocks are indicated"
+            android:icon="@android:drawable/ic_dialog_dialer" />
+        <CheckBoxPreference
             android:defaultValue="true"
             android:title="Different colors"
             android:key="csi_visualization_use_different_colors"

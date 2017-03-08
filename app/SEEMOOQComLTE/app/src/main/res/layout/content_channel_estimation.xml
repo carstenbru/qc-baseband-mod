@@ -82,11 +82,50 @@
                 android:layout_weight="1" />
         </LinearLayout>
 
-        <com.github.mikephil.charting.charts.LineChart
-            android:id="@+id/channel_chart"
+        <RelativeLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_weight="1" />
+            android:layout_height="match_parent">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/bandwidthView"
+                android:textAlignment="center"
+                android:textSize="10sp" />
+
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <de.tu_darmstadt.seemoo.seemooqcomlte.VerticalTextView
+                    android:layout_height="match_parent"
+                    android:id="@+id/yAxisLeftLabel"
+                    android:textAlignment="textEnd"
+                    android:layout_width="wrap_content"
+                    android:gravity="bottom"
+                    android:layout_alignParentLeft="true"
+                    android:textSize="8sp" />
+
+                <de.tu_darmstadt.seemoo.seemooqcomlte.VerticalTextView
+                    android:layout_height="match_parent"
+                    android:id="@+id/yAxisRightLabel"
+                    android:textAlignment="textEnd"
+                    android:layout_width="wrap_content"
+                    android:gravity="bottom"
+                    android:layout_alignParentRight="true"
+                    android:visibility="gone"
+                    android:textSize="8sp" />
+
+                <com.github.mikephil.charting.charts.LineChart
+                    android:id="@+id/channel_chart"
+                    android:layout_width="fill_parent"
+                    android:layout_height="match_parent"
+                    android:layout_toRightOf="@id/yAxisLeftLabel"
+                    android:layout_toLeftOf="@id/yAxisRightLabel" />
+
+            </RelativeLayout>
+
+        </RelativeLayout>
 
     </LinearLayout>
 

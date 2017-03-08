@@ -47,9 +47,15 @@ public class ChannelEstimationService extends SeemooQmiService {
     }
 
     public class ChannelMatrices {
-        ComplexFixedPoint matrices[][][];
+        private int bandwidthIndex;
+        private ComplexFixedPoint matrices[][][];
 
-        public ChannelMatrices(int numRxAnt, int numTxAnt, int sampleCount) {
+        private final int resourceBlocks[] = {0, 6, 15, 25, 50, 75, 100};
+        private final float bandwidthMHz[] = {0, 1.4f, 3, 5, 10, 15, 20};
+
+        public ChannelMatrices(int bandwidthIndex, int numRxAnt, int numTxAnt, int sampleCount) {
+            bandwidthIndex++;
+            this.bandwidthIndex = (bandwidthIndex < resourceBlocks.length) ? bandwidthIndex : 0;
             matrices = new ComplexFixedPoint[numRxAnt][numTxAnt][sampleCount];
         }
 
@@ -71,6 +77,27 @@ public class ChannelEstimationService extends SeemooQmiService {
 
         public int getNumTxAnt() {
             return matrices[0].length;
+        }
+
+        public int getBandwidthIndex() {
+            return bandwidthIndex - 1;
+        }
+
+        public int getBandwidthResourceBlocks() {
+            return resourceBlocks[bandwidthIndex];
+        }
+
+        public float getBandwidthMHz() {
+            return  bandwidthMHz[bandwidthIndex];
+        }
+
+        //TODO test bandwidth feature, includ in GUI, adapt graph, if it works push
+        public String getBandwidthString(boolean withUnit) {
+            if (withUnit) {
+                return String.format("%.01f MHz", getBandwidthMHz()); //TODO try
+            } else {
+                return String.format("%.01f", getBandwidthMHz()); //TODO try
+            }
         }
     }
 
@@ -101,11 +128,12 @@ public class ChannelEstimationService extends SeemooQmiService {
                 byte[] data = e.getData();
 
                 int numWhitenMatricesForCsf = data[6];
-                int numRxAnt = data[7] & 0xF;
-                int numTxAnt = (data[7] >> 4) & 0xF;
+                int numRxAnt = (data[7] & 0x3) + 1;
+                int numTxAnt = ((data[7] >> 2) & 0x7) + 1;
+                int sysBandwidth = ((data[7] >> 5) & 0x7);
 
                 int dataPos = 8;
-                ChannelMatrices channelMatrices = new ChannelMatrices(numRxAnt, numTxAnt, numWhitenMatricesForCsf);
+                ChannelMatrices channelMatrices = new ChannelMatrices(sysBandwidth, numRxAnt, numTxAnt, numWhitenMatricesForCsf);
                 for (int txAnt = 0; txAnt < numTxAnt; txAnt++) {
                     for (int rxAnt = 0; rxAnt < numRxAnt; rxAnt++) {
                         for (int sample = 0; sample < numWhitenMatricesForCsf; sample++) {

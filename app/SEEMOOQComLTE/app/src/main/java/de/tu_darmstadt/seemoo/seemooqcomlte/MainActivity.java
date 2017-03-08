@@ -49,7 +49,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.github.mikephil.charting.charts.LineChart;
-import com.github.mikephil.charting.components.Description;
 import com.github.mikephil.charting.components.Legend;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.components.YAxis;
@@ -927,6 +926,8 @@ public class MainActivity extends AppCompatActivity {
                     writeCryptoCall((e.isDirectionDownlink() ? "MAC-i call downlink" : "MAC-i call uplink"), e);
                 }
             };
+            //TODO register only when tab active (as option, default)
+            //TODO register for channel estimation only when tab active
             //TODO depending on GUI settings
             //TODO options: generated keys, cipher, decipher, mac and include data: key, in, out
             LteSecService.RegistrationFlag[] flags = {
@@ -944,7 +945,7 @@ public class MainActivity extends AppCompatActivity {
                     LteSecService.RegistrationFlag.MACI_CALLS_IN_MSG,
                     LteSecService.RegistrationFlag.MACI_CALLS_MAC
             };
-            lteSecService.addListener(lteSecListener, flags);
+           // lteSecService.addListener(lteSecListener, flags); //TODO
 
             return rootView;
         }
@@ -1359,7 +1360,6 @@ public class MainActivity extends AppCompatActivity {
     /**
      * fragment for showing channel estimation values
      */
-    //TODO get channel freq and everything else to scale axis!
     public static class ChannelEstimationFragment extends Fragment {
         private static final int MAX_RX_ANT = 2;
         private static final int MAX_TX_ANT = 4;
@@ -1373,6 +1373,9 @@ public class MainActivity extends AppCompatActivity {
         private LineChart channelChart;
         private Spinner rxAntSel;
         private Spinner txAntSel;
+        private TextView bandwidthView;
+        private TextView yAxisLeftLabel;
+        private TextView yAxisRightLabel;
 
         private int rxAntMode;
         private int txAntMode;
@@ -1384,12 +1387,12 @@ public class MainActivity extends AppCompatActivity {
         List<Float> lastMax;
         float curMax;
 
-        private LineDataSet lineDataSetFromChannelMatrix(int type, String label, ComplexFixedPoint[] channelMatrix, float colorAngle, boolean axisRight, boolean dashed) {
+        private LineDataSet lineDataSetFromChannelMatrix(int type, String label, ComplexFixedPoint[] channelMatrix, float colorAngle, boolean axisRight, boolean dashed, int numRBs) {
             List<Entry> entries = new ArrayList<Entry>();
 
             int pos = 0;
+            boolean subcarrierIndex = sharedPreferences.getBoolean("csi_visualization_subcarrier_index", false);
             for (ComplexFixedPoint sample : channelMatrix) {
-                //TODO scale values
                 float sampleVal = 0.0f;
                 switch (type) {
                     case 0:
@@ -1408,10 +1411,15 @@ public class MainActivity extends AppCompatActivity {
                         curMax = Math.max(curMax, Math.abs(sampleVal));
                         break;
                 }
-                entries.add(new Entry(pos++, sampleVal)); //TODO x-values
+                int xValue = 0;
+                xValue = pos * numRBs / channelMatrix.length;
+                if (subcarrierIndex) {
+                    xValue *= 12;
+                }
+                entries.add(new Entry(xValue, sampleVal));
+                pos++;
             }
 
-            //TODO label axis
             LineDataSet dataSet = new LineDataSet(entries, label);
             dataSet.setAxisDependency(axisRight ? YAxis.AxisDependency.RIGHT : YAxis.AxisDependency.LEFT);
             float[] hsv = {colorAngle,1.0f,1.0f};
@@ -1489,25 +1497,26 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                     ComplexFixedPoint[] curMatrix = channelMatrices.getChannelMatrix(rxAnt - 1, txAnt - 1);
+                    int numRBs = channelMatrices.getBandwidthResourceBlocks();
                     if (complexModeSelected) {
                         String realLabel = String.format("Re Rx%d/Tx%d", rxAnt, txAnt);
-                        dataSets.add(lineDataSetFromChannelMatrix(2, realLabel, curMatrix, getColorAngle(color, numColors), false, false));
+                        dataSets.add(lineDataSetFromChannelMatrix(2, realLabel, curMatrix, getColorAngle(color, numColors), false, false, numRBs));
                         if (twoColors) {
                             color++;
                         }
                         String imgLabel = String.format("Im Rx%d/Tx%d", rxAnt, txAnt);
-                        dataSets.add(lineDataSetFromChannelMatrix(3, imgLabel, curMatrix, getColorAngle(color, numColors), false, !twoColors));
+                        dataSets.add(lineDataSetFromChannelMatrix(3, imgLabel, curMatrix, getColorAngle(color, numColors), false, !twoColors, numRBs));
                     } else {
                         if (drawAmplitude) {
                             String label = String.format("Abs Rx%d/Tx%d", rxAnt, txAnt);
-                            dataSets.add(lineDataSetFromChannelMatrix(0, label, curMatrix, getColorAngle(color, numColors), false, false));
+                            dataSets.add(lineDataSetFromChannelMatrix(0, label, curMatrix, getColorAngle(color, numColors), false, false, numRBs));
                             if (twoColors) {
                                 color++;
                             }
                         }
                         if (drawPhase) {
                             String label = String.format("Phase Rx%d/Tx%d", rxAnt, txAnt);
-                            dataSets.add(lineDataSetFromChannelMatrix(1, label, curMatrix, getColorAngle(color, numColors), drawAmplitude, !twoColors));
+                            dataSets.add(lineDataSetFromChannelMatrix(1, label, curMatrix, getColorAngle(color, numColors), drawAmplitude, !twoColors, numRBs));
                         }
                     }
                     color++;
@@ -1519,6 +1528,8 @@ public class MainActivity extends AppCompatActivity {
 
             LineData lineData = new LineData(dataSets);
             channelChart.getAxisRight().setEnabled(false);
+            yAxisRightLabel.setVisibility(View.GONE);
+            yAxisLeftLabel.setText("Amplitude       ");
             channelChart.getAxisLeft().setAxisMaximum(graphCurScaleMax);
 
             if (!complexModeSelected) {
@@ -1526,26 +1537,31 @@ public class MainActivity extends AppCompatActivity {
                 if (drawPhase) {
                     if (drawAmplitude) {
                         channelChart.getAxisRight().setEnabled(true);
+                        yAxisRightLabel.setText("Phase [degree]       ");
+                        yAxisRightLabel.setVisibility(View.VISIBLE);
                     } else {
                         channelChart.getAxisLeft().setAxisMaximum(360);
+                        yAxisLeftLabel.setText("Phase [degree]       ");
                     }
                 }
             } else {
                 channelChart.getAxisLeft().setAxisMinimum(-graphCurScaleMax);
             }
 
-            Legend l = channelChart.getLegend();
-            if (complexModeSelected) {
-                l.setMaxSizePercent(1.0f);
-            } else {
-                l.setMaxSizePercent(0.7f);
-            }
-
             channelChart.setData(lineData);
 
             XAxis xAxis = channelChart.getXAxis();
             xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
-            //TODO axis titles..
+
+            if (sharedPreferences.getBoolean("csi_visualization_subcarrier_index", false)) {
+                channelChart.getDescription().setText("Subcarrier");
+            } else {
+                channelChart.getDescription().setText("Resource Block");
+            }
+            channelChart.getDescription().setYOffset(-25);
+
+            String descr = String.format("   Bandwidth: %s MHz", channelMatrices.getBandwidthString(false));
+            bandwidthView.setText(descr);
 
             channelChart.invalidate();
         }
@@ -1679,15 +1695,17 @@ public class MainActivity extends AppCompatActivity {
             chEstLayout.setLayoutParams(lp);
 
             channelChart = (LineChart) rootView.findViewById(R.id.channel_chart);
-            Description descr = new Description();
-            descr.setText("");
-            channelChart.setDescription(descr);
             channelChart.getAxisRight().setAxisMinimum(0);
             channelChart.getAxisRight().setAxisMaximum(360);
             channelChart.getAxisRight().setDrawGridLines(false);
 
+            bandwidthView = (TextView) rootView.findViewById(R.id.bandwidthView);
+            yAxisLeftLabel = (TextView) rootView.findViewById(R.id.yAxisLeftLabel);
+            yAxisRightLabel = (TextView) rootView.findViewById(R.id.yAxisRightLabel);
+
             Legend l = channelChart.getLegend();
             l.setWordWrapEnabled(true);
+            l.setMaxSizePercent(0.7f);
 
             channelEstimationListener = new ChannelEstimationService.ChannelEstimationListener() {
                 @Override
