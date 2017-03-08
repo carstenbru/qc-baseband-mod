@@ -20,6 +20,97 @@
             android:layout_height="wrap_content"
             android:orientation="vertical" >
 
+            <LinearLayout
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <LinearLayout
+                    android:orientation="vertical"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1">
+
+                    <CheckBox
+                        android:text="Generated keys"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:id="@+id/lte_sec_master_key"
+                        android:layout_weight="1"
+                        android:checked="true" />
+
+                    <CheckBox
+                        android:text="Algorithm keys"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:id="@+id/lte_sec_keys"
+                        android:layout_weight="1"
+                        android:checked="true" />
+
+                    <CheckBox
+                        android:text="Cipher calls"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:id="@+id/lte_sec_cipher"
+                        android:layout_weight="1"
+                        android:checked="true" />
+
+                    <CheckBox
+                        android:text="Decipher calls"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:id="@+id/lte_sec_decipher"
+                        android:layout_weight="1"
+                        android:checked="true" />
+
+                    <CheckBox
+                        android:text="MAC generation"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:id="@+id/lte_sec_mac"
+                        android:checked="true" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:orientation="vertical"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1">
+
+                    <CheckBox
+                        android:text="Include key"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:id="@+id/lte_sec_inc_key"
+                        android:checked="true" />
+
+                    <CheckBox
+                        android:text="input data"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:id="@+id/lte_sec_inc_input"
+                        android:checked="true" />
+
+                    <CheckBox
+                        android:text="output data"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:id="@+id/lte_sec_inc_output"
+                        android:checked="true" />
+
+                    <Button
+                        android:text="clear messages"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:id="@+id/lte_sec_clear"
+                        android:textSize="10sp"
+                        tools:style="@style/Widget.AppCompat.Button.Small"
+                        style="@android:style/Widget.Button.Small"
+                        android:layout_weight="1" />
+
+                </LinearLayout>
+            </LinearLayout>
+
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

@@ -18,28 +18,7 @@ import java.util.Set;
 
 import de.tu_darmstadt.seemoo.seemooqcomlte.R;
 
-//TODO pycparser/hexag00n references in thesis
-
-//TODO try if MAC is now correct length
-//TODO try if MAC direction works
-//TODO try to calculate MAC and en/de-cryption
-//TODO try if mutils hooks work better..
-
-
-//TODO capture again: MAC algorithms were wrong, MAC length was wrong
-//TODO find and hook DSM functions and see if they are used..
-
-//TODO generate key function
 //TODO generate algo key input data
-
-
-//TODO implement all message types, depending on registration
-
-//TODO registration mode for listeners, register for all ORed
-//TODO options in GUI, either in options or directly in fragment (currently 2nd options preferred)
-
-//TODO last key caching (per purpose)
-//TODO message caching (not so important, maybe not)
 
 //TODO doc
 
@@ -52,6 +31,7 @@ public class LteSecService extends SeemooQmiService {
      * listener for LTE security updates
      */
     public interface LteSecListener extends EventListener {
+        void newKey(NewKeyEvent e);
         void newAlgorithmKey(NewAlgorithmKeyEvent e);
         void cipherCall(CryptoCallEvent e);
         void decipherCall(CryptoCallEvent e);
@@ -163,18 +143,48 @@ public class LteSecService extends SeemooQmiService {
     }
 
     /**
+     * master key update event
+     */
+    public class NewKeyEvent extends EventObject {
+        private byte key[];
+        private byte[] inKey;
+        private byte[] inString;
+
+        public NewKeyEvent(Object source, byte[] key, byte[] inKey, byte[] inString) {
+            super(source);
+            this.key = key;
+            this.inKey = inKey;
+            this.inString = inString;
+        }
+
+        public byte[] getKey() {
+            return key;
+        }
+
+        public byte[] getInKey() {
+            return inKey;
+        }
+
+        public byte[] getInString() {
+            return inString;
+        }
+    }
+
+    /**
      * algorithm key update event
      */
     public class NewAlgorithmKeyEvent extends EventObject {
         private byte key[];
         private KeyUse keyUse;
         private KeyAlgorithm keyAlgorithm;
+        private byte[] inKey;
 
-        public NewAlgorithmKeyEvent(Object source, byte[] key, KeyUse keyUse, KeyAlgorithm keyAlgorithm) {
+        public NewAlgorithmKeyEvent(Object source, byte[] key, KeyUse keyUse, KeyAlgorithm keyAlgorithm, byte[] inKey) {
             super(source);
             this.key = key;
             this.keyUse = keyUse;
             this.keyAlgorithm = keyAlgorithm;
+            this.inKey = inKey;
         }
 
         public byte[] getKey() {
@@ -187,6 +197,10 @@ public class LteSecService extends SeemooQmiService {
 
         public KeyAlgorithm getKeyAlgorithm() {
             return keyAlgorithm;
+        }
+
+        public byte[] getInKey() {
+            return inKey;
         }
     }
 
@@ -310,15 +324,40 @@ public class LteSecService extends SeemooQmiService {
                 notifyCryptoCall(type, data[8], (byte)(data[9] & 0x7F), count, msgLength, usedKey, inMsg, outMsg, directionDownlink);
             }
 
+            void readAndNotifyGeneratedAlgoKey(byte[] data, int messageContent) {
+                byte[] key = Arrays.copyOfRange(data, 8, 24);
+
+                byte[] inKey = null;
+                if (RegistrationFlag.GENERATED_ALGO_KEYS_INPUT.flagSet(messageContent)) {
+                    inKey = Arrays.copyOfRange(data, 28, 28 + 32);
+                }
+
+                notifyNewAlgorithmKey(key, data[24], data[25], inKey);
+            }
+
+            void readAndNotifyGeneratedKey(byte[] data, int messageContent) {
+                byte[] key = Arrays.copyOfRange(data, 8, 40);
+
+                byte[] inKey = null;
+                byte[] inString = null;
+                if (RegistrationFlag.GENERATED_KEYS_INPUT.flagSet(messageContent)) {
+                    inKey = Arrays.copyOfRange(data, 40, 40 + 32);
+                    byte inStringLength = data[72];
+                    inString = Arrays.copyOfRange(data, 73, 73 + inStringLength);
+                }
+
+                notifyNewKey(key, inKey, inString);
+            }
+
             @Override
             public void packetReceived(SeemooQmi.PacketReceiveEvent e) {
                 byte[] data = e.getData();
                 int messageContent = (int)SeemooQmi.readIntLittleEndian(data, 4);
 
-                if (RegistrationFlag.GENERATED_ALGO_KEYS.flagSet(messageContent)) {
-                    byte[] key = Arrays.copyOfRange(data, 8, 24);
-
-                    notifyNewAlgorithmKey(key, data[24], data[25]);
+                if (RegistrationFlag.GENERATED_KEYS.flagSet(messageContent)) {
+                    readAndNotifyGeneratedKey(data, messageContent);
+                } else if (RegistrationFlag.GENERATED_ALGO_KEYS.flagSet(messageContent)) {
+                    readAndNotifyGeneratedAlgoKey(data, messageContent);
                 } else if (RegistrationFlag.CIPHER_CALLS.flagSet(messageContent)) {
                     readAndNotifyCryptoCall(RegistrationFlag.CIPHER_CALLS, data, messageContent, RegistrationFlag.CIPHER_CALLS_KEY, RegistrationFlag.CIPHER_CALLS_IN_MSG, RegistrationFlag.CIPHER_CALLS_OUT_MSG);
                 } else if (RegistrationFlag.DECIPHER_CALLS.flagSet(messageContent)) {
@@ -348,10 +387,16 @@ public class LteSecService extends SeemooQmiService {
         register(calculateRequiredFlags()); //update registration in modem
     }
 
-    private void notifyNewAlgorithmKey(byte[] key, byte keyUse, byte keyAlgorithm) {
+    private void notifyNewKey(byte[] key, byte[] inKey, byte[] inString) {
+        for (LteSecListener ul : lteSecListeners.keySet()) {
+            ul.newKey(new NewKeyEvent(this, key, inKey, inString));
+        }
+    }
+
+    private void notifyNewAlgorithmKey(byte[] key, byte keyUse, byte keyAlgorithm, byte[] inKey) {
         for (LteSecListener ul : lteSecListeners.keySet()) {
             KeyUse keyUseEnum = KeyUse.fromInt(keyUse);
-            ul.newAlgorithmKey(new NewAlgorithmKeyEvent(this, key, keyUseEnum, KeyAlgorithm.fromInt(keyUseEnum.name().contains("INT"), keyAlgorithm)));
+            ul.newAlgorithmKey(new NewAlgorithmKeyEvent(this, key, keyUseEnum, KeyAlgorithm.fromInt(keyUseEnum.name().contains("INT"), keyAlgorithm), inKey));
         }
     }
 

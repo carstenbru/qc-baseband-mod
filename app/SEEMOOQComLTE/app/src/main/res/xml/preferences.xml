@@ -65,7 +65,12 @@
             android:icon="@android:drawable/ic_menu_save" />
     </PreferenceCategory>
     <PreferenceCategory android:title="LTE Security Sevice">
-
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:title="Only when tab active"
+            android:key="lte_sec_deregister"
+            android:summary="deregister from service when the active tab is changed, no new messages will be received"
+            android:icon="@android:drawable/ic_media_pause" />
         <CheckBoxPreference
             android:defaultValue="false"
             android:title="Write to System.out"

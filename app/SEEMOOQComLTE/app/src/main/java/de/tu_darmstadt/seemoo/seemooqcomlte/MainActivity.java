@@ -74,12 +74,10 @@ import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.MemAccessService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SeemooQmi;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SnprintfService;
 
-//TODO do not always register for channel estimation and lte sec
 //TODO refactor MainActivity class: put code in multiple files, maybe put GUI fragments in seperate files? one for each?
 
 
 //TODO finish lte_sec
-//TODO lte_sec output options
 //TODO at_commands
 
 
@@ -865,6 +863,83 @@ public class MainActivity extends AppCompatActivity {
      */
     public static class LteSecFragment extends Fragment {
         private LteSecService.LteSecListener lteSecListener;
+        private CompoundButton.OnCheckedChangeListener optionChangedListener;
+        boolean firstSetVisible = true;
+
+        private void updateListenerSubsciption(boolean regActive) {
+            lteSecService.removeListener(lteSecListener);
+            if (regActive) {
+                List<LteSecService.RegistrationFlag> flags = new LinkedList<LteSecService.RegistrationFlag>();
+
+                boolean incKey = sharedPreferences.getBoolean("lte_sec_inc_key", true);
+                boolean incInput = sharedPreferences.getBoolean("lte_sec_inc_input", true);
+                boolean incOutput = sharedPreferences.getBoolean("lte_sec_inc_output", true);
+
+                if (sharedPreferences.getBoolean("lte_sec_keys", true)) {
+                    flags.add(LteSecService.RegistrationFlag.GENERATED_ALGO_KEYS);
+                    if (incInput) {
+                        flags.add(LteSecService.RegistrationFlag.GENERATED_ALGO_KEYS_INPUT);
+                    }
+                }
+                if (sharedPreferences.getBoolean("lte_sec_master_key", true)) {
+                    flags.add(LteSecService.RegistrationFlag.GENERATED_KEYS);
+                    if (incInput) {
+                        flags.add(LteSecService.RegistrationFlag.GENERATED_KEYS_INPUT);
+                    }
+                }
+                if (sharedPreferences.getBoolean("lte_sec_cipher", true)) {
+                    flags.add(LteSecService.RegistrationFlag.CIPHER_CALLS);
+                    if (incKey) {
+                        flags.add(LteSecService.RegistrationFlag.CIPHER_CALLS_KEY);
+                    }
+                    if (incInput) {
+                        flags.add(LteSecService.RegistrationFlag.CIPHER_CALLS_IN_MSG);
+                    }
+                    if (incOutput) {
+                        flags.add(LteSecService.RegistrationFlag.CIPHER_CALLS_OUT_MSG);
+                    }
+                }
+                if (sharedPreferences.getBoolean("lte_sec_decipher", true)) {
+                    flags.add(LteSecService.RegistrationFlag.DECIPHER_CALLS);
+                    if (incKey) {
+                        flags.add(LteSecService.RegistrationFlag.DECIPHER_CALLS_KEY);
+                    }
+                    if (incInput) {
+                        flags.add(LteSecService.RegistrationFlag.DECIPHER_CALLS_IN_MSG);
+                    }
+                    if (incOutput) {
+                        flags.add(LteSecService.RegistrationFlag.DECIPHER_CALLS_OUT_MSG);
+                    }
+                }
+                if (sharedPreferences.getBoolean("lte_sec_mac", true)) {
+                    flags.add(LteSecService.RegistrationFlag.MACI_CALLS);
+                    if (incKey) {
+                        flags.add(LteSecService.RegistrationFlag.MACI_CALLS_KEY);
+                    }
+                    if (incInput) {
+                        flags.add(LteSecService.RegistrationFlag.MACI_CALLS_IN_MSG);
+                    }
+                    if (incOutput) {
+                        flags.add(LteSecService.RegistrationFlag.MACI_CALLS_MAC);
+                    }
+                }
+                lteSecService.addListener(lteSecListener, flags.toArray(new LteSecService.RegistrationFlag[flags.size()]));
+            }
+        }
+
+        @Override
+        public void setUserVisibleHint(boolean isVisibleToUser) {
+            super.setUserVisibleHint(isVisibleToUser);
+
+            //do not trigger this code at creation of the fragment..
+            if (!firstSetVisible) {
+                if (sharedPreferences.getBoolean("lte_sec_deregister", true)) {
+                    //de(register) on tab changes
+                    updateListenerSubsciption(isVisibleToUser);
+                }
+            }
+            firstSetVisible = false;
+        }
 
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -882,9 +957,28 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 @Override
+                public void newKey(LteSecService.NewKeyEvent e) {
+                    String key = byteArrToHexStringCipher(e.getKey());
+                    String s = String.format("new master key: %s\n", byteArrToHexStringCipher(e.getKey()));
+                    if (e.getInKey() != null) {
+                        s = String.format("%sinput key: %s\n", s, byteArrToHexStringCipher(e.getInKey()));
+                        s = String.format("%sinput string: %s\n", s, byteArrToHexStringCipher(e.getInString()));
+                    }
+                    s += "\n";
+                    lteSecLog.append(s);
+                    if (sharedPreferences.getBoolean("lte_sec_write_to_syso", false)) {
+                        System.out.println(s);
+                    }
+                }
+
+                @Override
                 public void newAlgorithmKey(LteSecService.NewAlgorithmKeyEvent e) {
                     String key = byteArrToHexStringCipher(e.getKey());
-                    String s = String.format("new algorithm key for %s, used algorithm %s: %s\n\n", e.getKeyUse().name(), e.getKeyAlgorithm().name(), key);
+                    String s = String.format("new algorithm key for %s, used algorithm %s: %s\n", e.getKeyUse().name(), e.getKeyAlgorithm().name(), key);
+                    if (e.getInKey() != null) {
+                        s = String.format("%sinput key: %s\n", s, byteArrToHexStringCipher(e.getInKey()));
+                    }
+                    s += "\n";
                     lteSecLog.append(s);
                     if (sharedPreferences.getBoolean("lte_sec_write_to_syso", false)) {
                         System.out.println(s);
@@ -893,7 +987,6 @@ public class MainActivity extends AppCompatActivity {
 
                 private void writeCryptoCall(String type, LteSecService.CryptoCallEvent e) {
                     String s = String.format("%s: algorithm: %s, bearer: %d, count: %d, message bytes: %d\n", type, e.getKeyAlgorithm().name(), e.getBearer(), e.getCount(), e.getMsgLength());
-                    //TODO change to use GUI settings
                     if (e.getUsedKey() != null) {
                         s = String.format("%sused key: %s\n", s, byteArrToHexStringCipher(e.getUsedKey()));
                     }
@@ -926,28 +1019,45 @@ public class MainActivity extends AppCompatActivity {
                     writeCryptoCall((e.isDirectionDownlink() ? "MAC-i call downlink" : "MAC-i call uplink"), e);
                 }
             };
-            //TODO register only when tab active (as option, default)
-            //TODO register for channel estimation only when tab active
-            //TODO depending on GUI settings
-            //TODO options: generated keys, cipher, decipher, mac and include data: key, in, out
-            LteSecService.RegistrationFlag[] flags = {
-                    LteSecService.RegistrationFlag.GENERATED_ALGO_KEYS,
-                    LteSecService.RegistrationFlag.CIPHER_CALLS,
-                    LteSecService.RegistrationFlag.CIPHER_CALLS_KEY,
-                    LteSecService.RegistrationFlag.CIPHER_CALLS_IN_MSG,
-                    LteSecService.RegistrationFlag.CIPHER_CALLS_OUT_MSG,
-                    LteSecService.RegistrationFlag.DECIPHER_CALLS,
-                    LteSecService.RegistrationFlag.DECIPHER_CALLS_KEY,
-                    LteSecService.RegistrationFlag.DECIPHER_CALLS_IN_MSG,
-                    LteSecService.RegistrationFlag.DECIPHER_CALLS_OUT_MSG,
-                    LteSecService.RegistrationFlag.MACI_CALLS,
-                    LteSecService.RegistrationFlag.MACI_CALLS_KEY,
-                    LteSecService.RegistrationFlag.MACI_CALLS_IN_MSG,
-                    LteSecService.RegistrationFlag.MACI_CALLS_MAC
+
+            optionChangedListener = new CompoundButton.OnCheckedChangeListener() {
+                @Override
+                public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                    String buttonId = getResources().getResourceName(compoundButton.getId());
+                    buttonId = buttonId.substring(buttonId.lastIndexOf("/") + 1);
+                    storeBooleanInSharedPrefs(buttonId, b);
+                    updateListenerSubsciption(true);
+                }
             };
-           // lteSecService.addListener(lteSecListener, flags); //TODO
+
+            initOptionButton((CheckBox) rootView.findViewById(R.id.lte_sec_master_key));
+            initOptionButton((CheckBox) rootView.findViewById(R.id.lte_sec_keys));
+            initOptionButton((CheckBox) rootView.findViewById(R.id.lte_sec_cipher));
+            initOptionButton((CheckBox) rootView.findViewById(R.id.lte_sec_decipher));
+            initOptionButton((CheckBox) rootView.findViewById(R.id.lte_sec_mac));
+            initOptionButton((CheckBox) rootView.findViewById(R.id.lte_sec_inc_key));
+            initOptionButton((CheckBox) rootView.findViewById(R.id.lte_sec_inc_input));
+            initOptionButton((CheckBox) rootView.findViewById(R.id.lte_sec_inc_output));
+
+            ((Button) rootView.findViewById(R.id.lte_sec_clear)).setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    lteSecLog.setText("");
+                }
+            });
+
+            if (!sharedPreferences.getBoolean("lte_sec_deregister", true)) {
+                updateListenerSubsciption(true);
+            }
 
             return rootView;
+        }
+
+        private void initOptionButton(CheckBox optionButton) {
+            String buttonId = getResources().getResourceName(optionButton.getId());
+            buttonId = buttonId.substring(buttonId.lastIndexOf("/") + 1);
+            optionButton.setChecked(sharedPreferences.getBoolean(buttonId, true));
+            optionButton.setOnCheckedChangeListener(optionChangedListener);
         }
 
         @Override
