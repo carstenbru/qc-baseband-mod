@@ -32,11 +32,11 @@ ADDRESS(0x0CD0F000) void* __patch_addr_data_base__;
        
 /* firmware identification strings*/
 
-ADDRESS(0x0A0FB088) char* fw_version_string;
-ADDRESS(0x0A0FB0A0) char* fw_time_string;
-ADDRESS(0x0A0FB0D0) char* fw_time_string2;
-ADDRESS(0x0A0FB0B0) char* fw_date_string;
-ADDRESS(0x0A0FB0E0) char* fw_date_string2;
+ADDRESS(0x0A0FB088) extern char* fw_version_string;
+ADDRESS(0x0A0FB0A0) extern char* fw_time_string;
+ADDRESS(0x0A0FB0D0) extern char* fw_time_string2;
+ADDRESS(0x0A0FB0B0) extern char* fw_date_string;
+ADDRESS(0x0A0FB0E0) extern char* fw_date_string2;
 
 /* hexagon helper functions */
 

@@ -21,7 +21,7 @@ ADDRESS(0x91FD550) unsigned short dsm_extract(void* packet_ptr, unsigned short o
 
 ADDRESS(0x9543208) void* lte_mac_ul_data_build_msg3_ho_ul_dl_rach(void* a, void* b, void* c, void* d);
 
-ADDRESS(0xC3B21FC) unsigned char lte_mac_ul_rach_struct; //actual type is some struct, not a char!
+ADDRESS(0xC3B21FC) extern unsigned char lte_mac_ul_rach_struct; //actual type is some struct, not a char!
 
 
 ADDRESS(0x9F15E40) void a2_ul_phy_set_technology(unsigned int technology);

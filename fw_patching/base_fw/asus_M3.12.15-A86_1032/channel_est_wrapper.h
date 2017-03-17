@@ -16,7 +16,7 @@ ADDRESS(0x9381360) void lte_LL1_csf_callback(unsigned int carrier_index, unsigne
 
 ADDRESS(0x93702E0) void* lte_LL1_get_cell_info(unsigned char carrier_index);
 
-ADDRESS(0xCCBFD5C) unsigned char* lte_LL1_csf_config_pointer; //actual pointer target type is some struct, not a char!
+ADDRESS(0xCCBFD5C) extern unsigned char* lte_LL1_csf_config_pointer; //actual pointer target type is some struct, not a char!
 
 #endif
  

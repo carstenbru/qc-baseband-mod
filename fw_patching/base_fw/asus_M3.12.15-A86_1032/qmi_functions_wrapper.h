@@ -37,11 +37,11 @@ ADDRESS(0x097AF000) void* qmi_ping_register_service(void* os_params);
  
 /* QMI ping (test) service definition data structures */
  
-ADDRESS(0x0A91EE14) void* test_qmi_idl_service_object_v01;
+ADDRESS(0x0A91EE14) extern void* test_qmi_idl_service_object_v01;
 
-ADDRESS(0x0A5A59B8) void* test_service_command_messages_v01;
-ADDRESS(0x0A5A597C) void* test_service_response_messages_v01;
-ADDRESS(0x0A5A5964) void* test_service_indication_messages_v01;
-ADDRESS(0x0A5A594C) void* test_qmi_idl_type_table_object_v01;
+ADDRESS(0x0A5A59B8) extern void* test_service_command_messages_v01;
+ADDRESS(0x0A5A597C) extern void* test_service_response_messages_v01;
+ADDRESS(0x0A5A5964) extern void* test_service_indication_messages_v01;
+ADDRESS(0x0A5A594C) extern void* test_qmi_idl_type_table_object_v01;
 
 #endif
