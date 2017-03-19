@@ -84,13 +84,21 @@ class DeclVisitor(c_ast.NodeVisitor):
             for expr in spec.exprlist.exprs:
                 #check for "address" attribute and handle it
                 if (expr.name.name == "address"):
-                    lcs_file.write('%s = %s;\n' % (node.name, expr.args.exprs[0].value))
-                    ret = ""
-                    params = ""
-                    if (type(node.type) is c_ast.FuncDecl):                        
-                        ret, name = self.type_to_str(node.type.type)
-                        params = self.param_list_to_str(node.type.args)
-                    self.symtab[node.name] = [expr.args.exprs[0].value, ret, params]
+                    if (expr.args.exprs[0].value != '"unknown"'):
+                        lcs_file.write('%s = %s;\n' % (node.name, expr.args.exprs[0].value))
+                        ret = ""
+                        params = ""
+                        if (type(node.type) is c_ast.FuncDecl):                        
+                            ret, name = self.type_to_str(node.type.type)
+                            params = self.param_list_to_str(node.type.args)
+                        self.symtab[node.name] = [expr.args.exprs[0].value, ret, params]
+                    else:
+                        if (node.name == "__patch_addr_text_base__"):
+                            print "error: patch address text base unknown, please assign a valid address"
+                            exit(1)
+                        if (node.name == "__patch_addr_data_base__"):
+                            print "error: patch address data base unknown, either assign a valid address or leave it undefined"
+                            exit(1)
   
 def generate_wrapper_lcs(filename, lcs_file, symtab_json_file):
     """

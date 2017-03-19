@@ -91,12 +91,11 @@ public class ChannelEstimationService extends SeemooQmiService {
             return  bandwidthMHz[bandwidthIndex];
         }
 
-        //TODO test bandwidth feature, includ in GUI, adapt graph, if it works push
         public String getBandwidthString(boolean withUnit) {
             if (withUnit) {
-                return String.format("%.01f MHz", getBandwidthMHz()); //TODO try
+                return String.format("%.01f MHz", getBandwidthMHz());
             } else {
-                return String.format("%.01f", getBandwidthMHz()); //TODO try
+                return String.format("%.01f", getBandwidthMHz());
             }
         }
     }

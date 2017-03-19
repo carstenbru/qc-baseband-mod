@@ -29,6 +29,23 @@ def get_offset_in_elf(metadata, address):
             if ((address >= start) & (address < start+size)):
                 return (seg['offset'] + address - start), i
     return 0, 0
+
+def get_address_from_offset_in_elf(metadata, offset):
+    """
+    gets the address of an offset in the target ELF file (file position)
+    and the number segment
+    
+    :param metadata: parsed metdata information of the ELF file
+    :param offset: offset to resolve
+    """
+    for i, seg in enumerate(metadata['segments']):
+        start = seg['offset']
+        size = seg['filesz']
+    
+        if (size != 0):
+            if ((offset >= start) & (offset < start+size)):
+                return (seg['paddr'] + offset - start), i
+    return 0, 0
  
 def gen_struct(format, image):
   """

@@ -119,7 +119,7 @@ class ElfPatch(BasePatch):
         if (start_seg != end_seg):
             print "error: patch code ends in another segment then it starts"
             print "this can also be caused by an overflow of the destination region"
-            print "start segment:%d segment:%d" % (start_seg, end_seg)
+            print "start segment:%d\tend segment:%d" % (start_seg, end_seg)
             exit(0)
             
         if (start_seg  == 0):
@@ -138,8 +138,8 @@ class ElfPatch(BasePatch):
                                     pre_seg = targetseg.copy()
                                     pre_seg['memsz'] = seg['paddr'] - start
                                     pre = 1
-                                    metadata['segments'].insert(i, pre_seg)
-                                    self.add_segment_in_header(dest_metadata, pre_seg)
+                                    dest_metadata['segments'].insert(i, pre_seg)
+                                    self.add_segment_in_header(dest_metadata)
                                 
                                 # insert our patch segment
                                 new_seg = seg.copy()

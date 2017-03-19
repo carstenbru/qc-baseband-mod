@@ -67,6 +67,9 @@ def generate_function(org_func_name, org_func, symtab, base_elf, metadata, func_
     :param func_symtab:     table of new symbols needed by generated functions
     """
     addr_str, ret_type, param_str = resolve_symbol_all(org_func, symtab)
+    if (addr_str == '"unknown"'):
+        print "error: trying to generate fw_org function for a function with unknown location"
+        exit(1)
     address = int(addr_str, 0)
     
     # read first 5 instruction of destination function
