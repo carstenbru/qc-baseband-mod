@@ -15,3 +15,4 @@ bootimg_tmp/
 kernel/asus_a86/boot.img
 channel_est_test/
 fw_patching/scripts/func_find/tmp/
+fw_patching/base_fw/test/
