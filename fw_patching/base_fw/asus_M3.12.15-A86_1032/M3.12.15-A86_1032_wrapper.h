@@ -18,6 +18,7 @@
 #include "lte_sec_wrapper.h"
 #include "dsat_wrapper.h"
 #include "channel_est_wrapper.h"
+#include "tasks_wrapper.h"
 
 /* ########################################### */
 
