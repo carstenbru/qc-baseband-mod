@@ -64,7 +64,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.AtCommandService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.ChannelEstimationService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.ComplexInteger;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.FunctionCounterService;
@@ -74,7 +73,6 @@ import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.MemAccessService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SeemooQmi;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SnprintfService;
 
-//TODO remove at_commands
 
 /* ------------ open improvements ------------ */
 //TODO refactor MainActivity class: put code in multiple files, maybe put GUI fragments in seperate files? one for each?
@@ -96,7 +94,6 @@ public class MainActivity extends AppCompatActivity {
     private static SnprintfService snprintfService = null;
     private static LteMacService lteMacService = null;
     private static LteSecService lteSecService = null;
-    private static AtCommandService atCommandService = null;
     private static MemAccessService memAccessService = null;
     private static ChannelEstimationService channelEstimationService = null;
 
@@ -317,10 +314,6 @@ public class MainActivity extends AppCompatActivity {
             lteSecService = new LteSecService(seemooQmi, getApplicationContext());
         }
 
-        if (atCommandService == null) {
-            atCommandService = new AtCommandService(seemooQmi, getApplicationContext());
-        }
-
         if (memAccessService == null) {
             memAccessService = new MemAccessService(seemooQmi, getApplicationContext());
         }
@@ -479,7 +472,7 @@ public class MainActivity extends AppCompatActivity {
      * pager adapter to handle tabs consisting of fragments for the different pages
      */
     public static class SeemooPagerAdapter extends FragmentPagerAdapter {
-        private static int NUM_TABS = 8;
+        private static int NUM_TABS = 7;
 
         private Context appContext;
 
@@ -507,14 +500,12 @@ public class MainActivity extends AppCompatActivity {
                 case 2:
                     return new SnprintfFragment();
                 case 3:
-                    return new LteMacFragment();
-                case 4:
-                    return new LteSecFragment();
-                case 5:
-                    return new AtCommandsFragment();
-                case 6:
                     return new MemAccessFragment();
-                case 7:
+                case 4:
+                    return new LteMacFragment();
+                case 5:
+                    return new LteSecFragment();
+                case 6:
                     return new ChannelEstimationFragment();
                 default:
                     return null;
@@ -536,14 +527,12 @@ public class MainActivity extends AppCompatActivity {
                 case 2:
                     return appContext.getResources().getString(R.string.tab_snprintf);
                 case 3:
-                    return appContext.getResources().getString(R.string.tab_lte_mac);
-                case 4:
-                    return appContext.getResources().getString(R.string.tab_lte_sec);
-                case 5:
-                    return appContext.getResources().getString(R.string.tab_at_commands);
-                case 6:
                     return appContext.getResources().getString(R.string.tab_mem_access);
-                case 7:
+                case 4:
+                    return appContext.getResources().getString(R.string.tab_lte_mac);
+                case 5:
+                    return appContext.getResources().getString(R.string.tab_lte_sec);
+                case 6:
                     return appContext.getResources().getString(R.string.tab_channel_estimation);
                 default:
                     return "error";
@@ -1071,70 +1060,6 @@ public class MainActivity extends AppCompatActivity {
             super.onDestroy();
 
             lteSecService.removeListener(lteSecListener);
-        }
-    }
-
-    /**
-     * fragment showing AT commands GUI
-     */
-    public static class AtCommandsFragment extends Fragment {
-        private AtCommandService.AtCommandListener atCommandListener;
-
-        @Override
-        public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-            View rootView = inflater.inflate(R.layout.content_at_commands, container, false);
-
-            final TextView atTerminal = (TextView) rootView.findViewById(R.id.atTerminal);
-            for (String m : atCommandService.getCachedMessages()) {
-                atTerminal.append(m);
-            }
-
-            final Button atSendButton = (Button) rootView.findViewById(R.id.atSendButton);
-            atSendButton.setEnabled(false);
-            final EditText atCommandInput = (EditText) rootView.findViewById(R.id.atCommandInput);
-            atCommandInput.addTextChangedListener(new TextWatcher() {
-                @Override
-                public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-
-                }
-
-                @Override
-                public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-
-                }
-
-                @Override
-                public void afterTextChanged(Editable editable) {
-                    atSendButton.setEnabled(editable.length() != 0);
-                }
-            });
-            atSendButton.setOnClickListener(new OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    String command = atCommandInput.getText().toString();
-                    if (!command.isEmpty()) {
-                        atCommandService.invokeCommand(command);
-                        atCommandInput.setText("");
-                    }
-                }
-            });
-
-            atCommandListener = new AtCommandService.AtCommandListener() {
-                @Override
-                public void statusUpdate(AtCommandService.AtCommandEvent e) {
-                    atTerminal.append(e.getMessage());
-                }
-            };
-            atCommandService.addListener(atCommandListener);
-
-            return rootView;
-        }
-
-        @Override
-        public void onDestroy() {
-            super.onDestroy();
-
-            atCommandService.removeListener(atCommandListener);
         }
     }
 
