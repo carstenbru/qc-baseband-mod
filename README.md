@@ -26,6 +26,7 @@ Our software may damage your hardware and may void your hardware's warranty! You
   *  **scripts**: Scripts implementing the framework's functionality
 * **kernel**: Android kernel with patches and additional modules
 * **thesis**: Master thesis during which this code was developed
+* **tools**: Miscellaneous additional tools/scripts
 
 ## Dependencies
 
