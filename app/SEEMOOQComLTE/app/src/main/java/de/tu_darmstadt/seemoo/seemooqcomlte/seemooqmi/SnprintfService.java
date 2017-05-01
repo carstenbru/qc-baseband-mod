@@ -75,7 +75,7 @@ public class SnprintfService extends SeemooQmiService {
             public void packetReceived(SeemooQmi.PacketReceiveEvent e) {
                 byte[] data = e.getData();
                 StringBuilder message = new StringBuilder();
-                int writeDest = (int)SeemooQmi.readIntLittleEndian(data, 4); //TODO option to print write destination or not
+                int writeDest = (int)SeemooQmi.readIntLittleEndian(data, 4);
                 for (int i = 8; i < e.getDataLength(); i++) {
                     message.append((char)data[i]);
                 }

@@ -48,7 +48,7 @@ public class ChannelEstimationService extends SeemooQmiService {
 
     public class ChannelMatrices {
         private int bandwidthIndex;
-        private ComplexFixedPoint matrices[][][];
+        private ComplexInteger matrices[][][];
 
         private final int resourceBlocks[] = {0, 6, 15, 25, 50, 75, 100};
         private final float bandwidthMHz[] = {0, 1.4f, 3, 5, 10, 15, 20};
@@ -56,18 +56,18 @@ public class ChannelEstimationService extends SeemooQmiService {
         public ChannelMatrices(int bandwidthIndex, int numRxAnt, int numTxAnt, int sampleCount) {
             bandwidthIndex++;
             this.bandwidthIndex = (bandwidthIndex < resourceBlocks.length) ? bandwidthIndex : 0;
-            matrices = new ComplexFixedPoint[numRxAnt][numTxAnt][sampleCount];
+            matrices = new ComplexInteger[numRxAnt][numTxAnt][sampleCount];
         }
 
-        public void setSample(int rxAnt, int txAnt, int sampleNumber, ComplexFixedPoint sampleData) {
+        public void setSample(int rxAnt, int txAnt, int sampleNumber, ComplexInteger sampleData) {
             matrices[rxAnt][txAnt][sampleNumber] = sampleData;
         }
 
-        public ComplexFixedPoint[] getChannelMatrix(int rxAnt, int txAnt) {
+        public ComplexInteger[] getChannelMatrix(int rxAnt, int txAnt) {
             return matrices[rxAnt][txAnt];
         }
 
-        public ComplexFixedPoint getChannelMatrixSample(int rxAnt, int txAnt, int sample) {
+        public ComplexInteger getChannelMatrixSample(int rxAnt, int txAnt, int sample) {
             return matrices[rxAnt][txAnt][sample];
         }
 
@@ -138,7 +138,7 @@ public class ChannelEstimationService extends SeemooQmiService {
                         for (int sample = 0; sample < numWhitenMatricesForCsf; sample++) {
                             int real = (data[dataPos] & 0xFF) | (data[dataPos + 1] << 8);
                             int imaginary = (data[dataPos + 2] & 0xFF) | (data[dataPos + 3] << 8);
-                            channelMatrices.setSample(rxAnt, txAnt, sample, new ComplexFixedPoint(real, imaginary));
+                            channelMatrices.setSample(rxAnt, txAnt, sample, new ComplexInteger(real, imaginary));
                             dataPos += 4;
                         }
                     }

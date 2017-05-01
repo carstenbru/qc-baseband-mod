@@ -1,6 +1,10 @@
-package de.tu_darmstadt.seemoo.seemooqcomlte;
+/**
+ * Class to store and load memory data in various binary formats
+ *
+ * @author Carsten Bruns (carst.bruns@gmx.de)
+ */
 
-//TODO document
+package de.tu_darmstadt.seemoo.seemooqcomlte;
 
 import android.content.Context;
 import android.net.Uri;
@@ -18,11 +22,25 @@ public class MemDataFile {
     private byte[] data;
     private String fileName;
 
+    /**
+     * constructor, used when data is known (e.g. to store read data later)
+     *
+     * @param startAddress first address in memory of the data bytes
+     * @param data actual data bytes
+     */
     public MemDataFile(int startAddress, byte[] data) {
         this.startAddress = startAddress;
         this.data = data;
     }
 
+    /**
+     * loads a MemDataFile from a stored .bin file
+     *
+     * @param context app context
+     * @param uri file identifier
+     * @param startAddress first address in memory of the data contained in the file
+     * @return the loaded MemDataFile object
+     */
     private static MemDataFile createMemDataFileBin(Context context, Uri uri, int startAddress) {
         try {
             InputStream iss = context.getContentResolver().openInputStream(uri);
@@ -35,6 +53,13 @@ public class MemDataFile {
         }
     }
 
+    /**
+     * loads a MemDataFile from a stored .ihex file
+     *
+     * @param context app context
+     * @param uri file identifier
+     * @return the loaded MemDataFile object
+     */
     private static MemDataFile createMemDataFileIHex(Context context, Uri uri) {
         boolean startAddressHighSet = false;
         boolean startAddressLowSet = false;
@@ -49,12 +74,12 @@ public class MemDataFile {
             int readBytes = 0;
             String line;
             boolean gotEndRecord = false;
-            while (((line = br.readLine()) != null) && !gotEndRecord) {
+            while (((line = br.readLine()) != null) && !gotEndRecord) { //parse ihex records
                 line.trim();
                 if (line.startsWith(":")) {
                     int type = Integer.parseInt(line.substring(7,9), 16);
                     switch (type) {
-                        case 0:
+                        case 0: //normal data record
                             if (!startAddressLowSet) {
                                 startAddress |= (Integer.parseInt(line.substring(3,7), 16) & 0xFFFF);
                                 startAddressLowSet = true;
@@ -65,10 +90,10 @@ public class MemDataFile {
                                 bytes[readBytes++] = (byte)Integer.parseInt(line.substring(9 + i*2, 11 + i*2), 16);
                             }
                             break;
-                        case 1:
+                        case 1: //end record
                             gotEndRecord = true;
                             break;
-                        case 2:
+                        case 2: //high address record
                             if (!startAddressHighSet) {
                                 startAddress = Integer.parseInt(line.substring(9,13), 16) << 16;
                                 startAddressHighSet = true;
@@ -84,6 +109,14 @@ public class MemDataFile {
         }
     }
 
+    /**
+     * loads a MemDataFile (in ihex or bin)
+     *
+     * @param context app context
+     * @param uri file identifier
+     * @param startAddress first address in memory of the data contained in the file
+     * @return the loaded MemDataFile object
+     */
     public static MemDataFile createMemDataFile(Context context, Uri uri, int startAddress) {
         String uriString  = uri.toString();
         if ((uriString.contains(".ihex")) || (uriString.contains(".hex"))) {
@@ -93,6 +126,12 @@ public class MemDataFile {
         }
     }
 
+    /**
+     * writes the data contained in the object in an ihex format
+     *
+     * @param stream target stream
+     * @throws IOException
+     */
     private void writeIHexFile(FileOutputStream stream) throws IOException {
         long curAddr = (long)startAddress;
         long addrHighBase = 0;
@@ -100,7 +139,7 @@ public class MemDataFile {
 
         int dataPos = 0;
         while (dataPos < data.length) {
-            if ((curAddr & (long) 0xFFFF0000) != addrHighBase) {
+            if ((curAddr & (long) 0xFFFF0000) != addrHighBase) { //check if we have to write a new high address record
                 int checksum = 4 + (int) ((curAddr >> 16) & 0xFF) + (int) ((curAddr >> 24) & 0xFF);
                 checksum = ~(checksum) + 1;
                 stream.write(String.format(":02000002%1$04X%2$02X\n", (curAddr >> 16) & 0xFFFF, checksum & 0xFF).getBytes());
@@ -130,6 +169,14 @@ public class MemDataFile {
         stream.write(":00000001FF\n".getBytes()); //write end of file record
     }
 
+    /**
+     * writes the data contained in the object into a file
+     *
+     * @param path path of the destination file
+     * @param fileName destination file name
+     * @param iHex true to write in ihex format, false to write in bin format
+     * @return true on success, false on errors
+     */
     private boolean writeToFile(File path, String fileName, boolean iHex) {
         File file = new File(path, fileName);
 
@@ -154,10 +201,24 @@ public class MemDataFile {
         return success;
     }
 
+    /**
+     * writes the data contained in the object into a file in bin format
+     *
+     * @param path path of the destination file
+     * @param fileName destination file name
+     * @return true on success, false on errors
+     */
     public boolean writeToBinFile(File path, String fileName) {
         return writeToFile(path, fileName, false);
     }
 
+    /**
+     * writes the data contained in the object into a file in ihex format
+     *
+     * @param path path of the destination file
+     * @param fileName destination file name
+     * @return true on success, false on errors
+     */
     public boolean writeToIHexFile(File path, String fileName) {
         return writeToFile(path, fileName, true);
     }

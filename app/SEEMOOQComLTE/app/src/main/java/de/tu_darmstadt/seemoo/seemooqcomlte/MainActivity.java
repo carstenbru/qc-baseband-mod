@@ -66,7 +66,7 @@ import java.util.regex.Pattern;
 
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.AtCommandService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.ChannelEstimationService;
-import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.ComplexFixedPoint;
+import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.ComplexInteger;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.FunctionCounterService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.LteMacService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.LteSecService;
@@ -74,24 +74,21 @@ import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.MemAccessService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SeemooQmi;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SnprintfService;
 
+//TODO remove at_commands
+
+/* ------------ open improvements ------------ */
 //TODO refactor MainActivity class: put code in multiple files, maybe put GUI fragments in seperate files? one for each?
-
-
-//TODO finish lte_sec
-//TODO at_commands
-
-
-//TODO nice GUI
-// -move settings icon (too far right, too close to text
-// -when changing to a not scrollable tab and title bar is removed we cannot get it again
-// -keyboard shows up when de-focusing edit texts in lte mac tab
-// -app icon
-// -settings: group header color
-
 //TODO snprintf show write destination, choose destinations to show from list of received ones (filter)
 //->store snprintf messages in service WITH destination ID
 
-//TODO TODOs
+//TODO small GUI fixes
+// -move settings icon (too far right, too close to text
+// -when changing to a not scrollable tab and title bar is removed, we cannot get it again
+// -keyboard shows up when de-focusing edit texts in lte mac tab
+// -app icon
+// -settings: group header color
+/* ------------------------------------------- */
+
 
 public class MainActivity extends AppCompatActivity {
     private static SeemooQmi seemooQmi = null;
@@ -136,7 +133,16 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    //TODO document (also other stuff!)
+    /**
+     * converts an array of bytes to a ASCII hex string
+     *
+     * @param byteArr data array
+     * @param pythonString true to print in a format readable by python, false for human readable
+     * @param seperation number of bytes after which a space should be inserted
+     * @param startOffset index of the first byte to convert
+     * @param length number of bytes to convert
+     * @return ASCII hex string of the input data
+     */
     public static String byteArrToHexString(byte[] byteArr, boolean pythonString, int seperation, int startOffset, int length) {
         StringBuilder sb = new StringBuilder();
         if (!pythonString) {
@@ -489,7 +495,7 @@ public class MainActivity extends AppCompatActivity {
             this.appContext = appContext;
         }
 
-        @Override //TODO re-order?
+        @Override
         public Fragment getItem(int i) {
             switch (i) {
                 case 0:
@@ -520,7 +526,7 @@ public class MainActivity extends AppCompatActivity {
             return NUM_TABS;
         }
 
-        @Override //TODO re-order?
+        @Override
         public CharSequence getPageTitle(int position) {
             switch (position) {
                 case 0:
@@ -1497,12 +1503,12 @@ public class MainActivity extends AppCompatActivity {
         List<Float> lastMax;
         float curMax;
 
-        private LineDataSet lineDataSetFromChannelMatrix(int type, String label, ComplexFixedPoint[] channelMatrix, float colorAngle, boolean axisRight, boolean dashed, int numRBs) {
+        private LineDataSet lineDataSetFromChannelMatrix(int type, String label, ComplexInteger[] channelMatrix, float colorAngle, boolean axisRight, boolean dashed, int numRBs) {
             List<Entry> entries = new ArrayList<Entry>();
 
             int pos = 0;
             boolean subcarrierIndex = sharedPreferences.getBoolean("csi_visualization_subcarrier_index", false);
-            for (ComplexFixedPoint sample : channelMatrix) {
+            for (ComplexInteger sample : channelMatrix) {
                 float sampleVal = 0.0f;
                 switch (type) {
                     case 0:
@@ -1606,7 +1612,7 @@ public class MainActivity extends AppCompatActivity {
                         continue;
                     }
 
-                    ComplexFixedPoint[] curMatrix = channelMatrices.getChannelMatrix(rxAnt - 1, txAnt - 1);
+                    ComplexInteger[] curMatrix = channelMatrices.getChannelMatrix(rxAnt - 1, txAnt - 1);
                     int numRBs = channelMatrices.getBandwidthResourceBlocks();
                     if (complexModeSelected) {
                         String realLabel = String.format("Re Rx%d/Tx%d", rxAnt, txAnt);

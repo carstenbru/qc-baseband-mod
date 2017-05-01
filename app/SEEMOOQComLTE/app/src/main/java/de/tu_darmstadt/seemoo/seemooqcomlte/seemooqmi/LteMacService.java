@@ -91,7 +91,6 @@ public class LteMacService extends SeemooQmiService {
             datagramSocket = new DatagramSocket();
         } catch (SocketException se) {
             datagramSocket = null;
-            //TODO
         }
 
         //add listener for service registration change responses
@@ -155,7 +154,6 @@ public class LteMacService extends SeemooQmiService {
      * class for metadata containing additional information for LTE MAC downlink messages
      */
     private class LteMacDLMetadata {
-        //TODO decode other information of metadata
         private int rntiType;
         private int frameNumber;
 
@@ -184,7 +182,6 @@ public class LteMacService extends SeemooQmiService {
         dataStream.write((byte)wiresharkUeid);
     }
 
-    int last_dl_freme_num; //TODO remove
     /**
      * send a LTE MAC frame over UDP
      *
@@ -217,7 +214,6 @@ public class LteMacService extends SeemooQmiService {
                 dataStream.write((byte)(metadata.getFrameNumber() >> 8));
                 dataStream.write((byte)metadata.getFrameNumber());
                 writeConstantMetadata(dataStream);
-                last_dl_freme_num = metadata.getFrameNumber();
 
                 //include PDU
                 dataStream.write(MAC_LTE_PAYLOAD_TAG);
@@ -262,12 +258,10 @@ public class LteMacService extends SeemooQmiService {
             InetAddress dest = InetAddress.getByName(udpIpAdress);
             DatagramPacket p = new DatagramPacket(dataStream.toByteArray(), dataStream.size(), dest, udpPort);
             datagramSocket.send(p);
-        } catch (SocketException se) { //TODO maybe deactivate on exception as it will be the same next time
-            //TODO
+        } catch (SocketException se) {
+            //maybe deactivate on exception as it will be the same next time
         } catch (UnknownHostException uhe) {
-            //TODO
         } catch (IOException ioe) {
-            //TODO
         }
     }
 

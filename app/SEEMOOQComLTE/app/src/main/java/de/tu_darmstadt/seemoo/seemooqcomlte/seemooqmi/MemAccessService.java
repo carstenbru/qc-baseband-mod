@@ -56,7 +56,6 @@ public class MemAccessService extends SeemooQmiService {
         void writeDone(MemoryDataEvent e);
     }
 
-    //TODO implement read/write event disntinction
     /**
      * memory data event
      */

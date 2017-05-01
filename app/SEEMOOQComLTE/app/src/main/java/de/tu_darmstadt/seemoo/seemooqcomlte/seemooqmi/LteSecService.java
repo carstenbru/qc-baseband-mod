@@ -18,10 +18,6 @@ import java.util.Set;
 
 import de.tu_darmstadt.seemoo.seemooqcomlte.R;
 
-//TODO generate algo key input data
-
-//TODO doc
-
 public class LteSecService extends SeemooQmiService {
     public static final int LTE_SEC_SVC_ID = 0x4C544573; //"LTEs" in ASCII
 
@@ -377,6 +373,12 @@ public class LteSecService extends SeemooQmiService {
         return requiredFlags.toArray(new RegistrationFlag[requiredFlags.size()]);
     }
 
+    /**
+     * adds a listener for events to this service
+     *
+     * @param lteSecListener the listener
+     * @param flags a set of flags to indicate events for which the listener wants to be informed
+     */
     public void addListener(LteSecListener lteSecListener, RegistrationFlag[] flags) {
         lteSecListeners.put(lteSecListener, flags);
         register(calculateRequiredFlags()); //update registration in modem
