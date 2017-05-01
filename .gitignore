@@ -14,5 +14,7 @@ PadFoneT004-10.12.3.94-kernel-src/
 bootimg_tmp/
 kernel/asus_a86/boot.img
 channel_est_test/
+nexus_test/
+at_commands/
 fw_patching/scripts/func_find/tmp/
 fw_patching/base_fw/test/
