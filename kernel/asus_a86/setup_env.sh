@@ -1,7 +1,7 @@
 export NDK_ROOT=/home/carsten/Android/dev/android-ndk-r11c/
 
-export CC=$(pwd)/buildtools/arm-eabi-4.7/bin/arm-eabi-
-export CROSS_COMPILE=$(pwd)/buildtools/arm-eabi-4.7/bin/arm-eabi-
+export CC=$(pwd)/../buildtools/arm-eabi-4.7/bin/arm-eabi-
+export CROSS_COMPILE=$(pwd)/../buildtools/arm-eabi-4.7/bin/arm-eabi-
 
 export ARCH=arm
 export SUBARCH=arm
