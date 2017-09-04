@@ -72,7 +72,7 @@ def write_sed_script(mapping, sed_script_filename):
     sed_script.close()
     
 def print_stats(mapping):
-     """
+    """
     writes out statistics for the obtained mapping result
     
     :param mapping:             obtained mapping between functions of the base firmware and the new target
