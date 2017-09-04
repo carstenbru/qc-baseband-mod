@@ -8,7 +8,7 @@
 KERNEL=PadFoneT004-10.12.3.94-kernel-src
 DEFCONFIG=a86-perf_seemoo_defconfig
 
-MKBOOT=$(shell pwd)/buildtools/mkboot/mkboot
+MKBOOT=$(shell pwd)/../buildtools/mkboot/mkboot
 BASE_FILES=./base_files
 BOOTIMG_TMP=./bootimg_tmp
 KERNEL_PATCH_DIR=./patches
@@ -16,14 +16,32 @@ RAMDISK_PATCH_DIR=./patches_ramdisk
 
 INCLUDE_PATH_FIX=-Idrivers/media/platform/msm/camera_v2/sensor -Idrivers/power/service -Isound/soc/msm/qdsp6v2
 
+KERNEL_PATCH_FILES=$(shell find $(KERNEL_PATCH_DIR) -name '*.patch')
+RAMDISK_PATCH_FILES=$(shell find $(RAMDISK_PATCH_DIR) -name '*.patch')
+
 all: boot.img
 
 .PHONY: patch_kernel clean clean_boot clean_kernel check-setup-env
 
 clean: clean_boot clean_kernel
 
+# applies a set of patch files to a target directory
+# e.g. $(call apply_patches,$(RAMDISK_PATCH_FILES),$(BOOTIMG_TMP)/ramdisk)
+define apply_patches
+	for patchfile in $(1) ; do \
+		echo "Patch file: $$patchfile" ;\
+		if (cd $(2) && patch --dry-run --reverse -N -p0 -r -) < $$patchfile >/dev/null 2>&1; then \
+			echo "Patch already applied - skipping." ;\
+		else\
+			echo "Patching..." ;\
+			(cd $(2) && patch -N -p0 -r -) < $$patchfile ;\
+		fi ;\
+	done
+endef
+
 patch_kernel: $(KERNEL)/Makefile $(wildcard $(KERNEL_PATCH_DIR)/**/*)
-	cp -a $(KERNEL_PATCH_DIR)/* $(KERNEL)/
+	@if [ -d $(KERNEL_PATCH_DIR) ]; then rsync -a --exclude='*.patch' $(KERNEL_PATCH_DIR)/ $(KERNEL)/; fi
+	@if [ -d $(KERNEL_PATCH_DIR) ]; then $(call apply_patches,$(KERNEL_PATCH_FILES),$(KERNEL)); fi
 
 $(KERNEL)/Makefile:
 	#extract kernel
@@ -38,13 +56,14 @@ $(KERNEL)/.config: patch_kernel check-setup-env
 	cd $(KERNEL) && make $(DEFCONFIG)
 
 $(KERNEL)/arch/arm/boot/zImage: FORCE $(KERNEL)/Makefile patch_kernel $(KERNEL)/.config check-setup-env
-	cd $(KERNEL) && make
+	cd $(KERNEL) && make -j4
 
 boot.img: $(KERNEL)/arch/arm/boot/zImage check-setup-env
 	rm -Rf $(BOOTIMG_TMP)
 	#unpack source boot image and replace kernel
 	$(MKBOOT) $(BASE_FILES)/boot.img $(BOOTIMG_TMP)
-	if [ -d $(RAMDISK_PATCH_DIR) ]; then cp -a $(RAMDISK_PATCH_DIR)/* $(BOOTIMG_TMP)/ramdisk; fi
+	@if [ -d $(RAMDISK_PATCH_DIR) ]; then rsync -a --exclude='*.patch' $(RAMDISK_PATCH_DIR) $(BOOTIMG_TMP)/ramdisk; fi
+	@if [ -d $(RAMDISK_PATCH_DIR) ]; then $(call apply_patches,$(RAMDISK_PATCH_FILES),$(BOOTIMG_TMP)/ramdisk); fi
 	rm -f $(BOOTIMG_TMP)/kernel
 	cp $(KERNEL)/arch/arm/boot/zImage $(BOOTIMG_TMP)/kernel
 	
