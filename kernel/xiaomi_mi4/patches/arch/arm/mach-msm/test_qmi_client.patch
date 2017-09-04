@@ -1,0 +1,38 @@
+--- ./arch/arm/mach-msm/test_qmi_client.c	2017-09-04 16:58:42.488370958 +0200
++++ ./arch/arm/mach-msm/test_qmi_client.c	2017-08-23 23:01:54.000000000 +0200
+@@ -250,7 +250,7 @@
+ 
+ 	D("%s: Lookup server name\n", __func__);
+ 	rc = qmi_connect_to_service(test_clnt, TEST_SERVICE_SVC_ID,
+-				    TEST_SERVICE_INS_ID);
++				    TEST_SERVICE_INS_ID, TEST_SERVICE_INS_ID >> 8);
+ 	if (rc < 0) {
+ 		pr_err("%s: Server not found\n", __func__);
+ 		qmi_handle_destroy(test_clnt);
+@@ -408,7 +408,7 @@
+ 		return -EFAULT;
+ 
+ 	rc = qmi_svc_event_notifier_register(TEST_SERVICE_SVC_ID,
+-				TEST_SERVICE_INS_ID, &test_clnt_nb);
++				TEST_SERVICE_INS_ID, TEST_SERVICE_INS_ID >> 8, &test_clnt_nb);
+ 	if (rc < 0) {
+ 		pr_err("%s: notifier register failed\n", __func__);
+ 		destroy_workqueue(test_clnt_workqueue);
+@@ -422,7 +422,7 @@
+ 			__func__, IS_ERR(test_dent));
+ 		test_dent = NULL;
+ 		qmi_svc_event_notifier_unregister(TEST_SERVICE_SVC_ID,
+-					TEST_SERVICE_INS_ID, &test_clnt_nb);
++					TEST_SERVICE_INS_ID, TEST_SERVICE_INS_ID >> 8, &test_clnt_nb);
+ 		destroy_workqueue(test_clnt_workqueue);
+ 		return -EFAULT;
+ 	}
+@@ -433,7 +433,7 @@
+ static void __exit test_qmi_exit(void)
+ {
+ 	qmi_svc_event_notifier_unregister(TEST_SERVICE_SVC_ID,
+-					TEST_SERVICE_INS_ID, &test_clnt_nb);
++					TEST_SERVICE_INS_ID, TEST_SERVICE_INS_ID >> 8, &test_clnt_nb);
+ 	destroy_workqueue(test_clnt_workqueue);
+ 	debugfs_remove(test_dent);
+ }

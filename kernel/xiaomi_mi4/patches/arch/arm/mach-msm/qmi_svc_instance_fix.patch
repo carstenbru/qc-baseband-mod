@@ -1,0 +1,36 @@
+--- ./arch/arm/mach-msm/msm_qmi_interface.c	2017-09-04 16:58:42.460371298 +0200
++++ ./arch/arm/mach-msm/msm_qmi_interface.c	2017-08-22 18:47:36.000000000 +0200
+@@ -633,7 +633,7 @@
+ 			   uint32_t service_ins)
+ {
+ 	struct msm_ipc_port_name svc_name;
+-	struct msm_ipc_server_info svc_info;
++	struct msm_ipc_server_info svc_info[4];
+ 	struct msm_ipc_addr *svc_dest_addr;
+ 	int rc;
+ 	uint32_t instance_id;
+@@ -652,16 +652,20 @@
+ 	svc_name.service = service_id;
+ 	svc_name.instance = instance_id;
+ 
+-	rc = msm_ipc_router_lookup_server_name(&svc_name, &svc_info,
+-						1, LOOKUP_MASK);
++	rc = msm_ipc_router_lookup_server_name(&svc_name, svc_info,
++						4, LOOKUP_MASK);
+ 	if (rc <= 0) {
+ 		pr_err("%s: Server %08x:%08x not found\n",
+ 			__func__, service_id, instance_id);
+ 		return -ENODEV;
+ 	}
+ 	svc_dest_addr->addrtype = MSM_IPC_ADDR_ID;
+-	svc_dest_addr->addr.port_addr.node_id = svc_info.node_id;
+-	svc_dest_addr->addr.port_addr.port_id = svc_info.port_id;
++        // quick fix: if we find more than one match always return last match
++        if (rc > 4) {
++            rc = 4;
++        }
++	svc_dest_addr->addr.port_addr.node_id = svc_info[rc-1].node_id;
++	svc_dest_addr->addr.port_addr.port_id = svc_info[rc-1].port_id;
+ 	mutex_lock(&handle->handle_lock);
+ 	if (handle->handle_reset) {
+ 		mutex_unlock(&handle->handle_lock);

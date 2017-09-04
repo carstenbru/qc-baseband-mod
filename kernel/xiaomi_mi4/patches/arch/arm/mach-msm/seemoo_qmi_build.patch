@@ -1,0 +1,26 @@
+--- ./arch/arm/mach-msm/Kconfig	2017-09-04 14:52:38.377483662 +0200
++++ ./arch/arm/mach-msm/Kconfig	2017-08-22 18:43:12.000000000 +0200
+@@ -1769,6 +1769,12 @@
+ 	  and receive QMI messages over IPC Router. The test code sends
+ 	  a synchronous QMI request to the test_service and handles the
+ 	  QMI responses.
++	  
++config MSM_SEEMOO_QMI_CLIENT
++	depends on MSM_QMI_INTERFACE
++	bool "MSM SEEMOO QMI CLIENT"
++	help
++	  SEEMOO QMI client to handle various injected QMI capabilities.
+ 
+ config MSM_ONCRPCROUTER_DEBUG
+ 	depends on MSM_ONCRPCROUTER
+
+--- ./arch/arm/mach-msm/Makefile	2017-09-04 14:52:38.377483662 +0200
++++ ./arch/arm/mach-msm/Makefile	2017-08-22 18:44:09.000000000 +0200
+@@ -130,6 +130,7 @@
+ obj-$(CONFIG_MSM_IPC_ROUTER_SECURITY)+= msm_ipc_router_security.o
+ obj-$(CONFIG_MSM_QMI_INTERFACE) += msm_qmi_interface.o
+ obj-$(CONFIG_MSM_TEST_QMI_CLIENT) += kernel_test_service_v01.o test_qmi_client.o
++obj-$(CONFIG_MSM_SEEMOO_QMI_CLIENT) += kernel_test_service_v01.o seemoo_qmi_client.o
+ obj-$(CONFIG_DEBUG_FS) += smd_rpc_sym.o
+ obj-$(CONFIG_MSM_ONCRPCROUTER) += smd_rpcrouter_servers.o
+ obj-$(CONFIG_MSM_ONCRPCROUTER) += smd_rpcrouter_clients.o

@@ -1,0 +1,10 @@
+--- ueventd.qcom.rc	1970-01-01 01:00:00.000000000 +0100
++++ ueventd.qcom.rc	2017-09-04 12:59:28.448752432 +0200
+@@ -180,3 +180,7 @@
+ /dev/uio0                 0660   system     system
+ /dev/uio1                 0660   system     system
+ /dev/uio2                 0660   system     system
++
++# SEEMOO QMI
++/dev/seemoo_qmi_status    0666   system     system
++/dev/seemoo_qmi_data      0666   system     system

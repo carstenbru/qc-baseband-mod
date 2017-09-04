@@ -1,0 +1,13 @@
+--- ./drivers/tspdrv/Makefile	2017-09-04 16:58:45.052339835 +0200
++++ ./drivers/tspdrv/Makefile	2017-09-04 16:48:41.578478458 +0200
+@@ -30,7 +30,9 @@
+     override KERNEL_ROOT = /usr/src/linux
+ endif
+ 
+-EXTRA_CFLAGS += -I$(M)
++#EXTRA_CFLAGS += -I$(M)
++#new style Makefile, "M" variable defined in rule which seems not to be used -> undefined now -> use "shell pwd" directly instead
++EXTRA_CFLAGS += -I$(shell pwd)
+ 
+ obj-$(CONFIG_TSPDRV) += tspdrv.o
+ 
