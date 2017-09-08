@@ -15,6 +15,7 @@ OUTPUT_ARCH (hexagon)
 PHDRS
 {
     text PT_LOAD;
+    restricted.data PT_LOAD;
     data PT_LOAD;
     rodata PT_LOAD;
     bss PT_LOAD;
@@ -38,4 +39,9 @@ SECTIONS
     .bss : ALIGN(0x1000) {
         *(.bss*)
     } : bss
+    
+    . = DEFINED(__patch_addr_data_restricted_base__) ? __patch_addr_data_restricted_base__ : .;
+    .restricted.data : ALIGN(0x1000) {
+        *(.restricted.data*)
+    } : restricted.data
 }

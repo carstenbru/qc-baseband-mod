@@ -28,6 +28,10 @@ ADDRESS(0x09658900) void* __patch_addr_text_base__;
 /* you can also define the start address for data sections,
    if left undefined they will be placed directly after the code */
 ADDRESS(0x0CB98000) void* __patch_addr_data_base__;
+/* you can also define the start address for data sections accessed by code with restricted rights (e.g. by memcpy, memset),
+   if left undefined they will be placed together with the other data */
+ADDRESS(0x0CB7F000) void* __patch_addr_data_restricted_base__;
+
 
 /* ########################################### */
        

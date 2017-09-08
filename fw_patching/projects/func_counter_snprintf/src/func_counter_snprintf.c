@@ -16,8 +16,9 @@
 #include "func_counter_snprintf.h"
 
 /* function counters */
-unsigned int memcpy_counter = 0;
-unsigned int memset_counter = 0;
+//memcpy_counter and memset_counter need to be placed in a special section which can always be accessed as they might run with limited memory access rights
+unsigned int memcpy_counter __attribute__ ((section (".restricted.data"))) = 0;
+unsigned int memset_counter __attribute__ ((section (".restricted.data"))) = 0;
 unsigned int snprintf_counter = 0;
 unsigned int ping_counter = 0;
 
