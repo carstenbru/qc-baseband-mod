@@ -43,7 +43,7 @@ Our framework depends requires a set of other tools to work:
 * Other tools: *git*, *python*, *mtools*, *rsync*, *sed*, *patch*, *python-setuptools*
 
 ## Build instructions
-The main component of this project is the modem firmware patching. However, the example projects use an Android application to interact with the user and to display data. In order to enable communication between the Modem and the Android application a kernel module is neccessary and therefore also a custom Android kernel for the target phone needs to be build.
+The main component of this project is the modem firmware patching. However, the example projects use an Android application to interact with the user and to display data. In order to enable communication between the Modem and the Android application, a kernel module is neccessary and, therefore, also a custom Android kernel for the target phone needs to be build.
 
 ### Install dependencies
 1. Install linux and Android tools : `sudo apt-get install adb fastboot git python mtools rsync sed patch python-setuptools`
@@ -72,7 +72,8 @@ The main component of this project is the modem firmware patching. However, the 
 2. In case you want to compile for another target than the default (Xiaomi Mi4) adapt the *BASE_FW* variable in the projects Makefile accordingly
 3. Start the build: `make`
 4. If everything went well, a patched modem firmware (*image/patched_modem.img*) is generated and can be flashed to the target device
-    * For the Xiaomi Mi4, you can use fastboot to do so: `fastboot flash modem+modem1 image/patched_modem.img`
+    * For the *Xiaomi Mi4*, you can use fastboot to do so. To start the device in *fastboot* mode, turn it off and press the *Volume_Down* and power buttons simultaneously
+    * Now actually flash the modem firmware: `fastboot flash modem+modem1 image/patched_modem.img`
 
 ### Android Kernel
 A kernel prepared with all needed patches is located in the *kernel* subdirectory. To build it do the following in a terminal in the repositories root directory:
@@ -80,9 +81,8 @@ A kernel prepared with all needed patches is located in the *kernel* subdirector
 2. Setup the build environment `source setup_env.sh`
 3. Start the build `make`. Grab a coffee as this will take some time.
 4. The kernel is now ready to be installed, you can use fastboot to do so:
-    * To start the *Xiaomi Mi4* in *fastboot* mode turn it off and press the *Volume_Down* and power buttons simultaneously, then:
-        * If you want to install it permanently: `fastboot flash boot boot.img`
-        * If you just want to boot it once: `fastboot boot boot.img`
+    * If you want to install it permanently: `fastboot flash boot boot.img`
+    * If you just want to boot it once: `fastboot boot boot.img`
 
 ### Android App
 The Android App is provided as an *Android Studio* project, simply open, build and install it.
