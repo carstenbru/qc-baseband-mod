@@ -11,6 +11,12 @@
 
 #define is_registered(option) ((registration_flags & option) == option)
 
+#ifdef MUTILS_MAC_MSG_BYTE_LEN_LONG
+    typedef unsigned long long mutils_mac_msg_byte_len_t;
+#else
+    typedef unsigned short mutils_mac_msg_byte_len_t;
+#endif
+
 /**
  * @brief registration flags specifying what indications with which content should be sent
  */
@@ -158,7 +164,7 @@ int mutils_security_stream_cipher_hook(unsigned char technology, unsigned int al
 __attribute__ ((overwrite ("mutils_security_stream_decipher")))
 int mutils_security_stream_decipher_hook(unsigned char technology, unsigned int algo, unsigned char* key, unsigned char* in_msg_ptr, unsigned short in_msg_byte_len, unsigned char* out_msg_ptr, unsigned char bearer, unsigned int count) {
     int res = 0;
-    
+
     if ((lte_sec_svc_client != 0) && (technology == 1) && is_registered(DECIPHER_CALLS)) {        
         lte_sec_prepare_ind(DECIPHER_CALLS_MASK);
         
@@ -201,9 +207,9 @@ int mutils_security_stream_decipher_hook(unsigned char technology, unsigned int 
 }
 
 __attribute__ ((overwrite ("mutils_security_stream_compute_integrity_maci")))
-int mutils_security_stream_compute_integrity_maci_hook(unsigned char technology, unsigned int algo, unsigned char* key, unsigned char* in_msg_ptr, unsigned short in_msg_byte_len, unsigned char* maci_ptr, unsigned char bearer, unsigned int fresh, unsigned int count, unsigned char direction) {
+int mutils_security_stream_compute_integrity_maci_hook(unsigned char technology, unsigned int algo, unsigned char* key, unsigned char* in_msg_ptr, mutils_mac_msg_byte_len_t in_msg_byte_len, unsigned char* maci_ptr, unsigned char bearer, unsigned int fresh, unsigned int count, unsigned char direction) {
     int res = 0;
-    
+        
     if ((lte_sec_svc_client != 0) && (technology == 1) && is_registered(MACI_CALLS)) {        
         lte_sec_prepare_ind(MACI_CALLS_MASK);
         

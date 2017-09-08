@@ -33,7 +33,7 @@ SECTIONS
         *(.scommon*)
     } : data
     .rodata : ALIGN(0x1000) {
-        *(.rodata)
+        *(.rodata*)
     } : rodata
     .bss : ALIGN(0x1000) {
         *(.bss*)
