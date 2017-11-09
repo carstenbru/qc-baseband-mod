@@ -69,6 +69,7 @@ static int work_recv_msg_count, work_recv_msg_ind_count;
 /* write buffer for status device, will be returned on next read */
 unsigned char status_buf[WRITE_BUF_SIZE];
 int status_pos;
+DEFINE_MUTEX(status_buf_mutex);
 
 /* read buffer for packets on data device */
 unsigned char read_buf[WRITE_BUF_SIZE];
@@ -88,7 +89,9 @@ static void write_text(char* format, ...) {
 	va_list args;
 	va_start(args, format);
 	
+        mutex_lock(&status_buf_mutex);
 	status_pos += vsnprintf(status_buf+status_pos, sizeof(status_buf)-status_pos, format, args);
+        mutex_unlock(&status_buf_mutex);
 	
 	va_end(args);
 }
@@ -100,27 +103,43 @@ static void write_error(char* format, ...) {
 	va_list args;
 	va_start(args, format);
 	
+        mutex_lock(&status_buf_mutex);
 	status_pos += vsnprintf(status_buf+status_pos, sizeof(status_buf)-status_pos, format, args);
+        mutex_unlock(&status_buf_mutex);
 	
 	va_end(args);
 }
 
 static void received_message(unsigned char* data, unsigned int data_len, unsigned int indication) {
     seemoo_qmi_packet_t* qmi_packet;
+    unsigned int mutex_res;
+    
+    if (data_len > TEST_MED_DATA_SIZE_V01) {
+        return;
+    }
+    
     if (indication) {
         *(data + 3) |= 0x80; //set first bit of SVC ID to 1 to indicate an indication
     }
     
     qmi_packet = kzalloc(sizeof(seemoo_qmi_packet_t), GFP_KERNEL);
+    if (qmi_packet == 0) {
+        write_error("%s: could not allocate memory for QMI packet\n", __func__);
+        return;
+    }
     qmi_packet->next = NULL;
     qmi_packet->length = data_len;
     memcpy(qmi_packet->data, data, data_len);
     
-    mutex_lock(&data_list_mutex);
+    mutex_res = mutex_lock_interruptible(&data_list_mutex);
+    if (mutex_res != 0) {
+        kfree(qmi_packet);
+        return;
+    }
     *data_list_last_item_pointer = qmi_packet;
     data_list_last_item_pointer = &qmi_packet->next;
     data_list_size++;
-    //if size of list gets too big drop first messages
+    //if size of list gets too big, drop first messages
     while (data_list_size > DATA_LIST_MAX_ELEMENTS) {
         seemoo_qmi_packet_t* packet = data_list;
         data_list = data_list->next;
@@ -362,18 +381,30 @@ static int dev_open(struct inode *ip, struct file *fp) {
 }
 
 static ssize_t status_read(struct file *fp, char __user *buf, size_t count, loff_t *pos) {
-	ssize_t s = simple_read_from_buffer(buf, count, pos, status_buf, strnlen(status_buf, WRITE_BUF_SIZE));
+        ssize_t s;
+        unsigned int mutex_res;
+        
+        mutex_res = mutex_lock_interruptible(&status_buf_mutex);
+        if (mutex_res != 0) {
+            return 0;
+        }
+	s = simple_read_from_buffer(buf, count, pos, status_buf, strnlen(status_buf, WRITE_BUF_SIZE));
 	status_buf[0] = 0;
 	status_pos = 0;
+        mutex_unlock(&status_buf_mutex);
 	return s;
 }
 
 static ssize_t data_read(struct file *fp, char __user *buf, size_t count, loff_t *pos) {
     unsigned int len;
+    unsigned int mutex_res;
     
     if (data_list != NULL) {
         seemoo_qmi_packet_t* packet;
-        mutex_lock(&data_list_mutex);
+        mutex_res = mutex_lock_interruptible(&data_list_mutex);
+        if (mutex_res != 0) {
+            return 0;
+        }
         packet = data_list;
         data_list = data_list->next;
         data_list_size--;
