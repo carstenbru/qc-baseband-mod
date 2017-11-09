@@ -29,6 +29,35 @@
             android:icon="@android:drawable/ic_menu_save" />
 
     </PreferenceCategory>
+    <PreferenceCategory android:title="PDCCH dump Service">
+        <EditTextPreference
+            android:defaultValue="5000"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="Time interval (ms)"
+            android:key="pdcch_dump_time_interval"
+            android:inputType="number"
+            android:summary="interval between time (since epoch) records"
+            android:icon="@android:drawable/ic_menu_recent_history" />
+        <EditTextPreference
+            android:defaultValue="5000"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="cell info interval (ms)"
+            android:key="pdcch_dump_cell_info_interval"
+            android:inputType="number"
+            android:summary="interval between cell info records (in addition to reports on cell changes)"
+            android:icon="@android:drawable/ic_menu_recent_history" />
+        <EditTextPreference
+            android:defaultValue="1000"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="GPS interval (ms)"
+            android:key="pdcch_dump_gps_interval"
+            android:inputType="number"
+            android:summary="interval of GPS locations"
+            android:icon="@android:drawable/ic_menu_recent_history" />
+    </PreferenceCategory>
     <PreferenceCategory android:title="Function Counter Service">
         <CheckBoxPreference
             android:defaultValue="true"
@@ -43,7 +72,7 @@
             android:title="Counter poll interval"
             android:key="func_counter_poll_interval"
             android:inputType="number"
-            android:summary="interval to poll messages from kernel driver"
+            android:summary="interval to poll messages function counters"
             android:icon="@android:drawable/ic_menu_recent_history"
             android:dependency="func_counter_poll" />
     </PreferenceCategory>

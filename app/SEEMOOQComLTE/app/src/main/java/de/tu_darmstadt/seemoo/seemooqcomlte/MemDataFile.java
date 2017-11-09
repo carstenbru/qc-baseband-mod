@@ -34,6 +34,17 @@ public class MemDataFile {
     }
 
     /**
+     * constructor, used when only length is known for now (e.g. bulk read)
+     *
+     * @param startAddress  first address in memory of the data bytes
+     * @param length        final lenght of data
+     */
+    public MemDataFile(int startAddress, int length) {
+        this.startAddress = startAddress;
+        this.data = new byte[length];
+    }
+
+    /**
      * loads a MemDataFile from a stored .bin file
      *
      * @param context app context
@@ -221,6 +232,18 @@ public class MemDataFile {
      */
     public boolean writeToIHexFile(File path, String fileName) {
         return writeToFile(path, fileName, true);
+    }
+
+    /**
+     * updates data in the object
+     *
+     * @param dataAddress first address (absolut) of the new data
+     * @param newData  actual data bytes
+     */
+    public void putData(int dataAddress, byte[] newData) {
+        if ((dataAddress >= startAddress) && (dataAddress + newData.length <= startAddress + data.length)) {
+            System.arraycopy(newData, 0, data, dataAddress - startAddress, newData.length);
+        }
     }
 
     public String getFileName() {

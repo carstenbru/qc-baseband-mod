@@ -11,6 +11,9 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -26,6 +29,11 @@ import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.telephony.CellIdentityLte;
+import android.telephony.CellInfo;
+import android.telephony.CellInfoLte;
+import android.telephony.CellSignalStrengthLte;
+import android.telephony.TelephonyManager;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -57,8 +65,15 @@ import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 
+import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -70,6 +85,7 @@ import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.FunctionCounterService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.LteMacService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.LteSecService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.MemAccessService;
+import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.PdcchDumpService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SeemooQmi;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SnprintfService;
 
@@ -96,6 +112,7 @@ public class MainActivity extends AppCompatActivity {
     private static LteSecService lteSecService = null;
     private static MemAccessService memAccessService = null;
     private static ChannelEstimationService channelEstimationService = null;
+    private static PdcchDumpService pdcchDumpService = null;
 
     private static SharedPreferences sharedPreferences = null;
     private static SharedPreferences.OnSharedPreferenceChangeListener onSharedPrederencesChangeListener = null;
@@ -118,26 +135,28 @@ public class MainActivity extends AppCompatActivity {
     private static Runnable funcCountersPollRunnable = new Runnable() {
         @Override
         public void run() {
-            functionCounterService.sendFuncCountersRequest();
             if (funcCountersPoll) {
-                funcCountersPollHandler.postDelayed(this, funcCountersPollRate);
+                functionCounterService.sendFuncCountersRequest();
+                if (!funcCountersPollHandler.hasMessages(0)) {
+                    funcCountersPollHandler.postDelayed(this, funcCountersPollRate);
+                }
             }
         }
     };
 
     public static String byteArrToHexString(byte[] byteArr, boolean pythonString, int seperation) {
-        return  byteArrToHexString(byteArr, pythonString, seperation, 0, byteArr.length);
+        return byteArrToHexString(byteArr, pythonString, seperation, 0, byteArr.length);
     }
 
 
     /**
      * converts an array of bytes to a ASCII hex string
      *
-     * @param byteArr data array
+     * @param byteArr      data array
      * @param pythonString true to print in a format readable by python, false for human readable
-     * @param seperation number of bytes after which a space should be inserted
-     * @param startOffset index of the first byte to convert
-     * @param length number of bytes to convert
+     * @param seperation   number of bytes after which a space should be inserted
+     * @param startOffset  index of the first byte to convert
+     * @param length       number of bytes to convert
      * @return ASCII hex string of the input data
      */
     public static String byteArrToHexString(byte[] byteArr, boolean pythonString, int seperation, int startOffset, int length) {
@@ -189,7 +208,7 @@ public class MainActivity extends AppCompatActivity {
     private void snprintfDeregisterFromSharedPrefs() {
         snprintfDeregister = sharedPreferences.getBoolean("snprintf_deregister", true);
         if (snprintfDeregister) {
-            snprintfService.register(openTab == 2);
+            snprintfService.register(openTab == 3);
         } else {
             snprintfService.register(true);
         }
@@ -205,10 +224,11 @@ public class MainActivity extends AppCompatActivity {
 
         boolean funcCountersPollOld = funcCountersPoll;
         funcCountersPoll = sharedPreferences.getBoolean("func_counter_poll", true);
-        if (openTab == 1) {
+        if (openTab == 2) {
             if (!funcCountersPollOld && funcCountersPoll) {
-                funcCountersPollHandler.postDelayed(funcCountersPollRunnable, funcCountersPollRate);
-
+                if (!funcCountersPollHandler.hasMessages(0)) {
+                    funcCountersPollHandler.postDelayed(funcCountersPollRunnable, funcCountersPollRate);
+                }
             }
             if (functionCountersFragment != null) {
                 functionCountersFragment.setUserVisibleHint(true);
@@ -322,12 +342,16 @@ public class MainActivity extends AppCompatActivity {
             channelEstimationService = new ChannelEstimationService(seemooQmi, getApplicationContext());
             channelEstimationService.setInterval(Integer.parseInt(sharedPreferences.getString("csi_interval", "1")));
         }
+
+        if (pdcchDumpService == null) {
+            pdcchDumpService = new PdcchDumpService(seemooQmi, getApplicationContext());
+        }
     }
 
     /**
      * stores a value in the default shared preferences
      *
-     * @param key name of the value
+     * @param key   name of the value
      * @param value actual value
      */
     private static void storeStringInSharedPrefs(String key, String value) {
@@ -339,7 +363,7 @@ public class MainActivity extends AppCompatActivity {
     /**
      * stores a integer in the default shared preferences
      *
-     * @param key name of the value
+     * @param key   name of the value
      * @param value actual value
      */
     private static void storeIntInSharedPrefs(String key, int value) {
@@ -351,7 +375,7 @@ public class MainActivity extends AppCompatActivity {
     /**
      * stores a boolean in the default shared preferences
      *
-     * @param key name of the value
+     * @param key   name of the value
      * @param value actual value
      */
     private static void storeBooleanInSharedPrefs(String key, boolean value) {
@@ -472,14 +496,14 @@ public class MainActivity extends AppCompatActivity {
      * pager adapter to handle tabs consisting of fragments for the different pages
      */
     public static class SeemooPagerAdapter extends FragmentPagerAdapter {
-        private static int NUM_TABS = 7;
+        private static int NUM_TABS = 8;
 
         private Context appContext;
 
         /**
          * Constructor
          *
-         * @param fm the FragmentManager
+         * @param fm         the FragmentManager
          * @param appContext application context
          */
         public SeemooPagerAdapter(FragmentManager fm, Context appContext) {
@@ -495,17 +519,19 @@ public class MainActivity extends AppCompatActivity {
                     statusLogFragment = new StatusLogFragment();
                     return statusLogFragment;
                 case 1:
+                    return new PdcchDumpFragment();
+                case 2:
                     functionCountersFragment = new FunctionCountersFragment();
                     return functionCountersFragment;
-                case 2:
-                    return new SnprintfFragment();
                 case 3:
-                    return new MemAccessFragment();
+                    return new SnprintfFragment();
                 case 4:
-                    return new LteMacFragment();
+                    return new MemAccessFragment();
                 case 5:
-                    return new LteSecFragment();
+                    return new LteMacFragment();
                 case 6:
+                    return new LteSecFragment();
+                case 7:
                     return new ChannelEstimationFragment();
                 default:
                     return null;
@@ -523,16 +549,18 @@ public class MainActivity extends AppCompatActivity {
                 case 0:
                     return appContext.getResources().getString(R.string.tab_status_log);
                 case 1:
-                    return appContext.getResources().getString(R.string.tab_func_counters);
+                    return appContext.getResources().getString(R.string.tab_pdcch_dump);
                 case 2:
-                    return appContext.getResources().getString(R.string.tab_snprintf);
+                    return appContext.getResources().getString(R.string.tab_func_counters);
                 case 3:
-                    return appContext.getResources().getString(R.string.tab_mem_access);
+                    return appContext.getResources().getString(R.string.tab_snprintf);
                 case 4:
-                    return appContext.getResources().getString(R.string.tab_lte_mac);
+                    return appContext.getResources().getString(R.string.tab_mem_access);
                 case 5:
-                    return appContext.getResources().getString(R.string.tab_lte_sec);
+                    return appContext.getResources().getString(R.string.tab_lte_mac);
                 case 6:
+                    return appContext.getResources().getString(R.string.tab_lte_sec);
+                case 7:
                     return appContext.getResources().getString(R.string.tab_channel_estimation);
                 default:
                     return "error";
@@ -589,6 +617,352 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
+     * fragment for the PDCCH dump service
+     */
+    public static class PdcchDumpFragment extends Fragment {
+        private static final int PDCCH_DATA_RECORD = 0;
+        private static final int PDCCH_GPS_RECORD = 1;
+        private static final int PDCCH_TIME_RECORD = 2;
+        private static final int PDCCH_MAIN_CELL_INFO_RECORD = 3;
+        private static final int PDCCH_ADD_CELL_INFO_RECORD = 4;
+
+        private static final int PDCCH_MAIN_CELL_INFO_RECORD_VERSION = 0;
+        private static final int PDCCH_GPS_RECORD_VERSION = 0;
+
+        private PdcchDumpService.PdcchDumpListener pdcchDumpListener;
+
+        private boolean pdcchDumpActive = false;
+        private DataOutputStream pdcchDumpStream;
+
+        private LocationManager locationManager;
+        private LocationListener locationListener;
+
+        private int timeRecordRate;
+        private Handler timeRecordHandler = new Handler();
+
+        private int cellInfoRecordRate;
+        private Handler cellInfoRecordHandler = new Handler();
+
+        private TelephonyManager telephonyManager;
+
+        private Runnable timeRecordRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (pdcchDumpActive) {
+                    ByteBuffer buffer = ByteBuffer.allocate(8);
+                    buffer.order(ByteOrder.LITTLE_ENDIAN);
+
+                    Date currentTime = Calendar.getInstance().getTime();
+
+                    buffer.putLong(currentTime.getTime());
+
+                    byte[] time = buffer.array();;
+                    writeRecord(PDCCH_TIME_RECORD, 0, time, 0, time.length);
+
+                    if (!timeRecordHandler.hasMessages(0)) {
+                        timeRecordHandler.postDelayed(this, timeRecordRate);
+                    }
+                }
+            }
+        };
+
+        private Runnable cellInfoRecordRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (pdcchDumpActive) {
+                    pdcchDumpService.requestCellInfo();
+
+                    if (!cellInfoRecordHandler.hasMessages(0)) {
+                        cellInfoRecordHandler.postDelayed(this, cellInfoRecordRate);
+                    }
+                }
+            }
+        };
+
+        private void setupFilenameEdit(View rootView) {
+            EditText filenameEdit = (EditText) rootView.findViewById(R.id.pdcchDestFileName);
+            filenameEdit.setText(sharedPreferences.getString("PdcchDestFilename", ""));
+            filenameEdit.addTextChangedListener(new TextWatcher() {
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                }
+
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                }
+
+                @Override
+                public void afterTextChanged(Editable s) {
+                    storeStringInSharedPrefs("PdcchDestFilename", s.toString());
+                }
+            });
+        }
+
+        private void setupGpsBox(View rootView) {
+            CheckBox pdcchGps = (CheckBox) rootView.findViewById(R.id.pdcchGpsBox);
+            pdcchGps.setChecked(sharedPreferences.getBoolean("PdcchGpsInclude", true));
+            pdcchGps.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                @Override
+                public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                    storeBooleanInSharedPrefs("PdcchGpsInclude", b);
+                }
+            });
+        }
+
+        /**
+         * sets the states of all GUI elements according to the dumping state
+         *
+         * @param view      root view of the fragment
+         * @param pdcchDumpActive dumping state
+         */
+        private void setPdcchDumpGuiState(View view, boolean pdcchDumpActive) {
+            EditText filenameEdit = (EditText) view.findViewById(R.id.pdcchDestFileName);
+            CheckBox pdcchDumpEnable = (CheckBox) view.findViewById(R.id.activatePdcchDump);
+            CheckBox pdcchGps = (CheckBox) view.findViewById(R.id.pdcchGpsBox);
+
+            filenameEdit.setEnabled(!pdcchDumpActive);
+            pdcchGps.setEnabled(!pdcchDumpActive);
+            pdcchDumpEnable.setChecked(pdcchDumpActive);
+            this.pdcchDumpActive = pdcchDumpActive;
+        }
+
+        /**
+         * configures the dump enable checkbox
+         *
+         * @param rootView root view of the fragment
+         */
+        private void setupPdcchDumpCheckbox(View rootView) {
+            final CheckBox pdcchDumpEnable = (CheckBox) rootView.findViewById(R.id.activatePdcchDump);
+            final CheckBox pdcchGps = (CheckBox) rootView.findViewById(R.id.pdcchGpsBox);
+            pdcchDumpEnable.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                private void startDumping(CompoundButton compoundButton, File file) {
+                    try {
+                        file.getParentFile().mkdirs();
+                        file.createNewFile();
+                        pdcchDumpStream = new DataOutputStream(new FileOutputStream(file));
+
+                        setPdcchDumpGuiState(getView(), true);
+                        pdcchDumpService.register(true);
+                    } catch (IOException ioe) {
+                        pdcchDumpEnable.setChecked(false);
+                        Toast.makeText(compoundButton.getContext(), getResources().getString(R.string.fileError), Toast.LENGTH_SHORT).show();
+                    }
+
+                    timeRecordRate = Integer.parseInt(sharedPreferences.getString("pdcch_dump_time_interval", "5000"));
+                    if (!timeRecordHandler.hasMessages(0)) {
+                        timeRecordHandler.postDelayed(timeRecordRunnable, 0);
+                    }
+
+                    cellInfoRecordRate = Integer.parseInt(sharedPreferences.getString("pdcch_dump_cell_info_interval", "5000"));
+                    if (!cellInfoRecordHandler.hasMessages(0)) {
+                        cellInfoRecordHandler.postDelayed(cellInfoRecordRunnable, cellInfoRecordRate);
+                    }
+
+                    if (pdcchGps.isChecked()) {
+                        //TODO check if GPS fix, if not ask if want to wait for fix
+                        try {
+                            int gpsInterval = Integer.parseInt(sharedPreferences.getString("pdcch_dump_gps_interval", "1000"));
+                            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, gpsInterval, 0, locationListener);
+                        } catch (SecurityException se) {
+                        }
+                    }
+                }
+
+                @Override
+                public void onCheckedChanged(final CompoundButton compoundButton, boolean b) {
+                    EditText filenameEdit = (EditText) getView().findViewById(R.id.pdcchDestFileName);
+
+                    if (b) {
+                        String filename = filenameEdit.getText().toString();
+                        if (filename.isEmpty()) {
+                            pdcchDumpEnable.setChecked(false);
+                            Toast.makeText(compoundButton.getContext(), getResources().getString(R.string.filenameEmpty), Toast.LENGTH_SHORT).show();
+                        } else {
+                            final File file = new File(filename);
+                            if (!file.exists()) {
+                                startDumping(compoundButton, file);
+                            } else {
+                                AlertDialog.Builder alertDialog = new AlertDialog.Builder(getActivity());
+
+                                alertDialog.setTitle("File already exists");
+                                alertDialog.setMessage("The filename you entered already exists. Do you want to overwrite it?");
+
+                                alertDialog.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        startDumping(compoundButton, file);
+                                    }
+                                });
+                                alertDialog.setNegativeButton("No", new DialogInterface.OnClickListener() {
+
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        dialog.cancel();
+
+                                        setPdcchDumpGuiState(getView(), false);
+                                    }
+                                });
+
+                                alertDialog.show();
+                            }
+                        }
+
+                    } else {
+                        try {
+                            pdcchDumpStream.close();
+                        } catch (IOException ioe) {
+                        }
+
+                        //when un-checked stop PDCCH dumping
+                        pdcchDumpService.register(false);
+                        setPdcchDumpGuiState(getView(), false);
+
+                        try {
+                            locationManager.removeUpdates(locationListener);
+                        } catch (SecurityException se) {
+                        }
+                    }
+                }
+            });
+        }
+
+        /**
+         * writes a record header to the output stream
+         *
+         * @param recordType unique record type
+         * @param recordVersion version of the record
+         * @param data record data
+         * @param offset start offset of record data to write
+         * @param length number of bytes in this record (without header)
+         */
+        public void writeRecord(int recordType, int recordVersion, byte[] data, int offset, int length) { //TODO ensure that not different data appears interleaved in output...mutex..
+            byte[] header = new byte[8];
+            SeemooQmi.writeIntLittleEndian(length + 8, header, 0);
+            SeemooQmi.writeIntLittleEndian((recordType << 16) | recordVersion, header, 4);
+            try {
+                pdcchDumpStream.write(header);
+                pdcchDumpStream.write(data, offset, length);
+            } catch (IOException ioe) {
+            }
+        }
+
+        @Override
+        public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+            final View rootView = inflater.inflate(R.layout.content_pdcch_dump, container, false);
+
+            setupFilenameEdit(rootView);
+            setupGpsBox(rootView);
+            setPdcchDumpGuiState(rootView, pdcchDumpActive);
+            setupPdcchDumpCheckbox(rootView);
+
+            //new dump listener
+            pdcchDumpListener = new PdcchDumpService.PdcchDumpListener() {
+                @Override
+                public void newDumpData(PdcchDumpService.PdcchDumpEvent e) {
+                    long dumpRecordVersion = SeemooQmi.readIntLittleEndian(e.getData(), 4);
+                    writeRecord(PDCCH_DATA_RECORD, (int)dumpRecordVersion, e.getData(), 8, e.getDataLength() - 8);
+                }
+
+                @Override
+                public void newCellInfo(PdcchDumpService.PdcchCellInfoEvent e) {
+                    //ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    //DataOutputStream dos = new DataOutputStream(baos);
+                    ByteBuffer buffer = ByteBuffer.allocate(20);
+                    buffer.order(ByteOrder.LITTLE_ENDIAN);
+
+                    List<CellInfo> cellInfoList = telephonyManager.getAllCellInfo();
+                    for (CellInfo cellInfo : cellInfoList)
+                    {
+                        if (cellInfo.isRegistered()) {
+                            if (cellInfo instanceof CellInfoLte) {
+                                CellInfoLte cellInfoLte = (CellInfoLte) cellInfo;
+                                CellIdentityLte cellIdentityLte = cellInfoLte.getCellIdentity();
+                                CellSignalStrengthLte cellSignalStrengthLte = cellInfoLte.getCellSignalStrength(); //pdcchDumpService.register(false);
+
+                                // [28:20] phy cell ID
+                                // [19:10] MCC
+                                // [9:0] MNC
+                                buffer.putInt((cellIdentityLte.getPci() << 20) |
+                                        (cellIdentityLte.getMcc() << 10) |
+                                        cellIdentityLte.getMnc());
+                                // 16bit TAC
+                                buffer.putInt(cellIdentityLte.getTac());
+                                // 28bit CID
+                                buffer.putInt(cellIdentityLte.getCi());
+
+                                // [20:16] TA (timing advance)
+                                // [6:0] ASU
+                                buffer.putInt((cellSignalStrengthLte.getTimingAdvance() << 16) |
+                                        cellSignalStrengthLte.getAsuLevel());
+                                // 32bit (?) dBm
+                                buffer.putInt(cellSignalStrengthLte.getDbm());
+
+                                byte[] data = buffer.array();
+                                writeRecord(PDCCH_MAIN_CELL_INFO_RECORD, PDCCH_MAIN_CELL_INFO_RECORD_VERSION, data, 0, data.length);
+                            }
+                        }
+                    }
+
+                    long cellInfoRecordVersion = SeemooQmi.readIntLittleEndian(e.getData(), 4);
+                    writeRecord(PDCCH_ADD_CELL_INFO_RECORD, (int)cellInfoRecordVersion, e.getData(), 8, e.getDataLength() - 8);
+                }
+            };
+            pdcchDumpService.addListener(pdcchDumpListener);
+
+            locationManager = (LocationManager)getContext().getSystemService(Context.LOCATION_SERVICE);
+            locationListener = new LocationListener() {
+                @Override
+                public void onLocationChanged(Location location) {
+                    ByteBuffer buffer = ByteBuffer.allocate(44);
+                    buffer.order(ByteOrder.LITTLE_ENDIAN);
+
+                    buffer.putDouble(location.getLatitude());
+                    buffer.putDouble(location.getLongitude());
+                    buffer.putDouble(location.getAltitude());
+                    buffer.putFloat(location.getBearing());
+                    buffer.putFloat(location.getAccuracy());
+                    buffer.putFloat(location.getSpeed());
+                    buffer.putLong(location.getTime());
+
+                    byte[] data = buffer.array();
+                    writeRecord(PDCCH_GPS_RECORD, PDCCH_GPS_RECORD_VERSION, data, 0, data.length);
+                }
+
+                @Override
+                public void onStatusChanged(String s, int i, Bundle bundle) {
+
+                }
+
+                @Override
+                public void onProviderEnabled(String s) {
+
+                }
+
+                @Override
+                public void onProviderDisabled(String s) {
+
+                }
+            };
+
+            telephonyManager = (TelephonyManager) getContext().getSystemService(Context.TELEPHONY_SERVICE);
+
+            return rootView;
+        }
+
+        @Override
+        public void onDestroy() {
+            super.onDestroy();
+
+            pdcchDumpService.removeListener(pdcchDumpListener);
+            pdcchDumpService.register(false);
+            try {
+                locationManager.removeUpdates(locationListener);
+            } catch (SecurityException se) {
+            }
+        }
+    }
+
+    /**
      * fragment showing the readings of the function counter service
      */
     public static class FunctionCountersFragment extends Fragment {
@@ -636,7 +1010,9 @@ public class MainActivity extends AppCompatActivity {
 
             if (isVisibleToUser) {
                 //start polling
-                funcCountersPollHandler.postDelayed(funcCountersPollRunnable, funcCountersPollRate);
+                if (!funcCountersPollHandler.hasMessages(0)) {
+                    funcCountersPollHandler.postDelayed(funcCountersPollRunnable, funcCountersPollRate);
+                }
 
                 //set button visibility correctly when tab is opened
                 if (getView() != null) {
@@ -718,7 +1094,7 @@ public class MainActivity extends AppCompatActivity {
         /**
          * sets the states of all GUI elements according to the UDP forwarding state
          *
-         * @param view root view of the fragment
+         * @param view      root view of the fragment
          * @param udpActive UDP forwarding state
          */
         private void setLteMacUdpGuiState(View view, boolean udpActive) {
@@ -1069,6 +1445,7 @@ public class MainActivity extends AppCompatActivity {
     public static class MemAccessFragment extends Fragment {
         private MemAccessService.MemAccessListener memAccessListener;
         private MemDataFile lastData;
+        private int bulkReadRemainingSegments = 0;
         private static final int MEM_WRITE_FILE_CHOOSE_INTENT_CODE = 47;
 
         private boolean memAddressInputValid(EditText memAddressInput) {
@@ -1099,7 +1476,7 @@ public class MainActivity extends AppCompatActivity {
                 if (memAddressInputValid(memAddressInput)) {
                     long address = Long.parseLong(memAddressInput.getText().toString(), 16);
 
-                    MemDataFile content = MemDataFile.createMemDataFile(getContext(), uri, (int)address);
+                    MemDataFile content = MemDataFile.createMemDataFile(getContext(), uri, (int) address);
                     if (content != null) {
                         memAccessService.writeMemory(content.getStartAddress(), content.getData(), 0);
 
@@ -1213,9 +1590,47 @@ public class MainActivity extends AppCompatActivity {
             memReadButton.setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    long address = Long.parseLong(memAddressInput.getText().toString(), 16);
-                    int length = Integer.parseInt(memLengthInput.getText().toString());
-                    memAccessService.readMemory((int)address, length);
+                    final long address = Long.parseLong(memAddressInput.getText().toString(), 16);
+                    final int length = Integer.parseInt(memLengthInput.getText().toString());
+                    if (length <= 8180) {
+                        memAccessService.readMemory((int) address, length);
+                    } else {
+                        AlertDialog.Builder alertDialog = new AlertDialog.Builder(getActivity());
+
+                        alertDialog.setTitle("Length too big");
+                        alertDialog.setMessage("The length you entered is too big for a normal read. Do you want to do a bulk read (only directly to file) instead?");
+
+                        alertDialog.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+
+                            public void onClick(DialogInterface dialog, int which) {
+                                saveToFileButton.setVisibility(View.GONE);
+                                memAccessTerminal.setText("");
+                                lastData = new MemDataFile((int) address, length);
+
+                                dialog.dismiss();
+
+                                bulkReadRemainingSegments = length / 2048;
+                                for (int seg = 0; seg < bulkReadRemainingSegments; seg++) {
+                                    memAccessService.readMemory((int) address + seg * 2048, 2048);
+                                }
+                                int dumped = bulkReadRemainingSegments * 2048;
+                                if (dumped < length) {
+                                    bulkReadRemainingSegments++;
+                                    memAccessService.readMemory((int) address + dumped, length-dumped);
+                                }
+                            }
+                        });
+
+                        alertDialog.setNegativeButton("No", new DialogInterface.OnClickListener() {
+
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                dialog.cancel();
+                            }
+                        });
+
+                        alertDialog.show();
+                    }
                 }
             });
 
@@ -1228,11 +1643,11 @@ public class MainActivity extends AppCompatActivity {
                     byte[] data = new byte[numBytes];
 
                     for (int i = 0; i < numBytes; i++) {
-                        byte b = (byte)Integer.parseInt(s.substring(i*2, i*2+2), 16);
+                        byte b = (byte) Integer.parseInt(s.substring(i * 2, i * 2 + 2), 16);
                         data[i] = b;
                     }
 
-                    memAccessService.writeMemory((int)address, data, 0);
+                    memAccessService.writeMemory((int) address, data, 0);
                 }
             });
 
@@ -1288,7 +1703,7 @@ public class MainActivity extends AppCompatActivity {
 
                     alertDialog.setPositiveButton("Save",
                             new DialogInterface.OnClickListener() {
-                                public void onClick(DialogInterface dialog,int which) {
+                                public void onClick(DialogInterface dialog, int which) {
                                     boolean formatIHex = iHex.isChecked();
 
                                     String fileName = input.getText().toString();
@@ -1338,40 +1753,53 @@ public class MainActivity extends AppCompatActivity {
             memAccessListener = new MemAccessService.MemAccessListener() {
                 @Override
                 public void memoryData(MemAccessService.MemoryReadEvent e) {
-                    lastData = new MemDataFile(e.getStartAddress(), e.getData());
-                    saveToFileButton.setVisibility(View.VISIBLE);
+                    if (bulkReadRemainingSegments == 0) {
+                        lastData = new MemDataFile(e.getStartAddress(), e.getData());
+                        saveToFileButton.setVisibility(View.VISIBLE);
 
-                    int separation;
-                    try {
-                        separation = Integer.parseInt(sharedPreferences.getString("mem_access_data_seperate", "4"));
-                    } catch (Exception exc) {
-                        separation = 4;
-                    }
-                    String dataString = "";
-                    if (sharedPreferences.getBoolean("mem_access_include_address", true)) {
-                        byte[] data = e.getData();
-
-                        int bytesPerLine;
+                        int separation;
                         try {
-                            bytesPerLine = Integer.parseInt(sharedPreferences.getString("mem_access_bytes_per_line", "4"));
+                            separation = Integer.parseInt(sharedPreferences.getString("mem_access_data_seperate", "4"));
                         } catch (Exception exc) {
-                            bytesPerLine = 8;
+                            separation = 4;
                         }
+                        String dataString = "";
+                        if (sharedPreferences.getBoolean("mem_access_include_address", true)) {
+                            byte[] data = e.getData();
 
-                        StringBuilder sb = new StringBuilder();
-                        for (int pos = 0; pos < data.length; pos += bytesPerLine) {
-                            sb.append(String.format("0x%1$08X: ", e.getStartAddress() + pos));
-                            sb.append(byteArrToHexString(data, false, separation, pos, bytesPerLine));
-                            sb.append("\n");
+                            int bytesPerLine;
+                            try {
+                                bytesPerLine = Integer.parseInt(sharedPreferences.getString("mem_access_bytes_per_line", "4"));
+                            } catch (Exception exc) {
+                                bytesPerLine = 8;
+                            }
+
+                            StringBuilder sb = new StringBuilder();
+                            for (int pos = 0; pos < data.length; pos += bytesPerLine) {
+                                sb.append(String.format("0x%1$08X: ", e.getStartAddress() + pos));
+                                sb.append(byteArrToHexString(data, false, separation, pos, bytesPerLine));
+                                sb.append("\n");
+                            }
+                            dataString = sb.toString();
+                        } else {
+                            dataString = byteArrToHexString(e.getData(), false, separation);
                         }
-                        dataString = sb.toString();
+                        String s = String.format("Memory read, start address: 0x%1$08X, length: %2$d bytes\n%3$s", e.getStartAddress(), e.getLength(), dataString);
+                        memAccessTerminal.setText(s);
+                        if (sharedPreferences.getBoolean("mem_access_write_to_syso", false)) {
+                            System.out.println(s);
+                        }
                     } else {
-                        dataString = byteArrToHexString(e.getData(), false, separation);
-                    }
-                    String s = String.format("Memory read, start address: 0x%1$08X, length: %2$d bytes\n%3$s", e.getStartAddress(), e.getLength(), dataString);
-                    memAccessTerminal.setText(s);
-                    if (sharedPreferences.getBoolean("mem_access_write_to_syso", false)) {
-                        System.out.println(s);
+                        lastData.putData(e.getStartAddress(), e.getData());
+                        bulkReadRemainingSegments--;
+                        if (bulkReadRemainingSegments == 0) {
+                            String s = String.format("Received all segments of bulk read!\nstart address: 0x%1$08X, length: %2$d bytes", lastData.getStartAddress(), lastData.getData().length);
+                            memAccessTerminal.setText(s);
+                            saveToFileButton.callOnClick();
+                        } else {
+                            String s = String.format("Received a segment for bulk read\nstart address: 0x%1$08X, length: %2$d bytes, remaining: %3$d\n", e.getStartAddress(), e.getLength(), bulkReadRemainingSegments);
+                            memAccessTerminal.setText(memAccessTerminal.getText() + s);
+                        }
                     }
                 }
 
@@ -1437,11 +1865,11 @@ public class MainActivity extends AppCompatActivity {
                 float sampleVal = 0.0f;
                 switch (type) {
                     case 0:
-                        sampleVal = (float)sample.abs();
+                        sampleVal = (float) sample.abs();
                         curMax = Math.max(curMax, sampleVal);
                         break;
                     case 1:
-                        sampleVal = (float)sample.angleInDegree();
+                        sampleVal = (float) sample.angleInDegree();
                         break;
                     case 2:
                         sampleVal = sample.getReal();
@@ -1463,7 +1891,7 @@ public class MainActivity extends AppCompatActivity {
 
             LineDataSet dataSet = new LineDataSet(entries, label);
             dataSet.setAxisDependency(axisRight ? YAxis.AxisDependency.RIGHT : YAxis.AxisDependency.LEFT);
-            float[] hsv = {colorAngle,1.0f,1.0f};
+            float[] hsv = {colorAngle, 1.0f, 1.0f};
             int color = Color.HSVToColor(hsv);
             dataSet.setColor(color);
             dataSet.setCircleColor(color);
@@ -1624,17 +2052,17 @@ public class MainActivity extends AppCompatActivity {
             if (rxAntCount + 1 != rxAntSel.getCount()) {
                 configAntSpinner(rxAntSel, rxAntCount, "Rx");
                 int selected = sharedPreferences.getInt("rx_ant_mode", 0);
-                rxAntSel.setSelection((selected > rxAntSel.getCount()-1) ? 0: selected);
+                rxAntSel.setSelection((selected > rxAntSel.getCount() - 1) ? 0 : selected);
             }
             if (txAntCount + 1 != txAntSel.getCount()) {
                 configAntSpinner(txAntSel, txAntCount, "Tx");
                 int selected = sharedPreferences.getInt("tx_ant_mode", 0);
-                txAntSel.setSelection((selected > txAntSel.getCount()-1) ? 0: selected);
+                txAntSel.setSelection((selected > txAntSel.getCount() - 1) ? 0 : selected);
             }
         }
 
         private void configAntSpinner(Spinner spinner, int maxVal, String type) {
-            String options[] = new String[maxVal+1];
+            String options[] = new String[maxVal + 1];
             options[0] = String.format("%s all", type);
             for (int i = 1; i <= maxVal; i++) {
                 options[i] = String.format("%s %d", type, i);
@@ -1709,7 +2137,7 @@ public class MainActivity extends AppCompatActivity {
                 public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
                     drawAmplitude = b;
                     storeBooleanInSharedPrefs("csi_visualization_draw_amplitude", drawAmplitude);
-                    if (!drawAmplitude && ! drawPhase) {
+                    if (!drawAmplitude && !drawPhase) {
                         phaseSelect.setChecked(true);
                     } else {
                         reDrawChartWithLastData();
@@ -1721,7 +2149,7 @@ public class MainActivity extends AppCompatActivity {
                 public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
                     drawPhase = b;
                     storeBooleanInSharedPrefs("csi_visualization_draw_phase", drawPhase);
-                    if (!drawAmplitude && ! drawPhase) {
+                    if (!drawAmplitude && !drawPhase) {
                         amplitudeSelect.setChecked(true);
                     } else {
                         reDrawChartWithLastData();
