@@ -13,10 +13,12 @@ symtab.json
 PadFoneT004-10.12.3.94-kernel-src/
 bootimg_tmp/
 kernel/asus_a86/boot.img
-kernel/xiaomi_mi4/Xiaomi_Kernel_OpenSource
+kernel/xiaomi_mi4/Xiaomi_Kernel_OpenSource*
 kernel/xiaomi_mi4/boot.img
+kernel/test*
 channel_est_test/
 nexus_test/
 at_commands/
 fw_patching/scripts/func_find/tmp/
 fw_patching/base_fw/test/
+fw_patching/projects/pdcch_test/

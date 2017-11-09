@@ -33,9 +33,9 @@ SECTIONS
         *(.data*)
         *(.scommon*)
     } : data
-    .rodata : ALIGN(0x1000) {
+   /* .rodata : ALIGN(0x1000) {
         *(.rodata*)
-    } : rodata
+    } : rodata */
     .bss : ALIGN(0x1000) {
         *(.bss*)
     } : bss
@@ -43,5 +43,6 @@ SECTIONS
     . = DEFINED(__patch_addr_data_restricted_base__) ? __patch_addr_data_restricted_base__ : .;
     .restricted.data : ALIGN(0x1000) {
         *(.restricted.data*)
+        *(.rodata*)
     } : restricted.data
 }

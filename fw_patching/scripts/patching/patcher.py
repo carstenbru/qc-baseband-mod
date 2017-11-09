@@ -33,6 +33,8 @@ class FuncDefVisitor(c_ast.NodeVisitor):
     def visit_FuncDef(self, node):
         for spec in node.decl.funcspec:
             for expr in spec.exprlist.exprs:
+                if (type(expr.name)) is str:
+                    continue
                 #check for "overwrite" attribute and handle it
                 if (expr.name.name == "overwrite"):
                     destName = expr.args.exprs[0].value[1:-1]
