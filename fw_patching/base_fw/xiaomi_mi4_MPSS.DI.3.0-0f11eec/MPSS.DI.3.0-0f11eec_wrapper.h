@@ -19,6 +19,10 @@
 #include "dsat_wrapper.h"
 #include "channel_est_wrapper.h"
 #include "tasks_wrapper.h"
+#include "clocks.h"
+#include "pdcch.h"
+#include "hw_regs.h"
+//#include "experimental.h"
 
 /* ########################################### */
 
@@ -75,5 +79,7 @@ ADDRESS(0x08010100) void* memcpy(void* destination, const void* source, unsigned
 ADDRESS(0x084A6FB0) void* memcpy_s(void* destination, unsigned int dest_size, const void* source, unsigned int num);
 
 ADDRESS(0x080103F0) void* memset(void* ptr, int value, unsigned int num);
+
+ADDRESS(0x09559740) int strcmp(char* str1, char* str2);
 
 #endif /* __FW_WRAPPER_H */ 

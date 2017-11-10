@@ -35,7 +35,7 @@ Our software may damage your hardware and may void your hardware's warranty! You
     *  **pdcch_analyzer**: PDCCH dump analysis tool (C++)
 
 ## Dependencies
-Our framework depends requires a set of other tools to work:
+Our framework requires a set of other tools to work:
 * Hexagon SDK (compiler & linker): https://developer.qualcomm.com/software/hexagon-dsp-sdk/tools
 * pycparser: https://github.com/eliben/pycparser
 * pycparserext: https://github.com/inducer/pycparserext
