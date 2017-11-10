@@ -42,13 +42,14 @@ public:
 		return bandwidth_MHz[get_bandwidth_idx()];
 	}
 	uint16_t get_num_tx_antennas() {
-		return ((*((uint32_t*) (data)) >> 11) & 0x7);
+		return
+				(record_version > 0) ? (((*((uint32_t*) (data)) >> 11) & 0x7) + 1) : 2;
 	}
 	uint16_t get_num_tx_ports() {
-		return 2;  //TODO return good value
+		return get_num_tx_antennas();
 	}
 	uint16_t get_num_rx_antennas() {
-		return ((*((uint32_t*) (data)) >> 9) & 0x3);
+		return (record_version > 0) ? (((*((uint32_t*) (data)) >> 9) & 0x3) + 1) : 2;
 	}
 	uint16_t get_num_rbs() {  //result from HW peripheral read (PDCCH_DEINT_CFG_WORD1)
 		return ((*((uint32_t*) (data + 4))) & 0xFF);

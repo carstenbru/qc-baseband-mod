@@ -25,4 +25,6 @@ ADDRESS(0x081B0310) void pdcch_intr();
 ADDRESS(0x0822CA60) void mempool_config_ch_and_brdg(unsigned int channel, unsigned int* cfg0_cfg1_ptr);
 ADDRESS(0x0822CFD0) void mempool_cpy_page(unsigned int channel, unsigned int word_offset, unsigned int* destination_address, unsigned int num_words);
 
+ADDRESS(0x0C483474) extern unsigned char* antenna_config_struct_ptr; //actual pointer target type is some struct, not a char!
+
 #endif

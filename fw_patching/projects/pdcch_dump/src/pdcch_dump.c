@@ -10,7 +10,7 @@
 #include "pdcch_dump.h"
 
 #define PDCCH_DUMP_RECORD_VERSION 0
-#define PDCCH_CELL_INFO_RECORD_VERSION 0
+#define PDCCH_ADD_CELL_INFO_RECORD_VERSION 1
 
 /* PDCCH dump service client pointer, NULL when no client is set */
 void* pdcch_dump_svc_client;
@@ -28,8 +28,10 @@ void* clk_handle_mpll1_out_early_div5 = 0;
 
 /* last observed LTE phy cell ID */
 int cur_cell_id = -1;
-/* last observed LTE system bandwidth (downlink) */
+/* last observed LTE system bandwidth (downlink) and antenna numbers */
 unsigned char cur_sys_bandwidth;
+unsigned int cur_num_txant;
+unsigned int cur_num_rxant;
 
 __attribute__ ((overwrite ("pdcch_demback_init")))
 void pdcch_demback_init_hook(unsigned int subframe, unsigned int frame, unsigned int carrier_index) {
@@ -64,6 +66,14 @@ void HAL_clk_EnableClock_hook(void* pClockHandle) {
             }
         }
     }
+}
+
+__attribute__ ((overwrite ("lte_LL1_csf_callback")))
+void lte_LL1_csf_callback_hook(unsigned int carrier_index, unsigned int system_frame_number, unsigned int sub_frame_number) {
+    lte_LL1_csf_callback_fw_org(carrier_index, system_frame_number, sub_frame_number);
+    
+    cur_num_txant = *((unsigned short*)(antenna_config_struct_ptr + 0x80));
+    cur_num_rxant = *((unsigned short*)(antenna_config_struct_ptr + 0x7E));
 }
 
 __attribute__ ((noinline))
@@ -178,7 +188,7 @@ void pdcch_cell_info_thread_main() {
     memset(pdcch_cell_info_ind, 0, sizeof(test_data_ind_msg_v01));
     unsigned int* const data32 = (unsigned int*)(pdcch_cell_info_ind->data);
     *data32 = PDCCH_CELL_INFO_SVC_ID;
-    *(data32 + 1) = PDCCH_CELL_INFO_RECORD_VERSION;
+    *(data32 + 1) = PDCCH_ADD_CELL_INFO_RECORD_VERSION;
     
     while (1) {
         sem_wait(&pdcch_cell_info_thread_semaphore);
@@ -190,16 +200,12 @@ void pdcch_cell_info_thread_main() {
         while (1) { //wait for modem to be in a state where we can read all relevant registers (see dump thread)
             if (HAL_clk_IsClockOn(clk_handle_mpll1_out_early_div5)) {
                 if (read_hw_reg_safe(&MODEM_PWRUP) & 1) {
-                    if (read_hw_reg_safe(&PDCCH_REG_REORDER_WORD0) != 0) { 
-                        unsigned char* antenna_config_struct = 0x0C483474; //TODO move to fw header
-                        
-                        unsigned int num_txant = *((unsigned short*)(antenna_config_struct + 0x80));
-                        unsigned int num_rxant = *((unsigned short*)(antenna_config_struct + 0x7E));
+                    if (read_hw_reg_safe(&PDCCH_REG_REORDER_WORD0) != 0) {                         
                         // [18:16] System bandwidth
                         // [13:11] number of TX antennas
                         // [10:9] number of RX antennas
                         // [8:0] phy cell ID
-                        *(data32 + 2) = cur_cell_id | (cur_sys_bandwidth << 16) | (((num_txant-1) & 0x7) << 11) | (((num_rxant-1) & 0x3) << 9);
+                        *(data32 + 2) = cur_cell_id | (cur_sys_bandwidth << 16) | (((cur_num_txant-1) & 0x7) << 11) | (((cur_num_rxant-1) & 0x3) << 9);
                         //TODO EARFCN
                         unsigned char* buf_pos = pdcch_cell_info_ind->data + 12;
                         buf_pos = peri_reg_read(buf_pos, &PDCCH_DEINT_CFG_WORD1, 8);
