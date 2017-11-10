@@ -473,8 +473,8 @@ void PdcchDecoder::blind_decode(int16_t* cce_buf, unsigned int num_regs,
 					&& (active_cce[cce] >= DEFAULT_MIN_REGS_W_ENEGRY_CCE_ACTIVE)) {
 				cout << "##########################" << endl;
 				cout << "warning: CCE " << cce << " has high energy ("
-						<< (int)active_cce[cce] << " REGs over threshold), but no DCI detected!"
-						<< endl;
+						<< (int) active_cce[cce]
+						<< " REGs over threshold), but no DCI detected!" << endl;
 			}
 			if (!active_cce[cce] && cce_dci_detected[cce]) {
 				cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
@@ -486,11 +486,9 @@ void PdcchDecoder::blind_decode(int16_t* cce_buf, unsigned int num_regs,
 
 	/* callbacks */
 	bool keep_dcis = false;
-	if (detected_dcis.size() > 0) {
-		if (callbacks.size() > 0) {
-			for (unsigned int i = 0; i < callbacks.size(); i++) {
-				keep_dcis |= callbacks[i](data_record, detected_dcis, callback_args[i]);
-			}
+	if (callbacks.size() > 0) {
+		for (unsigned int i = 0; i < callbacks.size(); i++) {
+			keep_dcis |= callbacks[i](data_record, detected_dcis, callback_args[i]);
 		}
 	}
 	if (!keep_dcis) {

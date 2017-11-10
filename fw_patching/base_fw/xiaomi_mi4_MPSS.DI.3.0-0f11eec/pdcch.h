@@ -11,6 +11,7 @@
 #define __PDCCH_H
 
 ADDRESS(0x08208900) void pdcch_demback_init(unsigned int subframe, unsigned int frame, unsigned int carrier_index);
+ADDRESS(0x0820A270) void _demback_pdcchi_sth(unsigned char* config_struct, unsigned int carrier_index); //TODO function name
 
 ADDRESS(0x081AFB20) void config_demback_xfer_pdcch();
 ADDRESS(0x081AEC10) void config_demback_xfer_pdsch();

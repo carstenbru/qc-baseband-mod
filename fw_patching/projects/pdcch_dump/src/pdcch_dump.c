@@ -28,16 +28,16 @@ void* clk_handle_mpll1_out_early_div5 = 0;
 
 /* last observed LTE phy cell ID */
 int cur_cell_id = -1;
-/* last observed LTE system bandwidth (downlink) and antenna numbers */
+/* last observed LTE system bandwidth (downlink), antenna numbers and PHICH Ng */
 unsigned char cur_sys_bandwidth;
 unsigned int cur_num_txant;
 unsigned int cur_num_rxant;
+unsigned char cur_num_phich_group;
 
 __attribute__ ((overwrite ("pdcch_demback_init")))
 void pdcch_demback_init_hook(unsigned int subframe, unsigned int frame, unsigned int carrier_index) {
     unsigned char* cell_carrier_struct = lte_LL1_get_cell_info(carrier_index);
     unsigned short cell_id = *((unsigned short*)(cell_carrier_struct + 0x12));
-    
     int cur_cell_id_new = cell_id & 0x1FF;
     cur_sys_bandwidth = *(cell_carrier_struct + 0xC) & 0x7;
     
@@ -50,6 +50,13 @@ void pdcch_demback_init_hook(unsigned int subframe, unsigned int frame, unsigned
         }
     }
     cur_cell_id = cur_cell_id_new;
+}
+
+__attribute__ ((overwrite ("_demback_pdcchi_sth")))
+void _demback_pdcchi_sth_hook(unsigned char* config_struct, unsigned int carrier_index) {
+    cur_num_phich_group = *(config_struct + 0x12);
+    
+    _demback_pdcchi_sth_fw_org(config_struct, carrier_index);
 }
 
 __attribute__ ((overwrite ("HAL_clk_EnableClock")))
@@ -149,10 +156,10 @@ void pdcch_dump_thread_main() {
                     unsigned int phich_duration = (PDCCH_REG_REORDER_WORD1) & 0x3;
                     unsigned int crnti = (TBVD_CCH_LTE_CFG_WORD4) & 0xFFFF;
                     // [31:16] UE C-RNTI
+                    // [15:10] number of PHICH groups
                     // [9:8] PHICH duration
                     // [7:0] total number of RBs/symbol (bandwidth)
-                    *(data32 + 3) = (crnti << 16) | num_rb | (phich_duration << 8);
-                    //TODO add phich number groups (Ng) here! -> in the worst case recover from number of REGs written in HW registers...
+                    *(data32 + 3) = (crnti << 16) | num_rb | (phich_duration << 8) | ((cur_num_phich_group & 0x3F) << 10);
 
                     //send indication message to client
                     pdcch_dump_ind->data_len = (1 + header_length + buffer_dump_length) << 2;

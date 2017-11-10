@@ -45,6 +45,10 @@ public:
 	uint16_t get_phich_duration() {
 		return ((*((uint32_t*) (data + 4)) >> 8) & 0x3);
 	}
+	uint16_t get_num_phich_groups() {
+		return ((*((uint32_t*) (data + 4)) >> 10) & 0x3F);
+	}
+	float get_phich_ng();
 
 	uint16_t get_num_rbs() {
 		return ((*((uint32_t*) (data + 4))) & 0xFF);
