@@ -32,6 +32,7 @@ Our software may damage your hardware and may void your hardware's warranty! You
 * **kernel**: Android kernel with patches and additional modules
 * **thesis**: Master thesis during which this code was developed
 * **tools**: Miscellaneous additional tools/scripts
+    *  **pdcch_analyzer**: PDCCH dump analysis tool (C++)
 
 ## Dependencies
 Our framework depends requires a set of other tools to work:
