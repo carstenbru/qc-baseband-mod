@@ -23,6 +23,7 @@ at_commands/
 fw_patching/scripts/func_find/tmp/
 fw_patching/base_fw/test/
 fw_patching/projects/pdcch_test/
+fw_patching/projects/pdcch_dump_bak*
 tools/pdcch_analyzer/data/
 tools/pdcch_analyzer/Debug/pdcch_analyzer
 tools/pdcch_analyzer/Release/pdcch_analyzer
