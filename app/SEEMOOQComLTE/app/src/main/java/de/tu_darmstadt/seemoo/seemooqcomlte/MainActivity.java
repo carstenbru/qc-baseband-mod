@@ -801,6 +801,15 @@ public class MainActivity extends AppCompatActivity {
                                 alertDialog.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
 
                                     public void onClick(DialogInterface dialog, int which) {
+                                        if (pddchDumpSplitSize != 0) {
+                                            int i = 0;
+                                            File delFile = file;
+                                            while (delFile.exists()) {
+                                                delFile.delete();
+                                                i++;
+                                                delFile = new File(pdcchDumpFilename + i);
+                                            }
+                                        }
                                         startDumping(compoundButton, file);
                                     }
                                 });
@@ -820,7 +829,9 @@ public class MainActivity extends AppCompatActivity {
 
                     } else {
                         try {
-                            pdcchDumpStream.close();
+                            if (pdcchDumpStream != null) {
+                                pdcchDumpStream.close();
+                            }
                         } catch (IOException ioe) {
                         }
 
