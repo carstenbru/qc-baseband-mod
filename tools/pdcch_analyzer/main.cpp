@@ -238,7 +238,6 @@ int main(int argc, char* argv[]) {
 	filename.append("/");
 	filename.append(argv[2]);
 	filename.append(".bin");
-	cout << "loading file: " << filename << endl;
 	memset(rnti_count, 0, sizeof(unsigned int) * 65536);
 
 	/* create record reader and decoder and connect them */

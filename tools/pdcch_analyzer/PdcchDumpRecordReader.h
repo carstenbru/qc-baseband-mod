@@ -34,6 +34,11 @@ typedef bool (*record_callback_t)(PdcchDumpRecord* record, void* arg);
 
 class PdcchDumpRecordReader {
 public:
+	/**
+	 * constructor
+	 *
+	 * @param filename base filename (part number will be appended automatically)
+	 */
 	PdcchDumpRecordReader(std::string filename);
 	virtual ~PdcchDumpRecordReader();
 
@@ -65,6 +70,8 @@ public:
 private:
 	bool call_callback(record_type_enum type, PdcchDumpRecord* record);
 
+	std::string base_filename;
+	int cur_split_file;
 	std::ifstream file_stream;
 
 	std::vector<record_callback_t> callbacks[PDCCH_RECORD_MAX];

@@ -632,7 +632,10 @@ public class MainActivity extends AppCompatActivity {
         private PdcchDumpService.PdcchDumpListener pdcchDumpListener;
 
         private boolean pdcchDumpActive = false;
+        private String pdcchDumpFilename;
         private DataOutputStream pdcchDumpStream;
+        private int pddchDumpSubFile;
+        private int pddchDumpSplitSize;
 
         private LocationManager locationManager;
         private LocationListener locationListener;
@@ -773,11 +776,19 @@ public class MainActivity extends AppCompatActivity {
                     EditText filenameEdit = (EditText) getView().findViewById(R.id.pdcchDestFileName);
 
                     if (b) {
-                        String filename = filenameEdit.getText().toString();
-                        if (filename.isEmpty()) {
+                        pdcchDumpFilename = filenameEdit.getText().toString();
+                        if (pdcchDumpFilename.isEmpty()) {
                             pdcchDumpEnable.setChecked(false);
                             Toast.makeText(compoundButton.getContext(), getResources().getString(R.string.filenameEmpty), Toast.LENGTH_SHORT).show();
                         } else {
+                            String filename = pdcchDumpFilename;
+                            pddchDumpSubFile = 0;
+                            if (sharedPreferences.getBoolean("pdcch_split_dump", true)) {
+                                pddchDumpSplitSize = Integer.parseInt(sharedPreferences.getString("max_pdcch_file_size", "2000"));
+                                filename = filename + "0";
+                            } else {
+                                pddchDumpSplitSize = 0;
+                            }
                             final File file = new File(filename);
                             if (!file.exists()) {
                                 startDumping(compoundButton, file);
@@ -836,6 +847,21 @@ public class MainActivity extends AppCompatActivity {
          * @param length number of bytes in this record (without header)
          */
         public void writeRecord(int recordType, int recordVersion, byte[] data, int offset, int length) { //TODO ensure that not different data appears interleaved in output...mutex..
+            if (pddchDumpSplitSize != 0) { //file splitting active?
+                if (pdcchDumpStream.size() + length + 8 > pddchDumpSplitSize * 1000 * 1000) { //file got too big, close it and create next one
+                    try {
+                        pdcchDumpStream.close();
+
+                        pddchDumpSubFile++;
+                        String filename = pdcchDumpFilename + pddchDumpSubFile;
+                        File file = new File(filename);
+                        file.createNewFile();
+                        pdcchDumpStream = new DataOutputStream(new FileOutputStream(file));
+                    } catch (IOException ioe) {
+                    }
+                }
+            }
+
             byte[] header = new byte[8];
             SeemooQmi.writeIntLittleEndian(length + 8, header, 0);
             SeemooQmi.writeIntLittleEndian((recordType << 16) | recordVersion, header, 4);
@@ -865,8 +891,6 @@ public class MainActivity extends AppCompatActivity {
 
                 @Override
                 public void newCellInfo(PdcchDumpService.PdcchCellInfoEvent e) {
-                    //ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    //DataOutputStream dos = new DataOutputStream(baos);
                     ByteBuffer buffer = ByteBuffer.allocate(20);
                     buffer.order(ByteOrder.LITTLE_ENDIAN);
 
@@ -877,7 +901,7 @@ public class MainActivity extends AppCompatActivity {
                             if (cellInfo instanceof CellInfoLte) {
                                 CellInfoLte cellInfoLte = (CellInfoLte) cellInfo;
                                 CellIdentityLte cellIdentityLte = cellInfoLte.getCellIdentity();
-                                CellSignalStrengthLte cellSignalStrengthLte = cellInfoLte.getCellSignalStrength(); //pdcchDumpService.register(false);
+                                CellSignalStrengthLte cellSignalStrengthLte = cellInfoLte.getCellSignalStrength();
 
                                 // [28:20] phy cell ID
                                 // [19:10] MCC

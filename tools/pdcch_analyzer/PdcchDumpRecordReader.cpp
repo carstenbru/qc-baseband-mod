@@ -16,7 +16,13 @@
 using namespace std;
 
 PdcchDumpRecordReader::PdcchDumpRecordReader(string filename) :
-		file_stream(filename, ios::in | ios::binary) {
+		base_filename(filename), cur_split_file(-2), file_stream(base_filename,
+				ios::in | ios::binary) {
+	if (file_stream.is_open()) {
+		cout << "reading file: " << filename << endl;
+	} else {
+		cur_split_file = -1;
+	}
 }
 
 PdcchDumpRecordReader::~PdcchDumpRecordReader() {
@@ -25,9 +31,22 @@ PdcchDumpRecordReader::~PdcchDumpRecordReader() {
 
 PdcchDumpRecord* PdcchDumpRecordReader::read_next_record(
 		bool& callback_needs_record) {
+
 	uint32_t header_data[2];
 	if (!(file_stream.read((char*) header_data, 8))) {
-		return 0;
+		if (cur_split_file == -2) { //single file mode
+			return 0;
+		} else { //split file mode
+			cur_split_file++; //try if a next file exists
+			if (file_stream.is_open()) {
+				file_stream.close();
+			}
+			file_stream.open(base_filename + to_string(cur_split_file), ios::in | ios::binary);
+			if (!(file_stream.read((char*) header_data, 8))) {
+				return 0;
+			}
+			cout << "reading file: " << base_filename << cur_split_file << endl;
+		}
 	}
 
 	unsigned int record_type = header_data[1] >> 16;
@@ -72,7 +91,8 @@ PdcchDumpRecord* PdcchDumpRecordReader::read_next_record(
 				callback_args[PDCCH_ALL_RECORDS][i]);
 	}
 	for (unsigned int i = 0; i < callbacks[record_type].size(); i++) {
-		callback_needs_record |= callbacks[record_type][i](record, callback_args[record_type][i]);
+		callback_needs_record |= callbacks[record_type][i](record,
+				callback_args[record_type][i]);
 	}
 
 	return record;

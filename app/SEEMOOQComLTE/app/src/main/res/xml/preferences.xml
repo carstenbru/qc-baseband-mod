@@ -57,6 +57,22 @@
             android:inputType="number"
             android:summary="interval of GPS locations"
             android:icon="@android:drawable/ic_menu_recent_history" />
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:title="Split dumps"
+            android:key="pdcch_split_dump"
+            android:summary="Split long dumps into multiple files"
+            android:icon="@android:drawable/ic_menu_edit" />
+        <EditTextPreference
+            android:defaultValue="2000"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:inputType="number"
+            android:title="Maximum dump file size"
+            android:dependency="pdcch_split_dump"
+            android:key="max_pdcch_file_size"
+            android:summary="Size at which the dump gets split (in MB, max 2147)"
+            android:icon="@android:drawable/ic_menu_save" />
     </PreferenceCategory>
     <PreferenceCategory android:title="Function Counter Service">
         <CheckBoxPreference
