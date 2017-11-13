@@ -140,6 +140,13 @@ public:
 		return ((*((uint32_t*) (data + 232 + 4 * (idx >> 1))) >> ((idx & 1) * 16))
 				& 0xFFFF);
 	}
+
+	/**
+	 * gets the EARFCN (DL) value, which uniquely defines the cells frequency (and LTE band)
+	 */
+	uint16_t get_earfcn() {
+		return (record_version > 1) ? ((*((uint32_t*) (data + 264))) & 0xFFFF) : 0;
+	}
 };
 
 #endif /* PDCCHADDCELLINFORECORD_H_ */

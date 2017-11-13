@@ -10,7 +10,7 @@
 #include "pdcch_dump.h"
 
 #define PDCCH_DUMP_RECORD_VERSION 0
-#define PDCCH_ADD_CELL_INFO_RECORD_VERSION 1
+#define PDCCH_ADD_CELL_INFO_RECORD_VERSION 2
 
 /* PDCCH dump service client pointer, NULL when no client is set */
 void* pdcch_dump_svc_client;
@@ -28,11 +28,14 @@ void* clk_handle_mpll1_out_early_div5 = 0;
 
 /* last observed LTE phy cell ID */
 int cur_cell_id = -1;
-/* last observed LTE system bandwidth (downlink), antenna numbers and PHICH Ng */
+/* last observed LTE system bandwidth (downlink), antenna numbers and PHICH Ng, EARFCN */
 unsigned char cur_sys_bandwidth;
 unsigned int cur_num_txant;
 unsigned int cur_num_rxant;
 unsigned char cur_num_phich_group;
+unsigned short cur_earfcn = 0;
+
+/******** metadata collection hooks ********/
 
 __attribute__ ((overwrite ("pdcch_demback_init")))
 void pdcch_demback_init_hook(unsigned int subframe, unsigned int frame, unsigned int carrier_index) {
@@ -59,6 +62,25 @@ void _demback_pdcchi_sth_hook(unsigned char* config_struct, unsigned int carrier
     _demback_pdcchi_sth_fw_org(config_struct, carrier_index);
 }
 
+__attribute__ ((overwrite ("lte_LL1_csf_callback")))
+void lte_LL1_csf_callback_hook(unsigned int carrier_index, unsigned int system_frame_number, unsigned int sub_frame_number) {
+    lte_LL1_csf_callback_fw_org(carrier_index, system_frame_number, sub_frame_number);
+    
+    cur_num_txant = *((unsigned short*)(antenna_config_struct_ptr + 0x80));
+    cur_num_rxant = *((unsigned short*)(antenna_config_struct_ptr + 0x7E));
+}
+
+__attribute__ ((overwrite ("_pbch_decode_req_received")))
+void _pbch_decode_req_received_hook(unsigned int u0, unsigned char* lte_LL1_dl_pbch_decode_req) {
+    _pbch_decode_req_received_fw_org(u0, lte_LL1_dl_pbch_decode_req);
+    
+    if (*(lte_LL1_dl_pbch_decode_req + 0x14)) { //check if request is for serving cell
+        cur_earfcn = *((unsigned short*)(lte_LL1_dl_pbch_decode_req + 0x10));
+    }
+}
+
+/******** determine clock handle ("mpll1_out_early_div5") ********/
+
 __attribute__ ((overwrite ("HAL_clk_EnableClock")))
 void HAL_clk_EnableClock_hook(void* pClockHandle) {
     HAL_clk_EnableClock_fw_org(pClockHandle);
@@ -75,13 +97,7 @@ void HAL_clk_EnableClock_hook(void* pClockHandle) {
     }
 }
 
-__attribute__ ((overwrite ("lte_LL1_csf_callback")))
-void lte_LL1_csf_callback_hook(unsigned int carrier_index, unsigned int system_frame_number, unsigned int sub_frame_number) {
-    lte_LL1_csf_callback_fw_org(carrier_index, system_frame_number, sub_frame_number);
-    
-    cur_num_txant = *((unsigned short*)(antenna_config_struct_ptr + 0x80));
-    cur_num_rxant = *((unsigned short*)(antenna_config_struct_ptr + 0x7E));
-}
+/******** actual dump collection threads ********/
 
 __attribute__ ((noinline))
 void thread_loop_wait(unsigned int wait_time) {
@@ -213,7 +229,7 @@ void pdcch_cell_info_thread_main() {
                         // [10:9] number of RX antennas
                         // [8:0] phy cell ID
                         *(data32 + 2) = cur_cell_id | (cur_sys_bandwidth << 16) | (((cur_num_txant-1) & 0x7) << 11) | (((cur_num_rxant-1) & 0x3) << 9);
-                        //TODO EARFCN
+
                         unsigned char* buf_pos = pdcch_cell_info_ind->data + 12;
                         buf_pos = peri_reg_read(buf_pos, &PDCCH_DEINT_CFG_WORD1, 8);
                         
@@ -228,8 +244,11 @@ void pdcch_cell_info_thread_main() {
                         
                         buf_pos = peri_reg_read(buf_pos, &TBVD_CCH_LTE_CFG_WORD4, 32); //RNTI configuration
                         
+                        // [15:0] EARFCN (DL)
+                        *(data32 + 68) = cur_earfcn;
+                        
                         //send indication message to client
-                        pdcch_cell_info_ind->data_len = (4 + 4 + 4 + 260);
+                        pdcch_cell_info_ind->data_len = (4 + 4 + 4 + 260 + 4);
                         qmi_csi_send_ind(pdcch_cell_info_svc_client, QMI_TEST_DATA_IND_V01, pdcch_cell_info_ind, sizeof(test_data_ind_msg_v01));
                         
                         break;
@@ -240,6 +259,8 @@ void pdcch_cell_info_thread_main() {
         }
     }
 }
+
+/******** QMI message handlers ********/
 
 /**
  * @brief PDCCH dump service register request handler

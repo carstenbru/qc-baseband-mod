@@ -19,8 +19,8 @@ PdcchAddCellInfoRecord::~PdcchAddCellInfoRecord() {
 string PdcchAddCellInfoRecord::to_string() {
 	char buf[256];
 	snprintf(buf, sizeof(buf),
-			"PdcchAddCellInfoRecord: phy cell ID: %d\tbandwidth: %.2fMHz\tnumber of CCEs for CFI1: %d\tnum_tx_antennas: %d\tnum_rx_antennas: %d\tRNTI of UE: %d",
-			get_phy_cell_id(), get_bandwidth_MHz(), get_num_cce(1),
+			"PdcchAddCellInfoRecord: phy cell ID: %d\tbandwidth: %.2fMHz\tEARFCN: %d\tnumber of CCEs for CFI1: %d\tnum_tx_antennas: %d\tnum_rx_antennas: %d\tRNTI of UE: %d",
+			get_phy_cell_id(), get_bandwidth_MHz(), get_earfcn(), get_num_cce(1),
 			get_num_tx_antennas(), get_num_rx_antennas(), get_rnti(C_RNTI));
 
 	return string(buf);

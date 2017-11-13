@@ -17,6 +17,8 @@ ADDRESS(0x081AFB20) void config_demback_xfer_pdcch();
 ADDRESS(0x081AEC10) void config_demback_xfer_pdsch();
 ADDRESS(0x081AFC40) void config_demback_xfer_pbch();
 
+ADDRESS(0x08208D90) void _pbch_decode_req_received(unsigned int u0, unsigned char* lte_LL1_dl_pbch_decode_req);  //actual pointer target type of parameter 2 is some struct, not a char!
+
 ADDRESS(0x080A8000) void* pdcch_decoder_results(unsigned int frame_info);
 
 ADDRESS(0x080C08B0) void* pdcch_demod_main(unsigned int u0, unsigned int u1, unsigned int u2, unsigned int u3, unsigned int u4, unsigned int u5);
