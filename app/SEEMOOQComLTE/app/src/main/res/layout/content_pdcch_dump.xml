@@ -14,46 +14,52 @@
     android:focusableInTouchMode="true"
     android:focusable="true">
 
-    <LinearLayout
+    <android.support.v4.widget.NestedScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:focusable="false"
-        android:focusableInTouchMode="false"
-        android:clickable="false">
+        android:layout_height="match_parent">
 
-        <CheckBox
-            android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:id="@+id/activatePdcchDump"
-            android:text="@string/activatePdcchDumpText"
-            android:checked="false"
-            android:layout_weight="0" />
-
-        <android.support.design.widget.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
-
-            <EditText
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:ems="10"
-                android:id="@+id/pdcchDestFileName"
-                android:hint="@string/destFile"
-                android:layout_weight="1"
-                android:inputType="textNoSuggestions" />
-
-        </android.support.design.widget.TextInputLayout>
-
-        <CheckBox
-            android:text="@string/pdcchGPSText"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:id="@+id/pdcchGpsBox"
-            android:layout_weight="0"
-            android:checked="true" />
+            android:orientation="vertical" >
 
+            <CheckBox
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/activatePdcchDump"
+                android:text="@string/activatePdcchDumpText"
+                android:checked="false"
+                android:layout_weight="0" />
 
-    </LinearLayout>
+            <android.support.design.widget.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <EditText
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ems="10"
+                    android:id="@+id/pdcchDestFileName"
+                    android:hint="@string/destFile"
+                    android:layout_weight="1"
+                    android:inputType="textNoSuggestions" />
+
+            </android.support.design.widget.TextInputLayout>
+
+            <CheckBox
+                android:text="@string/pdcchGPSText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/pdcchGpsBox"
+                android:layout_weight="0"
+                android:checked="true" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/pdcchCellInfo" />
+
+        </LinearLayout>
+    </android.support.v4.widget.NestedScrollView>
 
 </RelativeLayout>

@@ -78,6 +78,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.text.SimpleDateFormat;
 
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.ChannelEstimationService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.ComplexInteger;
@@ -648,6 +649,8 @@ public class MainActivity extends AppCompatActivity {
 
         private TelephonyManager telephonyManager;
 
+        private float bandwidthMHz[] = { 1.4f, 3, 5, 10, 15, 20 };
+
         private Runnable timeRecordRunnable = new Runnable() {
             @Override
             public void run() {
@@ -892,6 +895,7 @@ public class MainActivity extends AppCompatActivity {
             setPdcchDumpGuiState(rootView, pdcchDumpActive);
             setupPdcchDumpCheckbox(rootView);
 
+            final TextView pdcchCellInfoView = (TextView) rootView.findViewById(R.id.pdcchCellInfo);
             //new dump listener
             pdcchDumpListener = new PdcchDumpService.PdcchDumpListener() {
                 @Override
@@ -934,6 +938,26 @@ public class MainActivity extends AppCompatActivity {
 
                                 byte[] data = buffer.array();
                                 writeRecord(PDCCH_MAIN_CELL_INFO_RECORD, PDCCH_MAIN_CELL_INFO_RECORD_VERSION, data, 0, data.length);
+
+                                //show cell info in GUI
+                                StringBuilder sb = new StringBuilder();
+                                Date currentTime = Calendar.getInstance().getTime();
+                                SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss");
+                                sb.append("Last update: ").append(format.format(currentTime)).append("\n");
+                                sb.append("MCC: ").append(cellIdentityLte.getMcc()).append("\n");
+                                sb.append("MNC: ").append(cellIdentityLte.getMnc()).append("\n");
+                                sb.append("TAC: ").append(cellIdentityLte.getTac()).append("\n");
+                                sb.append("CID: ").append(cellIdentityLte.getCi()).append("\n");
+                                sb.append("Physical cell ID: ").append(cellIdentityLte.getPci()).append("\n");
+                                if (cellSignalStrengthLte.getTimingAdvance() != Integer.MAX_VALUE) {
+                                    sb.append("Timing Advance: ").append(cellSignalStrengthLte.getTimingAdvance()).append("\n");
+                                }
+                                sb.append("Signal strength: ").append(cellSignalStrengthLte.getDbm()).append("dBm\n");
+                                int bandwidthIdx = e.getData()[10] & 0x7;
+                                sb.append("Bandwidth: ").append(String.format("%.1f", bandwidthMHz[bandwidthIdx])).append("MHz\n");
+                                int earfcn = (int)(SeemooQmi.readIntLittleEndian(e.getData(), 272) & 0xFFFF);
+                                sb.append("EARFCN: ").append(earfcn).append("\n");
+                                pdcchCellInfoView.setText(sb.toString());
                             }
                         }
                     }

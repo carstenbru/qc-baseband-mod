@@ -55,7 +55,7 @@ public:
 	}
 
 	/**
-	 * gets a word (12bit from the buffer
+	 * gets a word (12bit) from the buffer
 	 *
 	 * @param offset word offset in buffer
 	 */
