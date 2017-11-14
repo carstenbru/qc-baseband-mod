@@ -135,7 +135,6 @@ void pdcch_dump_thread_main() {
     *data32 = PDCCH_DUMP_SVC_ID;
     *(data32 + 1) = PDCCH_DUMP_RECORD_VERSION;
     const unsigned int header_length = 3;
-    const unsigned int buffer_dump_length = 0x4E0;
     
     while (1) {      
         // check that the main peripheral clock is running, otherwise we cannot read any hardware register
@@ -147,6 +146,19 @@ void pdcch_dump_thread_main() {
                 unsigned int frame_number_reg_val = read_hw_reg_safe(&PDCCH_REG_REORDER_WORD0);
                 unsigned int frame_number = (frame_number_reg_val) & 0x3FFF; //[13:4] frame number; [3:0] subframe number
                 if ((frame_number_reg_val != 0) && (frame_number != last_dumped_frame_number)) {
+                    unsigned int num_rb = (PDCCH_DEINT_CFG_WORD1) & 0xFF;
+                    unsigned int cfi_detected = (LTE_DBE_PCFICH_STATUS) & 0xC0000000;
+                    unsigned int reg_heights = PDCCH_DEINT_CFG_WORD1;
+                    unsigned int num_regs_per_rb = ((reg_heights >> 20) & 0x3);
+                    if (cfi_detected >= 1) {
+                        num_regs_per_rb += ((reg_heights >> 22) & 0x3);
+                    }
+                    if (cfi_detected == 2) {
+                        num_regs_per_rb += ((reg_heights >> 24) & 0x3);
+                    }
+                    unsigned int buffer_dump_length = num_regs_per_rb * num_rb + 1; //+1 because of header in LLR buffer
+                    buffer_dump_length += buffer_dump_length/2 + 1; //floor(buffer_dump_length*1,5) + 1
+                    
                     //save old BRDG configuration
                     unsigned int brdg_cfg_bak[3];
                     brdg_cfg_bak[0] = MEM_PL_BRDG_CH0_CFG0;
@@ -162,13 +174,11 @@ void pdcch_dump_thread_main() {
                     MEM_PL_BRDG_CH0_CFG1 = brdg_cfg_bak[1];
                     MEM_PL_MEM_CH0_PAGE_NUM = brdg_cfg_bak[2];
                     
-                    unsigned int cfi_detected = (LTE_DBE_PCFICH_STATUS) & 0xC0000000;
                     // [31:30] CFI
                     // [24:16] cell ID (phy)
                     // [13:4]  frame number
                     // [3:0]   subframe number
                     *(data32 + 2) = frame_number | cfi_detected | (cur_cell_id << 16);
-                    unsigned int num_rb = (PDCCH_DEINT_CFG_WORD1) & 0xFF;
                     unsigned int phich_duration = (PDCCH_REG_REORDER_WORD1) & 0x3;
                     unsigned int crnti = (TBVD_CCH_LTE_CFG_WORD4) & 0xFFFF;
                     // [31:16] UE C-RNTI

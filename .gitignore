@@ -28,3 +28,5 @@ tools/pdcch_analyzer/data/
 tools/pdcch_analyzer/Debug/pdcch_analyzer
 tools/pdcch_analyzer/Release/pdcch_analyzer
 tools/pdcch_analyzer/*.csv
+tools/pdcch_analyzer/Debug/*.csv
+tools/pdcch_analyzer/Release/*.csv
