@@ -574,9 +574,16 @@ public class MainActivity extends AppCompatActivity {
      */
     public static class StatusLogFragment extends Fragment {
         private SeemooQmi.StatusListener statusListener;
+        private int lastStatusLogPos = 0;
 
 
-        private void addMsgToStatusLog(TextView statusLog, String msg) {
+        private void addMsgToStatusLog(TextView statusLog, String msg, boolean replacesLast) {
+            if (replacesLast && (lastStatusLogPos < statusLog.getText().length())) {
+                CharSequence cs = statusLog.getText();
+                cs = cs.subSequence(0, lastStatusLogPos);
+                statusLog.setText(cs);
+            }
+            lastStatusLogPos = statusLog.getText().length();
             statusLog.append(msg);
             statusLog.append("\n");
         }
@@ -596,12 +603,12 @@ public class MainActivity extends AppCompatActivity {
             //put old messages in the log (received before creation of this fragment
             //or when activity was send to background)
             for (String m : seemooQmi.getOldStatusMessages()) {
-                addMsgToStatusLog(statusLog, m);
+                addMsgToStatusLog(statusLog, m, false);
             }
             statusListener = new SeemooQmi.StatusListener() {
                 @Override
                 public void statusUpdate(SeemooQmi.StatusUpdateEvent e) {
-                    addMsgToStatusLog(statusLog, e.getStatus());
+                    addMsgToStatusLog(statusLog, e.getStatus(), e.replacesLast());
                 }
             };
             //register listner for incoming messages

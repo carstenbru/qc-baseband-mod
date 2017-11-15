@@ -10,7 +10,6 @@ package de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi;
 import android.content.Context;
 import android.os.Handler;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -31,6 +30,7 @@ public class SeemooQmi {
     private static final String STATUS_FILE = "/dev/seemoo_qmi_status";
     private static final String DATA_FILE = "/dev/seemoo_qmi_data";
     public static final int MAX_PACKAGE_LENGTH = 8192;
+    private static final int WRITE_BUF_SIZE = 131072;
 
     private Map<Integer, List<PacketListener>> packetListeners = new HashMap<Integer, List<PacketListener>>();
     private Map<StatusListener, Integer> statusListeners = new HashMap<StatusListener, Integer>();
@@ -48,7 +48,8 @@ public class SeemooQmi {
     private List<SeemooQmiService> services = new LinkedList<SeemooQmiService>();
 
     private String lastStatusString = "";
-    int statusMsgDuplCount = 0;
+    private int statusMsgDuplCount = 0;
+    private boolean lastMsgKernel = false;
 
     /**
      * runnable to handle polling od messages from the kernel driver
@@ -93,15 +94,19 @@ public class SeemooQmi {
      */
     public class StatusUpdateEvent extends EventObject {
         private String status;
+        private boolean replacesLast;
 
-        public StatusUpdateEvent(Object source, String status) {
+        public StatusUpdateEvent(Object source, String status, boolean replacesLast) {
             super(source);
             this.status = status;
+            this.replacesLast = replacesLast;
         }
 
         public String getStatus() {
             return status;
         }
+
+        public boolean replacesLast() { return replacesLast; }
     }
 
     /**
@@ -271,16 +276,42 @@ public class SeemooQmi {
      * @param levelMask log level mask
      */
     public void notifyStatusListeners(String message, int levelMask) {
+        notifyStatusListenersInt(message, levelMask, false);
+        lastMsgKernel = false;
+    }
+
+    /**
+     * send a message to all (matching) status listeners
+     *
+     * @param message the message to send
+     * @param levelMask log level mask
+     */
+    public void notifyStatusListenersKernel(String message, int levelMask, boolean replacesLast) {
+        notifyStatusListenersInt(message, levelMask, replacesLast & lastMsgKernel);
+        lastMsgKernel = true;
+    }
+
+    /**
+     * send a message to all (matching) status listeners
+     *
+     * @param message the message to send
+     * @param levelMask log level mask
+     * @param replacesLast true if this message should replace the last message
+     */
+    private void notifyStatusListenersInt(String message, int levelMask, boolean replacesLast) {
         //send to matching listeners
         if (!statusListeners.isEmpty()) {
             for (Map.Entry<StatusListener, Integer> entry : statusListeners.entrySet()) {
                 if ((entry.getValue() & levelMask) != 0) {
-                    entry.getKey().statusUpdate(new StatusUpdateEvent(this, message + "\n"));
+                    entry.getKey().statusUpdate(new StatusUpdateEvent(this, message + "\n", replacesLast));
                 }
             }
         }
         //write to old messages storage
         if ((oldStatusMessagesMask & levelMask) != 0) {
+            if (replacesLast) {
+                oldStatusMessages.remove(oldStatusMessages.size()-1);
+            }
             oldStatusMessages.add(message + "\n");
             int length = oldStatusMessages.size();
             if (length > maxOldMessagesSize) {
@@ -289,14 +320,14 @@ public class SeemooQmi {
         }
     }
 
-    private void notifyStatusListenersMult(String message, int levelMask, int mult) {
+    private void notifyStatusListenersKernelMult(String message, int levelMask, int mult, boolean replacesLast) {
         if (mult == 0) {
             return;
         }
         if (mult == 1) {
-            notifyStatusListeners(message, levelMask);
+            notifyStatusListenersKernel(message, levelMask, replacesLast);
         } else {
-            notifyStatusListeners(mult + "x: " + lastStatusString, levelMask);
+            notifyStatusListenersKernel(mult + "x: " + lastStatusString, levelMask, replacesLast);
         }
     }
 
@@ -320,25 +351,35 @@ public class SeemooQmi {
 
             if (inputStream != null) {
                 InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
-                BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
-                String receiveString = "";
+                char buf[] = new char[WRITE_BUF_SIZE];
+                int readBytes = inputStreamReader.read(buf, 0 , WRITE_BUF_SIZE);
+                int bufPos = 0;
+                StringBuilder sb = new StringBuilder();
                 boolean recvMsg = false;
+                boolean replacesLastMsg = true;
 
-                while ((receiveString = bufferedReader.readLine()) != null) {
-                    if (!receiveString.equals(lastStatusString)) {
-                        notifyStatusListenersMult(lastStatusString, 2, statusMsgDuplCount);
+                while (true) {
+                    sb.setLength(0);
+                    while ((bufPos < readBytes) && (buf[bufPos] != '\n')) {
+                        sb.append(buf[bufPos]);
+                        bufPos++;
+                    }
+                    if (bufPos >= readBytes) {
+                        break;
+                    }
+                    bufPos++;
+                    if (!sb.toString().equals(lastStatusString)) {
+                        notifyStatusListenersKernelMult(lastStatusString, 2, statusMsgDuplCount, replacesLastMsg);
                         statusMsgDuplCount = 1;
+                        replacesLastMsg = false;
                     } else {
                         statusMsgDuplCount++;
-                        if (receiveString.endsWith("\n")) {
-                            statusMsgDuplCount+=2;
-                        }
                     }
-                    lastStatusString = receiveString;
+                    lastStatusString = sb.toString();
                     recvMsg = true;
                 }
                 if (recvMsg) {
-                    notifyStatusListenersMult(lastStatusString, 2, statusMsgDuplCount);
+                    notifyStatusListenersKernelMult(lastStatusString, 2, statusMsgDuplCount, replacesLastMsg);
                 }
 
                 inputStream.close();
