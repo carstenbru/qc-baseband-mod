@@ -47,6 +47,9 @@ public class SeemooQmi {
 
     private List<SeemooQmiService> services = new LinkedList<SeemooQmiService>();
 
+    private String lastStatusString = "";
+    int statusMsgDuplCount = 0;
+
     /**
      * runnable to handle polling od messages from the kernel driver
      */
@@ -286,6 +289,17 @@ public class SeemooQmi {
         }
     }
 
+    private void notifyStatusListenersMult(String message, int levelMask, int mult) {
+        if (mult == 0) {
+            return;
+        }
+        if (mult == 1) {
+            notifyStatusListeners(message, levelMask);
+        } else {
+            notifyStatusListeners(mult + "x: " + lastStatusString, levelMask);
+        }
+    }
+
     /**
      * return all status messages received until now that match the mask defined with
      * setOldStatusMessagesMask()
@@ -308,16 +322,26 @@ public class SeemooQmi {
                 InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
                 BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
                 String receiveString = "";
-                StringBuilder stringBuilder = new StringBuilder();
+                boolean recvMsg = false;
 
                 while ((receiveString = bufferedReader.readLine()) != null) {
-                    stringBuilder.append(receiveString).append("\n");
+                    if (!receiveString.equals(lastStatusString)) {
+                        notifyStatusListenersMult(lastStatusString, 2, statusMsgDuplCount);
+                        statusMsgDuplCount = 1;
+                    } else {
+                        statusMsgDuplCount++;
+                        if (receiveString.endsWith("\n")) {
+                            statusMsgDuplCount+=2;
+                        }
+                    }
+                    lastStatusString = receiveString;
+                    recvMsg = true;
+                }
+                if (recvMsg) {
+                    notifyStatusListenersMult(lastStatusString, 2, statusMsgDuplCount);
                 }
 
                 inputStream.close();
-                if (stringBuilder.length() > 0) {
-                    notifyStatusListeners(stringBuilder.substring(0, stringBuilder.length()-1), 2);
-                }
             }
         } catch (Exception e) {
             notifyStatusListeners(e.toString(), 1);

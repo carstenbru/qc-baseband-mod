@@ -71,6 +71,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -78,7 +79,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
-import java.text.SimpleDateFormat;
 
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.ChannelEstimationService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.ComplexInteger;
@@ -575,22 +575,33 @@ public class MainActivity extends AppCompatActivity {
     public static class StatusLogFragment extends Fragment {
         private SeemooQmi.StatusListener statusListener;
 
+
+        private void addMsgToStatusLog(TextView statusLog, String msg) {
+            statusLog.append(msg);
+            statusLog.append("\n");
+        }
+
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
             View rootView = inflater.inflate(R.layout.content_status, container, false);
 
+            final TextView statusLog = (TextView) rootView.findViewById(R.id.statusLog);
+            Button clearStatusLogButton = (Button) rootView.findViewById(R.id.statusLogClearButton);
+            clearStatusLogButton.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    statusLog.setText("");
+                }
+            });
             //put old messages in the log (received before creation of this fragment
             //or when activity was send to background)
-            final TextView statusLog = (TextView) rootView.findViewById(R.id.statusLog);
             for (String m : seemooQmi.getOldStatusMessages()) {
-                statusLog.append(m);
-                statusLog.append("\n");
+                addMsgToStatusLog(statusLog, m);
             }
             statusListener = new SeemooQmi.StatusListener() {
                 @Override
                 public void statusUpdate(SeemooQmi.StatusUpdateEvent e) {
-                    statusLog.append(e.getStatus());
-                    statusLog.append("\n");
+                    addMsgToStatusLog(statusLog, e.getStatus());
                 }
             };
             //register listner for incoming messages

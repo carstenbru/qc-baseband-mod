@@ -22,12 +22,19 @@
             android:layout_height="wrap_content"
             android:orientation="vertical" >
 
+            <Button
+                android:text="clear log"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/statusLogClearButton" />
+
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:id="@+id/statusLog" />
 
         </LinearLayout>
+
     </android.support.v4.widget.NestedScrollView>
 
 </RelativeLayout>
