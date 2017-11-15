@@ -43,7 +43,7 @@
             android:defaultValue="5000"
             android:selectAllOnFocus="true"
             android:singleLine="true"
-            android:title="cell info interval (ms)"
+            android:title="Cell info interval (ms)"
             android:key="pdcch_dump_cell_info_interval"
             android:inputType="number"
             android:summary="interval between cell info records (in addition to reports on cell changes)"
@@ -61,7 +61,7 @@
             android:defaultValue="true"
             android:title="Split dumps"
             android:key="pdcch_split_dump"
-            android:summary="Split long dumps into multiple files"
+            android:summary="split long dumps into multiple files"
             android:icon="@android:drawable/ic_menu_edit" />
         <EditTextPreference
             android:defaultValue="2000"
@@ -71,8 +71,14 @@
             android:title="Maximum dump file size"
             android:dependency="pdcch_split_dump"
             android:key="max_pdcch_file_size"
-            android:summary="Size at which the dump gets split (in MB, max 2147)"
+            android:summary="size at which the dump gets split (in MB, max 2147)"
             android:icon="@android:drawable/ic_menu_save" />
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:title="Show CFI counters"
+            android:key="pdcch_cfi_counters"
+            android:summary="show how often each CFI value occured in the current dump"
+            android:icon="@android:drawable/ic_menu_view" />
     </PreferenceCategory>
     <PreferenceCategory android:title="Function Counter Service">
         <CheckBoxPreference

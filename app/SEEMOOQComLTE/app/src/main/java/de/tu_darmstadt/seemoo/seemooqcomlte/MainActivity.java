@@ -651,6 +651,9 @@ public class MainActivity extends AppCompatActivity {
 
         private float bandwidthMHz[] = { 1.4f, 3, 5, 10, 15, 20 };
 
+        private boolean showCfiCounter;
+        private int cfiCounters[] = { 0, 0, 0 };
+
         private Runnable timeRecordRunnable = new Runnable() {
             @Override
             public void run() {
@@ -742,6 +745,10 @@ public class MainActivity extends AppCompatActivity {
             final CheckBox pdcchGps = (CheckBox) rootView.findViewById(R.id.pdcchGpsBox);
             pdcchDumpEnable.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
                 private void startDumping(CompoundButton compoundButton, File file) {
+                    showCfiCounter = sharedPreferences.getBoolean("pdcch_cfi_counters", false);
+                    for (int i = 0; i < 3; i++) {
+                        cfiCounters[i] = 0;
+                    }
                     try {
                         file.getParentFile().mkdirs();
                         file.createNewFile();
@@ -902,6 +909,11 @@ public class MainActivity extends AppCompatActivity {
                 public void newDumpData(PdcchDumpService.PdcchDumpEvent e) {
                     long dumpRecordVersion = SeemooQmi.readIntLittleEndian(e.getData(), 4);
                     writeRecord(PDCCH_DATA_RECORD, (int)dumpRecordVersion, e.getData(), 8, e.getDataLength() - 8);
+
+                    if (showCfiCounter) {
+                        int cfiIndex = (e.getData()[11] >> 6) & 0x3;
+                        cfiCounters[cfiIndex]++;
+                    }
                 }
 
                 @Override
@@ -957,6 +969,11 @@ public class MainActivity extends AppCompatActivity {
                                 sb.append("Bandwidth: ").append(String.format("%.1f", bandwidthMHz[bandwidthIdx])).append("MHz\n");
                                 int earfcn = (int)(SeemooQmi.readIntLittleEndian(e.getData(), 272) & 0xFFFF);
                                 sb.append("EARFCN: ").append(earfcn).append("\n");
+                                if (showCfiCounter) {
+                                    for (int i = 0; i < 3; i++) {
+                                        sb.append("CFI").append(i+1).append(": ").append(cfiCounters[i]).append("\n");
+                                    }
+                                }
                                 pdcchCellInfoView.setText(sb.toString());
                             }
                         }
