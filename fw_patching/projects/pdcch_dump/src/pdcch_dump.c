@@ -12,6 +12,23 @@
 #define PDCCH_DUMP_RECORD_VERSION 0
 #define PDCCH_ADD_CELL_INFO_RECORD_VERSION 2
 
+//TODO this is only needed for pycparser, declaration in header
+#ifndef __TASKS_WRAPPER_H
+typedef struct pthread_attr_t
+{
+    void*        stackaddr;
+    int          internal_stack; /* this flag==1 means the stack needs to be freed by posix */
+    signed int   stacksize;
+    int          priority;
+    unsigned int timetest_id;    
+    unsigned int cpumask;
+    char         name[PTHREAD_NAME_LEN];
+    /* This flag indicates whether pthread lib should create thread contexts for other OSALs */
+    /* This is used internally by POSIX and not available for general usage */
+    int          ext_context;
+} pthread_attr_t;
+#endif
+
 /* PDCCH dump service client pointer, NULL when no client is set */
 void* pdcch_dump_svc_client;
 /* PDCCH cell info service client pointer, NULL when no client is set */
@@ -130,6 +147,10 @@ void pdcch_dump_thread_main() {
     
     // reserve memory for indication message
     test_data_ind_msg_v01* pdcch_dump_ind = (test_data_ind_msg_v01*)malloc(sizeof(test_data_ind_msg_v01));
+    if (pdcch_dump_ind == 0) {
+        pdcch_dump_thread_id = 0;
+        return;
+    }
     memset(pdcch_dump_ind, 0, sizeof(test_data_ind_msg_v01));
     unsigned int* const data32 = (unsigned int*)(pdcch_dump_ind->data);
     *data32 = PDCCH_DUMP_SVC_ID;
@@ -218,6 +239,10 @@ void pdcch_cell_info_thread_main() {
     pthread_setschedprio(pthread_self(), 2);
     
     test_data_ind_msg_v01* pdcch_cell_info_ind = (test_data_ind_msg_v01*)malloc(sizeof(test_data_ind_msg_v01));
+    if (pdcch_cell_info_ind == 0) {
+        pdcch_cell_info_thread_id = 0;
+        return;
+    }
     memset(pdcch_cell_info_ind, 0, sizeof(test_data_ind_msg_v01));
     unsigned int* const data32 = (unsigned int*)(pdcch_cell_info_ind->data);
     *data32 = PDCCH_CELL_INFO_SVC_ID;
@@ -268,6 +293,8 @@ void pdcch_cell_info_thread_main() {
             thread_loop_wait(2048*2);
         }
     }
+    
+    free(pdcch_cell_info_ind);
 }
 
 /******** QMI message handlers ********/
@@ -286,11 +313,10 @@ int pdcch_dump_svc_req(
         *((void**)(resp_data)) = pdcch_dump_svc_client;
         
         if (pdcch_dump_thread_id == 0) {
-//             pthread_attr_t attr;
-//             pthread_attr_init(&attr);
-//             pthread_attr_setthreadname(&attr, "pddch_dump_thread");
-//             pthread_create(&pdcch_dump_thread_id, &attr, &pdcch_dump_thread_main, 0);
-            pthread_create(&pdcch_dump_thread_id, 0, &pdcch_dump_thread_main, 0);
+            pthread_attr_t attr; //always call "pthread_create" WITH attributes
+            pthread_attr_init(&attr);
+            pthread_attr_setthreadname(&attr, "pddch_dump_thread");
+            pthread_create(&pdcch_dump_thread_id, &attr, &pdcch_dump_thread_main, 0);
         }
         
         return 4;
@@ -317,7 +343,11 @@ int pdcch_cell_info_svc_req(
         
         if (pdcch_cell_info_thread_id == 0) {
             sem_init(&pdcch_cell_info_thread_semaphore, 0, 0);
-            pthread_create(&pdcch_cell_info_thread_id, 0, &pdcch_cell_info_thread_main, 0);
+            
+            pthread_attr_t attr; //always call "pthread_create" WITH attributes
+            pthread_attr_init(&attr);
+            pthread_attr_setthreadname(&attr, "pdcch_cell_info_thread");
+            pthread_create(&pdcch_cell_info_thread_id, &attr, &pdcch_cell_info_thread_main, 0);
         }
         sem_post(&pdcch_cell_info_thread_semaphore);
         
