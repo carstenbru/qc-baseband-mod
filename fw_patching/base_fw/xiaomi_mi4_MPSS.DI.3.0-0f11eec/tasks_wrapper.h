@@ -37,6 +37,7 @@ ADDRESS(0x095546D0) int pthread_create_2(void* tid, void* attr, void* start, voi
 
 //TODO add other known pthread functions
 //TODO maybe move pthread functions into own header, since they are a separate library
+//always call "pthread_create" WITH attributes (even though 0 usually allowed), otherwise firmware might crash randomly later
 ADDRESS(0x09554AA8) int pthread_create(unsigned int* tid, pthread_attr_t* attr, void* start, void* arg);
 ADDRESS(0x09554AF0) void pthread_exit(void* value_ptr);
 

@@ -35,6 +35,7 @@
 #include <linux/miscdevice.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
+#include <linux/semaphore.h>
 
 #include <asm/uaccess.h>
 
@@ -64,7 +65,8 @@ static DECLARE_DELAYED_WORK(work_svc_arrive, svc_arrive);
 static void svc_exit(struct work_struct *work);
 static DECLARE_DELAYED_WORK(work_svc_exit, svc_exit);
 static struct workqueue_struct *workqueue;
-static int work_recv_msg_count, work_recv_msg_ind_count;
+struct semaphore work_recv_msg_count = __SEMAPHORE_INITIALIZER(work_recv_msg_count, 0);
+struct semaphore work_recv_msg_ind_count = __SEMAPHORE_INITIALIZER(work_recv_msg_ind_count, 0);
 
 /* write buffer for status device, will be returned on next read */
 unsigned char status_buf[WRITE_BUF_SIZE];
@@ -87,10 +89,14 @@ DEFINE_MUTEX(data_list_mutex);
  */
 static void write_text(char* format, ...) {
 	va_list args;
+        unsigned int write_len;
 	va_start(args, format);
 	
         mutex_lock(&status_buf_mutex);
-	status_pos += vsnprintf(status_buf+status_pos, sizeof(status_buf)-status_pos, format, args);
+        write_len = vsnprintf(status_buf+status_pos, sizeof(status_buf)-status_pos, format, args);
+        if (status_pos + write_len < sizeof(status_buf)) {
+            status_pos += write_len;
+        }
         mutex_unlock(&status_buf_mutex);
 	
 	va_end(args);
@@ -101,10 +107,14 @@ static void write_text(char* format, ...) {
  */
 static void write_error(char* format, ...) {
 	va_list args;
+        unsigned int write_len;
 	va_start(args, format);
 	
         mutex_lock(&status_buf_mutex);
-	status_pos += vsnprintf(status_buf+status_pos, sizeof(status_buf)-status_pos, format, args);
+	write_len += vsnprintf(status_buf+status_pos, sizeof(status_buf)-status_pos, format, args);
+        if (status_pos + write_len < sizeof(status_buf)) {
+            status_pos += write_len;
+        }
         mutex_unlock(&status_buf_mutex);
 	
 	va_end(args);
@@ -115,6 +125,11 @@ static void received_message(unsigned char* data, unsigned int data_len, unsigne
     unsigned int mutex_res;
     
     if (data_len > TEST_MED_DATA_SIZE_V01) {
+        write_error("%s: received packet with data_len bigger than maximum size\n", __func__);
+        return;
+    }
+    if (data_len < 4) {
+        write_error("%s: received packet with data_len smaller than minimum size\n", __func__);
         return;
     }
     
@@ -216,12 +231,13 @@ static void recv_msg(struct work_struct *work) {
 	int rc;
 	
 	//receive all arrived messages (this handler is only called once)
-	do {
+	while (down_trylock(&work_recv_msg_count) == 0) {
 		rc = qmi_recv_msg(seemoo_clnt);
 		if (rc < 0) {
-			write_error("%s: Error receiving message\n", __func__);
+			write_error("%s: Error receiving message: %d\n", __func__, rc);
+                        while (down_trylock(&work_recv_msg_count) == 0); //decrease semaphore to 0
+                }
         }
-	} while (--work_recv_msg_count);
 }
 
 /**
@@ -231,17 +247,19 @@ static void recv_msg_ind(struct work_struct *work) {
 	int rc;
 	
 	//receive all arrived messages (this handler is only called once)
-	do {
+	while (down_trylock(&work_recv_msg_ind_count) == 0) {
 		rc = qmi_recv_msg(seemoo_clnt_ind);
-		if (rc < 0)
-			write_error("%s: Error receiving message\n", __func__);
-	} while (--work_recv_msg_ind_count);
+		if (rc < 0) {
+			write_error("%s: Error receiving message: %d\n", __func__, rc);
+                        while (down_trylock(&work_recv_msg_ind_count) == 0); //decrease semaphore to 0
+                }
+	}
 }
 
 /**
  * @brief QMI client notification handler
  * 
- * counta messages as items are only added once to the workqueue
+ * counts messages as items are only added once to the workqueue
  */
 static void clnt_notify(struct qmi_handle *handle,
 						enum qmi_event_type event, void *notify_priv) {
@@ -250,10 +268,10 @@ static void clnt_notify(struct qmi_handle *handle,
 		case QMI_RECV_MSG:
 			// check for which handler this notification is
 			if (handle_id == HANDLE_ID_NORM) {
-				work_recv_msg_count++;
+				up(&work_recv_msg_count);
 				queue_delayed_work(workqueue, &work_recv_msg, 0);
 			} else if (handle_id == HANDLE_ID_IND) {
-				work_recv_msg_ind_count++;
+				up(&work_recv_msg_ind_count);
 				queue_delayed_work(workqueue, &work_recv_msg_ind, 0);
 			}
 			break;
@@ -275,7 +293,7 @@ static void indication_cb(struct qmi_handle* handle, unsigned int msg_id, void* 
 	test_data_ind_msg_v01* ind;
 	int rc;
 	
-	// check if the message originates from the snprintf server
+	// check if the message originates from our server
 	if (msg_id ==  QMI_TEST_DATA_IND_V01) {
 		/* decode the message by using the descriptor */
 		ind_desc.max_msg_len = TEST_DATA_IND_MAX_MSG_LEN_V01;
@@ -388,7 +406,7 @@ static ssize_t status_read(struct file *fp, char __user *buf, size_t count, loff
         if (mutex_res != 0) {
             return 0;
         }
-	s = simple_read_from_buffer(buf, count, pos, status_buf, strnlen(status_buf, WRITE_BUF_SIZE));
+	s = simple_read_from_buffer(buf, count, pos, status_buf, status_pos);
 	status_buf[0] = 0;
 	status_pos = 0;
         mutex_unlock(&status_buf_mutex);
@@ -487,8 +505,6 @@ static int __init seemoo_qmi_init(void)
     data_list_size = 0;
     
 	/* create workqueue for event handling */
-	work_recv_msg_count = 0;
-	work_recv_msg_ind_count = 0;
 	workqueue = create_singlethread_workqueue("seemoo_clnt");
 	if (!workqueue)
 		return -EFAULT;
