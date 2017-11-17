@@ -739,8 +739,8 @@ public class MainActivity extends AppCompatActivity {
                             new NotificationCompat.Builder(getActivity())
                                     .setSmallIcon(R.mipmap.ic_launcher)
                                     .setContentTitle(title)
-                                    .setContentText(message); //TODO open app from notification
-                    //TODO text too long in notification
+                                    .setContentText(message);
+
                     Intent resultIntent = new Intent(getContext(), MainActivity.class);
                     resultIntent.setAction(Intent.ACTION_MAIN);
                     resultIntent.addCategory(Intent.CATEGORY_LAUNCHER);
@@ -788,7 +788,12 @@ public class MainActivity extends AppCompatActivity {
                             if (lowNumPdcchDumps >= NUM_PDCCH_DUMPS_LOW_WARNING) {
                                 if (!lowNumPdcchDumpsUserWarned) {
                                     lowNumPdcchDumpsUserWarned = true;
+                                    lowNumPdcchDumps = 0;
                                     warnUser("Not enough PDCCH dumps received", "One PDCCH dump per LTE subframe should be received when DRX is disabled (e.g. by ping), which was not the case. This could be caused by disabled mobile data or by background data being blocked for this App.");
+                                } else {
+                                    //problem persists, try restarting ping
+                                    pingProcess.destroy(); //kill ping process so that it will be restarted next time the supervisor runs
+                                    pingFailUserWarned = true; //do not warn user for this, we already warned that sth is wrong
                                 }
                             }
                         }
@@ -801,8 +806,8 @@ public class MainActivity extends AppCompatActivity {
                             receivedPdcchDumps * RECEIVED_PDCCH_DUMPS_AVG_NEW_WEIGHT;
 
                     StringBuilder sb = new StringBuilder();
-                    sb.append("PDCCH dumps rate: ").append(receivedPdcchDumps).append("\n");
-                    sb.append("PDCCH dumps rate average: ").append(String.format("%.2f", receivedPdcchDumpsAvg)).append("\n");
+                    sb.append("PDCCH dump rate: ").append(receivedPdcchDumps).append("\n");
+                    sb.append("PDCCH dump rate average: ").append(String.format("%.2f", receivedPdcchDumpsAvg)).append("\n");
                     if (showCfiCounter) {
                         for (int i = 0; i < 3; i++) {
                             sb.append("CFI").append(i+1).append(": ").append(cfiCounters[i]).append("\n");
