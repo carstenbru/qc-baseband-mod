@@ -41,6 +41,8 @@
     <string name="activatePdcchDumpText">dump PDCCH to file</string>
     <string name="destFile">destination file name</string>
     <string name="pdcchGPSText">include GPS location</string>
+    <string name="pingCmd">ping command</string>
+    <string name="pdcchPingBoxText">run ping (to disable DRX)</string>
     <string name="preference_title">Settings</string>
     <string-array name="log_options">
         <item>errors</item>

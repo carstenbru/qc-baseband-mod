@@ -6,6 +6,8 @@
 package de.tu_darmstadt.seemoo.seemooqcomlte;
 
 import android.app.AlertDialog;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -26,6 +28,7 @@ import android.support.design.widget.TextInputLayout;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
+import android.support.v4.app.NotificationCompat;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
@@ -90,6 +93,8 @@ import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.PdcchDumpService;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SeemooQmi;
 import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SnprintfService;
 
+import static de.tu_darmstadt.seemoo.seemooqcomlte.R.id.pdcchPingCommand;
+
 
 /* ------------ open improvements ------------ */
 //TODO refactor MainActivity class: put code in multiple files, maybe put GUI fragments in seperate files? one for each?
@@ -106,6 +111,8 @@ import de.tu_darmstadt.seemoo.seemooqcomlte.seemooqmi.SnprintfService;
 
 
 public class MainActivity extends AppCompatActivity {
+    private static int PDCCH_DUMP_ALERT = 42;
+
     private static SeemooQmi seemooQmi = null;
     private static FunctionCounterService functionCounterService = null;
     private static SnprintfService snprintfService = null;
@@ -129,6 +136,24 @@ public class MainActivity extends AppCompatActivity {
     private static int funcCountersPollRate;
     private static Handler funcCountersPollHandler = new Handler();
     private static boolean snprintfDeregister;
+
+    private static boolean appForeground;
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        appForeground = true;
+        NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        notificationManager.cancel(PDCCH_DUMP_ALERT);
+    }
+
+    @Override
+    protected void onPause() {
+        appForeground = false;
+
+        super.onPause();
+    }
 
     /**
      * runnable to read function counters automatically at a specified interval
@@ -650,6 +675,11 @@ public class MainActivity extends AppCompatActivity {
         private static final int PDCCH_MAIN_CELL_INFO_RECORD_VERSION = 0;
         private static final int PDCCH_GPS_RECORD_VERSION = 0;
 
+        private static final int DUMP_SUPERVISOR_RATE = 1000;
+        private static final float RECEIVED_PDCCH_DUMPS_AVG_NEW_WEIGHT = 0.1f;
+        private static final int NUM_PDCCH_DUMPS_ACTIVE_THRESHOLD = 900;
+        private static final int NUM_PDCCH_DUMPS_LOW_WARNING = 3;
+
         private PdcchDumpService.PdcchDumpListener pdcchDumpListener;
 
         private boolean pdcchDumpActive = false;
@@ -660,6 +690,9 @@ public class MainActivity extends AppCompatActivity {
 
         private LocationManager locationManager;
         private LocationListener locationListener;
+
+        private Handler dumpSupervisorHandler = new Handler();
+        private TextView pdcchDumpSupervisorView = null;
 
         private int timeRecordRate;
         private Handler timeRecordHandler = new Handler();
@@ -673,6 +706,118 @@ public class MainActivity extends AppCompatActivity {
 
         private boolean showCfiCounter;
         private int cfiCounters[] = { 0, 0, 0 };
+        private int receivedPdcchDumps = 0;
+        private float receivedPdcchDumpsAvg = 0;
+        private int lowNumPdcchDumps;
+
+        private Process pingProcess = null;
+        private String pingCommand;
+        private boolean pingFailUserWarned;
+        private boolean lowNumPdcchDumpsUserWarned;
+
+        private Runnable dumpSupervisorRunnable = new Runnable() {
+            private AlertDialog alertDialog = null;
+
+            private void warnUser(String title, String message) {
+                if (alertDialog != null) {
+                    alertDialog.dismiss();
+                }
+                AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(getActivity());
+
+                alertDialogBuilder.setTitle(title);
+                alertDialogBuilder.setMessage(message);
+                alertDialogBuilder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+
+                    }
+                });
+                alertDialog = alertDialogBuilder.create();
+                alertDialog.show();
+                if (!appForeground) {
+                    NotificationCompat.Builder notificationBuilder =
+                            new NotificationCompat.Builder(getActivity())
+                                    .setSmallIcon(R.mipmap.ic_launcher)
+                                    .setContentTitle(title)
+                                    .setContentText(message); //TODO open app from notification
+                    //TODO text too long in notification
+                    Intent resultIntent = new Intent(getContext(), MainActivity.class);
+                    resultIntent.setAction(Intent.ACTION_MAIN);
+                    resultIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+                    PendingIntent contentIntent = PendingIntent.getActivity(getContext(), 0,
+                            resultIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+                    notificationBuilder.setContentIntent(contentIntent);
+
+                    notificationBuilder.setLights(Color.rgb(236, 101, 0), 500, 500); //SEEMOO orange
+                    notificationBuilder.setVibrate(new long[] { 0, 800, 500, 800, 500 });
+
+                    NotificationManager notificationManager = (NotificationManager) getContext().getSystemService(NOTIFICATION_SERVICE);
+                    notificationManager.notify(PDCCH_DUMP_ALERT, notificationBuilder.build());
+                }
+            }
+
+            @Override
+            public void run() {
+                if (pdcchDumpActive) {
+                    if (pingProcess != null) {
+                        boolean active = false;
+                        try {
+                            pingProcess.exitValue();
+                        } catch (IllegalThreadStateException ie) {
+                            active = true;
+                        }
+                        if (!active) {
+                            Runtime runtime = Runtime.getRuntime();
+                            try {
+                                pingProcess = runtime.exec(pingCommand);
+                            } catch (IOException e) {
+                            }
+
+                            if (!pingFailUserWarned) {
+                                pingFailUserWarned = true;
+                                warnUser("Ping failed", "Ping command failed. This is likely because mobile data is not enabled. Please enable mobile data when dumping and using ping to deal with DRX.");
+                            }
+                        } else {
+                            pingFailUserWarned = false;
+                            if (receivedPdcchDumps < NUM_PDCCH_DUMPS_ACTIVE_THRESHOLD) {
+                                lowNumPdcchDumps++;
+                            } else {
+                                lowNumPdcchDumps = 0;
+                                lowNumPdcchDumpsUserWarned = false;
+                            }
+                            if (lowNumPdcchDumps >= NUM_PDCCH_DUMPS_LOW_WARNING) {
+                                if (!lowNumPdcchDumpsUserWarned) {
+                                    lowNumPdcchDumpsUserWarned = true;
+                                    warnUser("Not enough PDCCH dumps received", "One PDCCH dump per LTE subframe should be received when DRX is disabled (e.g. by ping), which was not the case. This could be caused by disabled mobile data or by background data being blocked for this App.");
+                                }
+                            }
+                        }
+                    }
+
+                    if (Math.abs(receivedPdcchDumpsAvg - receivedPdcchDumps) >= 500) {
+                        receivedPdcchDumpsAvg = receivedPdcchDumps;
+                    }
+                    receivedPdcchDumpsAvg = receivedPdcchDumpsAvg * (1.0f - RECEIVED_PDCCH_DUMPS_AVG_NEW_WEIGHT) +
+                            receivedPdcchDumps * RECEIVED_PDCCH_DUMPS_AVG_NEW_WEIGHT;
+
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("PDCCH dumps rate: ").append(receivedPdcchDumps).append("\n");
+                    sb.append("PDCCH dumps rate average: ").append(String.format("%.2f", receivedPdcchDumpsAvg)).append("\n");
+                    if (showCfiCounter) {
+                        for (int i = 0; i < 3; i++) {
+                            sb.append("CFI").append(i+1).append(": ").append(cfiCounters[i]).append("\n");
+                        }
+                    }
+                    pdcchDumpSupervisorView.setText(sb.toString());
+
+                    receivedPdcchDumps = 0;
+
+                    if (!dumpSupervisorHandler.hasMessages(0)) {
+                        dumpSupervisorHandler.postDelayed(this, DUMP_SUPERVISOR_RATE);
+                    }
+                }
+            }
+        };
 
         private Runnable timeRecordRunnable = new Runnable() {
             @Override
@@ -685,7 +830,7 @@ public class MainActivity extends AppCompatActivity {
 
                     buffer.putLong(currentTime.getTime());
 
-                    byte[] time = buffer.array();;
+                    byte[] time = buffer.array();
                     writeRecord(PDCCH_TIME_RECORD, 0, time, 0, time.length);
 
                     if (!timeRecordHandler.hasMessages(0)) {
@@ -727,6 +872,25 @@ public class MainActivity extends AppCompatActivity {
             });
         }
 
+        private void setupPingEdit(View rootView) {
+            EditText pingEdit = (EditText) rootView.findViewById(pdcchPingCommand);
+            pingEdit.setText(sharedPreferences.getString("PdcchPingCommand", "ping -i 0.2 www.google.de"));
+            pingEdit.addTextChangedListener(new TextWatcher() {
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                }
+
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                }
+
+                @Override
+                public void afterTextChanged(Editable s) {
+                    storeStringInSharedPrefs("PdcchPingCommand", s.toString());
+                }
+            });
+        }
+
         private void setupGpsBox(View rootView) {
             CheckBox pdcchGps = (CheckBox) rootView.findViewById(R.id.pdcchGpsBox);
             pdcchGps.setChecked(sharedPreferences.getBoolean("PdcchGpsInclude", true));
@@ -734,6 +898,20 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
                     storeBooleanInSharedPrefs("PdcchGpsInclude", b);
+                }
+            });
+        }
+
+        private void setupPingBox(View rootView) {
+            final EditText pingEdit = (EditText) rootView.findViewById(pdcchPingCommand);
+            CheckBox pdcchPingBox = (CheckBox) rootView.findViewById(R.id.pdcchPingBox);
+            pdcchPingBox.setChecked(sharedPreferences.getBoolean("PdcchPingActive", true));
+            pingEdit.setEnabled(pdcchPingBox.isChecked());
+            pdcchPingBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                @Override
+                public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                    storeBooleanInSharedPrefs("PdcchPingActive", b);
+                    pingEdit.setEnabled(b);
                 }
             });
         }
@@ -748,10 +926,14 @@ public class MainActivity extends AppCompatActivity {
             EditText filenameEdit = (EditText) view.findViewById(R.id.pdcchDestFileName);
             CheckBox pdcchDumpEnable = (CheckBox) view.findViewById(R.id.activatePdcchDump);
             CheckBox pdcchGps = (CheckBox) view.findViewById(R.id.pdcchGpsBox);
+            CheckBox pdcchPing = (CheckBox) view.findViewById(R.id.pdcchPingBox);
+            EditText pingEdit = (EditText) view.findViewById(pdcchPingCommand);
 
             filenameEdit.setEnabled(!pdcchDumpActive);
             pdcchGps.setEnabled(!pdcchDumpActive);
             pdcchDumpEnable.setChecked(pdcchDumpActive);
+            pdcchPing.setEnabled(!pdcchDumpActive);
+            pingEdit.setEnabled(!pdcchDumpActive & pdcchPing.isChecked());
             this.pdcchDumpActive = pdcchDumpActive;
         }
 
@@ -763,6 +945,8 @@ public class MainActivity extends AppCompatActivity {
         private void setupPdcchDumpCheckbox(View rootView) {
             final CheckBox pdcchDumpEnable = (CheckBox) rootView.findViewById(R.id.activatePdcchDump);
             final CheckBox pdcchGps = (CheckBox) rootView.findViewById(R.id.pdcchGpsBox);
+            final CheckBox pdcchPingBox = (CheckBox) rootView.findViewById(R.id.pdcchPingBox);
+            final EditText pdcchPingCommand = (EditText) rootView.findViewById(R.id.pdcchPingCommand);
             pdcchDumpEnable.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
                 private void startDumping(CompoundButton compoundButton, File file) {
                     showCfiCounter = sharedPreferences.getBoolean("pdcch_cfi_counters", false);
@@ -781,6 +965,10 @@ public class MainActivity extends AppCompatActivity {
                         Toast.makeText(compoundButton.getContext(), getResources().getString(R.string.fileError), Toast.LENGTH_SHORT).show();
                     }
 
+                    if (!dumpSupervisorHandler.hasMessages(0)) {
+                        dumpSupervisorHandler.postDelayed(dumpSupervisorRunnable, DUMP_SUPERVISOR_RATE);
+                    }
+
                     timeRecordRate = Integer.parseInt(sharedPreferences.getString("pdcch_dump_time_interval", "5000"));
                     if (!timeRecordHandler.hasMessages(0)) {
                         timeRecordHandler.postDelayed(timeRecordRunnable, 0);
@@ -797,6 +985,20 @@ public class MainActivity extends AppCompatActivity {
                             int gpsInterval = Integer.parseInt(sharedPreferences.getString("pdcch_dump_gps_interval", "1000"));
                             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, gpsInterval, 0, locationListener);
                         } catch (SecurityException se) {
+                        }
+                    }
+
+                    if (pdcchPingBox.isChecked()) {
+                        pingFailUserWarned = false;
+                        lowNumPdcchDumpsUserWarned = false;
+                        lowNumPdcchDumps = 0;
+                        pingCommand = pdcchPingCommand.getText().toString();
+                        if (pingProcess == null) {
+                            Runtime runtime = Runtime.getRuntime();
+                            try {
+                                pingProcess = runtime.exec(pingCommand);
+                            } catch (IOException e) {
+                            }
                         }
                     }
                 }
@@ -865,8 +1067,12 @@ public class MainActivity extends AppCompatActivity {
                         } catch (IOException ioe) {
                         }
 
-                        //when un-checked stop PDCCH dumping
+                        //when un-checked: stop PDCCH dumping
                         pdcchDumpService.register(false);
+                        if (pingProcess != null) {
+                            pingProcess.destroy();
+                            pingProcess = null;
+                        }
                         setPdcchDumpGuiState(getView(), false);
 
                         try {
@@ -918,9 +1124,13 @@ public class MainActivity extends AppCompatActivity {
             final View rootView = inflater.inflate(R.layout.content_pdcch_dump, container, false);
 
             setupFilenameEdit(rootView);
+            setupPingEdit(rootView);
             setupGpsBox(rootView);
+            setupPingBox(rootView);
             setPdcchDumpGuiState(rootView, pdcchDumpActive);
             setupPdcchDumpCheckbox(rootView);
+
+            pdcchDumpSupervisorView = (TextView) rootView.findViewById(R.id.pdcchDumpSupervisorInfo);
 
             final TextView pdcchCellInfoView = (TextView) rootView.findViewById(R.id.pdcchCellInfo);
             //new dump listener
@@ -934,6 +1144,7 @@ public class MainActivity extends AppCompatActivity {
                         int cfiIndex = (e.getData()[11] >> 6) & 0x3;
                         cfiCounters[cfiIndex]++;
                     }
+                    receivedPdcchDumps++;
                 }
 
                 @Override
@@ -989,11 +1200,6 @@ public class MainActivity extends AppCompatActivity {
                                 sb.append("Bandwidth: ").append(String.format("%.1f", bandwidthMHz[bandwidthIdx])).append("MHz\n");
                                 int earfcn = (int)(SeemooQmi.readIntLittleEndian(e.getData(), 272) & 0xFFFF);
                                 sb.append("EARFCN: ").append(earfcn).append("\n");
-                                if (showCfiCounter) {
-                                    for (int i = 0; i < 3; i++) {
-                                        sb.append("CFI").append(i+1).append(": ").append(cfiCounters[i]).append("\n");
-                                    }
-                                }
                                 pdcchCellInfoView.setText(sb.toString());
                             }
                         }
