@@ -292,7 +292,9 @@ public class MainActivity extends AppCompatActivity {
                             channelEstimationService.setInterval(Integer.parseInt(sharedPreferences.getString("csi_interval", "1")));
                             return;
                         case "csi_autoscale":
-                            graphMaxPreference.setEnabled(!sharedPreferences.getBoolean("csi_autoscale", true));
+                            if (graphMaxPreference != null) {
+                                graphMaxPreference.setEnabled(!sharedPreferences.getBoolean("csi_autoscale", true));
+                            }
                             return;
                     }
                 }
