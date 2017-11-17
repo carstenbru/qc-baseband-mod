@@ -899,6 +899,10 @@ public class MainActivity extends AppCompatActivity {
         private void setupGpsBox(View rootView) {
             CheckBox pdcchGps = (CheckBox) rootView.findViewById(R.id.pdcchGpsBox);
             pdcchGps.setChecked(sharedPreferences.getBoolean("PdcchGpsInclude", true));
+
+            pdcchGps.setChecked(false); //TODO remove these two lines when GPS works
+            pdcchGps.setEnabled(false);
+
             pdcchGps.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
                 @Override
                 public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
@@ -935,7 +939,7 @@ public class MainActivity extends AppCompatActivity {
             EditText pingEdit = (EditText) view.findViewById(pdcchPingCommand);
 
             filenameEdit.setEnabled(!pdcchDumpActive);
-            pdcchGps.setEnabled(!pdcchDumpActive);
+            pdcchGps.setEnabled(!pdcchDumpActive & false); //TODO change when GPS works
             pdcchDumpEnable.setChecked(pdcchDumpActive);
             pdcchPing.setEnabled(!pdcchDumpActive);
             pingEdit.setEnabled(!pdcchDumpActive & pdcchPing.isChecked());
