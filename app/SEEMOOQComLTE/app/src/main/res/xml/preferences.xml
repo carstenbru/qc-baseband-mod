@@ -79,6 +79,12 @@
             android:key="pdcch_cfi_counters"
             android:summary="show how often each CFI value occured in the current dump"
             android:icon="@android:drawable/ic_menu_view" />
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:title="Notify on cell change"
+            android:key="pdcch_notify_cell_change"
+            android:summary="post a notification on change of the LTE serving cell"
+            android:icon="@android:drawable/ic_menu_compass" />
     </PreferenceCategory>
     <PreferenceCategory android:title="Function Counter Service">
         <CheckBoxPreference

@@ -112,6 +112,7 @@ import static de.tu_darmstadt.seemoo.seemooqcomlte.R.id.pdcchPingCommand;
 
 public class MainActivity extends AppCompatActivity {
     private static int PDCCH_DUMP_ALERT = 42;
+    private static int PDCCH_CELL_CHANGE_ALERT = 43;
 
     private static SeemooQmi seemooQmi = null;
     private static FunctionCounterService functionCounterService = null;
@@ -1144,6 +1145,8 @@ public class MainActivity extends AppCompatActivity {
             final TextView pdcchCellInfoView = (TextView) rootView.findViewById(R.id.pdcchCellInfo);
             //new dump listener
             pdcchDumpListener = new PdcchDumpService.PdcchDumpListener() {
+                CellIdentityLte lastCellIdentityLte = null;
+
                 @Override
                 public void newDumpData(PdcchDumpService.PdcchDumpEvent e) {
                     long dumpRecordVersion = SeemooQmi.readIntLittleEndian(e.getData(), 4);
@@ -1210,6 +1213,36 @@ public class MainActivity extends AppCompatActivity {
                                 int earfcn = (int)(SeemooQmi.readIntLittleEndian(e.getData(), 272) & 0xFFFF);
                                 sb.append("EARFCN: ").append(earfcn).append("\n");
                                 pdcchCellInfoView.setText(sb.toString());
+
+                                if (lastCellIdentityLte != null) {
+                                    if (sharedPreferences.getBoolean("pdcch_notify_cell_change", false)) {
+                                        if ((lastCellIdentityLte.getCi() != cellIdentityLte.getCi()) &&  //equals does not work..
+                                                (lastCellIdentityLte.getPci() != cellIdentityLte.getPci()) &&
+                                                (lastCellIdentityLte.getMcc() != cellIdentityLte.getMcc()) &&
+                                                (lastCellIdentityLte.getMnc() != cellIdentityLte.getMnc()) &&
+                                                (lastCellIdentityLte.getTac() != cellIdentityLte.getTac())) {
+                                            NotificationCompat.Builder notificationBuilder =
+                                                    new NotificationCompat.Builder(getActivity())
+                                                            .setSmallIcon(R.mipmap.ic_launcher)
+                                                            .setContentTitle("Cell changed")
+                                                            .setContentText("Serving LTE cell changed");
+
+                                            Intent resultIntent = new Intent(getContext(), MainActivity.class);
+                                            resultIntent.setAction(Intent.ACTION_MAIN);
+                                            resultIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+                                            PendingIntent contentIntent = PendingIntent.getActivity(getContext(), 0,
+                                                    resultIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+                                            notificationBuilder.setContentIntent(contentIntent);
+
+                                            notificationBuilder.setLights(Color.rgb(236, 101, 0), 500, 500); //SEEMOO orange
+                                            notificationBuilder.setVibrate(new long[]{0, 200, 500, 200, 500});
+
+                                            NotificationManager notificationManager = (NotificationManager) getContext().getSystemService(NOTIFICATION_SERVICE);
+                                            notificationManager.notify(PDCCH_CELL_CHANGE_ALERT, notificationBuilder.build());
+                                        }
+                                    }
+                                }
+                                lastCellIdentityLte = cellIdentityLte;
                             }
                         }
                     }
