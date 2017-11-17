@@ -41,6 +41,9 @@ public class SeemooQmi {
 
     private Context appContext;
 
+    private FileInputStream messagesFileInputStream = null;
+    private InputStream statusFileInputStream = null;
+
     private List<String> oldStatusMessages = new LinkedList<String>();
     private int oldStatusMessagesMask;
     private int maxOldMessagesSize = 1024;
@@ -346,11 +349,13 @@ public class SeemooQmi {
      */
     private void readStatus() {
         try {
-            File file = new File(STATUS_FILE);
-            InputStream inputStream = new FileInputStream(file);
+            if (statusFileInputStream == null) {
+                File file = new File(STATUS_FILE);
+                statusFileInputStream = new FileInputStream(file);
+            }
 
-            if (inputStream != null) {
-                InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
+            if (statusFileInputStream != null) {
+                InputStreamReader inputStreamReader = new InputStreamReader(statusFileInputStream);
                 char buf[] = new char[WRITE_BUF_SIZE];
                 int readBytes = inputStreamReader.read(buf, 0 , WRITE_BUF_SIZE);
                 int bufPos = 0;
@@ -381,8 +386,6 @@ public class SeemooQmi {
                 if (recvMsg) {
                     notifyStatusListenersKernelMult(lastStatusString, 2, statusMsgDuplCount, replacesLastMsg);
                 }
-
-                inputStream.close();
             }
         } catch (Exception e) {
             notifyStatusListeners(e.toString(), 1);
@@ -395,17 +398,20 @@ public class SeemooQmi {
     private void readMessages() {
         int read = 1;
         do {
-            File file = new File(DATA_FILE);
             byte[] data = new byte[MAX_PACKAGE_LENGTH];
             try {
-                FileInputStream fis = new FileInputStream(file);
-                read = fis.read(data);
+                if (messagesFileInputStream == null) {
+                    File file = new File(DATA_FILE);
+                    messagesFileInputStream = new FileInputStream(file);
+                }
+                read = messagesFileInputStream.read(data);
                 if (read > 0) {
                     int svcId = (int)readIntLittleEndian(data, 0);
                     notifyStatusListeners(String.format(appContext.getResources().getString(R.string.packet_receive), svcId, read), 8);
                     notifyPacketListeners(svcId, data, read);
                 }
             } catch (Exception e) {
+                messagesFileInputStream = null;
                 notifyStatusListeners(appContext.getResources().getString(R.string.error_msg_read) + e.toString(), 1);
             }
         } while (read > 0);
