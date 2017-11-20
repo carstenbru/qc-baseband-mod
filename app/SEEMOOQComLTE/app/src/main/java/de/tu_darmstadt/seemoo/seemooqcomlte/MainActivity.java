@@ -678,7 +678,7 @@ public class MainActivity extends AppCompatActivity {
 
         private static final int DUMP_SUPERVISOR_RATE = 1000;
         private static final float RECEIVED_PDCCH_DUMPS_AVG_NEW_WEIGHT = 0.1f;
-        private static final int NUM_PDCCH_DUMPS_ACTIVE_THRESHOLD = 900;
+        private static final int NUM_PDCCH_DUMPS_ACTIVE_THRESHOLD = 800;
         private static final int NUM_PDCCH_DUMPS_LOW_WARNING = 3;
 
         private PdcchDumpService.PdcchDumpListener pdcchDumpListener;
@@ -779,6 +779,14 @@ public class MainActivity extends AppCompatActivity {
                                 warnUser("Ping failed", "Ping command failed. This is likely because mobile data is not enabled. Please enable mobile data when dumping and using ping to deal with DRX.");
                             }
                         } else {
+                            try {
+                                // move the output stream of the ping process to the end
+                                // we have to do this because otherwise the runtime will stop the process
+                                // when too many output bytes are waiting
+                                pingProcess.getInputStream().skip(Long.MAX_VALUE);
+                            } catch (IOException e) {
+                            }
+
                             pingFailUserWarned = false;
                             if (receivedPdcchDumps < NUM_PDCCH_DUMPS_ACTIVE_THRESHOLD) {
                                 lowNumPdcchDumps++;
