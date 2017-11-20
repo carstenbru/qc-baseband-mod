@@ -5,7 +5,7 @@
  */
 
 #include "PdcchDumpRecordReader.h"
-#include "records/PdcchDataRecord.h"
+#include "records/PdcchLlrBufferRecord.h"
 #include "records/PdcchGpsRecord.h"
 #include "records/PdcchTimeRecord.h"
 #include "records/PdcchMainCellInfoRecord.h"
@@ -58,8 +58,8 @@ PdcchDumpRecord* PdcchDumpRecordReader::read_next_record(
 
 	PdcchDumpRecord* record = 0;
 	switch (record_type) {
-	case (PDCCH_DATA_RECORD):
-		record = new PdcchDataRecord(record_version, payload_data,
+	case (PDCCH_LLR_BUFFER_RECORD):
+		record = new PdcchLlrBufferRecord(record_version, payload_data,
 				record_payload_length);
 		break;
 	case (PDCCH_GPS_RECORD):

@@ -14,7 +14,7 @@
 #include <vector>
 
 enum record_type_enum {
-	PDCCH_DATA_RECORD = 0,
+	PDCCH_LLR_BUFFER_RECORD = 0,
 	PDCCH_GPS_RECORD = 1,
 	PDCCH_TIME_RECORD = 2,
 	PDCCH_MAIN_CELL_INFO_RECORD = 3,

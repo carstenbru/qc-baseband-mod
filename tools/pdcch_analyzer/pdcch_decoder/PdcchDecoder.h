@@ -11,7 +11,7 @@
 #include <vector>
 #include <list>
 
-#include "../records/PdcchDataRecord.h"
+#include "../records/PdcchLlrBufferRecord.h"
 #include "../records/PdcchAddCellInfoRecord.h"
 
 #include "../PdcchDumpRecordReader.h"
@@ -32,7 +32,7 @@ typedef struct {
  * @param arg argument defined by user
  * @return true if the passed DciResults are still needed, i.e. should not be deleted
  */
-typedef bool (*decoder_callback_t)(PdcchDataRecord& data_record,
+typedef bool (*decoder_callback_t)(PdcchLlrBufferRecord& data_record,
 		std::list<DciResult*> decoded_dcis, void* arg);
 
 class PdcchDecoder {
@@ -47,7 +47,7 @@ public:
 	 *
 	 * @return true if decoding succeeded, otherwise false (e.g. no previous PdcchAddCellInfoRecord)
 	 */
-	bool decode_record(PdcchDataRecord& data_record);
+	bool decode_record(PdcchLlrBufferRecord& llr_buffer_record);
 
 	bool new_pdcch_add_cell_info_record(
 			PdcchAddCellInfoRecord* pdcch_add_cell_info_record);
@@ -97,7 +97,7 @@ private:
 	void pre_calculate_values(uint16_t phy_cell_id, unsigned int prbs,
 			unsigned int tx_ports);
 	void blind_decode(int16_t* cce_buf, unsigned int num_regs,
-			PdcchDataRecord& data_record);
+			PdcchLlrBufferRecord& llr_buffer_record);
 	/**
 	 * validates if a CCE is part of the search space of a given RNTI
 	 */

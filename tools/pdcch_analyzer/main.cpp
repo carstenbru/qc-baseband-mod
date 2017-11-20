@@ -12,7 +12,7 @@
 #include "PdcchDumpRecordReader.h"
 #include "pdcch_decoder/PdcchDecoder.h"
 #include "records/PdcchDumpRecord.h"
-#include "records/PdcchDataRecord.h"
+#include "records/PdcchLlrBufferRecord.h"
 #include "records/PdcchAddCellInfoRecord.h"
 #include "records/PdcchTimeRecord.h"
 
@@ -106,7 +106,7 @@ bool process_timestamp_record(PdcchTimeRecord* time_record, void* arg) {
 	return true;
 }
 
-bool decoder_callback_load_data_rate(PdcchDataRecord& data_record,
+bool decoder_callback_load_data_rate(PdcchLlrBufferRecord& data_record,
 		std::list<DciResult*> decoded_dcis, void* arg) {
 	static int samples[] = { 0, 0 };
 	static unsigned long int data_rate[] = { 0, 0 };

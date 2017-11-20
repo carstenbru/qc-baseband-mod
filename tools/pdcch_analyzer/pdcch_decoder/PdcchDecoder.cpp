@@ -354,7 +354,7 @@ bool PdcchDecoder::validate_rnti_in_search_space(unsigned int agl,
 }
 
 void PdcchDecoder::blind_decode(int16_t* cce_buf, unsigned int num_regs,
-		PdcchDataRecord& data_record) {
+		PdcchLlrBufferRecord& llr_buffer_record) {
 	list<DciResult*> detected_dcis;
 
 	bool cce_dci_detected[num_regs / 9];
@@ -424,7 +424,7 @@ void PdcchDecoder::blind_decode(int16_t* cce_buf, unsigned int num_regs,
 
 				/* checks whether the RNTI found is coherent with a scheduling in that location */
 				if (!validate_rnti_in_search_space(agl, num_regs / 9,
-						data_record.get_subframe(), decoded_rnti, candidate * agl)) {
+						llr_buffer_record.get_subframe(), decoded_rnti, candidate * agl)) {
 					prob = 0;
 				}
 
@@ -452,8 +452,8 @@ void PdcchDecoder::blind_decode(int16_t* cce_buf, unsigned int num_regs,
 					}
 				}
 
-				unsigned int harq_pid = (10 * data_record.get_sfn()
-						+ data_record.get_subframe()) % 8;
+				unsigned int harq_pid = (10 * llr_buffer_record.get_sfn()
+						+ llr_buffer_record.get_subframe()) % 8;
 				DciResult* dci_result = new DciResult(best_format,
 						best_decoded_dci_bits, dci_format_lengths[best_format_idx],
 						best_decoded_rnti, pdcch_add_cell_info_record->get_bandwidth_rb(),
@@ -488,7 +488,7 @@ void PdcchDecoder::blind_decode(int16_t* cce_buf, unsigned int num_regs,
 	bool keep_dcis = false;
 	if (callbacks.size() > 0) {
 		for (unsigned int i = 0; i < callbacks.size(); i++) {
-			keep_dcis |= callbacks[i](data_record, detected_dcis, callback_args[i]);
+			keep_dcis |= callbacks[i](llr_buffer_record, detected_dcis, callback_args[i]);
 		}
 	}
 	if (!keep_dcis) {
@@ -499,19 +499,19 @@ void PdcchDecoder::blind_decode(int16_t* cce_buf, unsigned int num_regs,
 	}
 }
 
-bool PdcchDecoder::decode_record(PdcchDataRecord& data_record) {
+bool PdcchDecoder::decode_record(PdcchLlrBufferRecord& llr_buffer_record) {
 	if (pdcch_add_cell_info_record == 0) {
 		return false;
 	}
 	/* pre-calculate values only depending on cell: */
-	if (last_phy_cell_id != data_record.get_phy_cell_id()) {
-		pre_calculate_values(data_record.get_phy_cell_id(),
+	if (last_phy_cell_id != llr_buffer_record.get_phy_cell_id()) {
+		pre_calculate_values(llr_buffer_record.get_phy_cell_id(),
 				pdcch_add_cell_info_record->get_bandwidth_rb(),
 				pdcch_add_cell_info_record->get_num_tx_ports());
 	}
 
 	/* read CCEs in right order,  */
-	unsigned int used_cfi = data_record.get_cfi();
+	unsigned int used_cfi = llr_buffer_record.get_cfi();
 	unsigned int num_regs = pdcch_add_cell_info_record->get_num_cce(used_cfi) * 9;
 
 	int8_t cce_buf_raw[num_regs * 8];
@@ -527,13 +527,13 @@ bool PdcchDecoder::decode_record(PdcchDataRecord& data_record) {
 			reg_nr += pdcch_add_cell_info_record->get_bandwidth_rb()
 					* pdcch_add_cell_info_record->get_regs_per_rb(1);
 		}
-		data_record.get_reg_values(reg_nr, cce_buf_raw + j * 8);
+		llr_buffer_record.get_reg_values(reg_nr, cce_buf_raw + j * 8);
 	}
 
 	/* de-scrambling (and inversion of LLR values) */
 	int16_t cce_buf[num_regs * 8];
 	for (unsigned int i = 0; i < num_regs * 8; i++) {
-		if (scramble_seq[data_record.get_subframe()][i] == 0) {
+		if (scramble_seq[llr_buffer_record.get_subframe()][i] == 0) {
 			cce_buf[i] = -1 * cce_buf_raw[i];
 		} else {
 			cce_buf[i] = 1 * cce_buf_raw[i];
@@ -541,15 +541,15 @@ bool PdcchDecoder::decode_record(PdcchDataRecord& data_record) {
 	}
 
 	/* blind decoding */
-	blind_decode(cce_buf, num_regs, data_record);
+	blind_decode(cce_buf, num_regs, llr_buffer_record);
 
 	return true;
 }
 
-bool pdcch_decoder_process_data_record(PdcchDataRecord* data_record,
+bool pdcch_decoder_process_data_record(PdcchLlrBufferRecord* llr_buffer_record,
 		void* arg) {
 	PdcchDecoder* pdcch_decoder = (PdcchDecoder*) arg;
-	pdcch_decoder->decode_record(*data_record);
+	pdcch_decoder->decode_record(*llr_buffer_record);
 
 	return false;
 }
@@ -563,7 +563,7 @@ bool pdcch_decoder_process_add_cell_info_record(
 
 void PdcchDecoder::connect_to_record_reader(
 		PdcchDumpRecordReader& pdcch_dump_record_reader) {
-	pdcch_dump_record_reader.register_callback(PDCCH_DATA_RECORD,
+	pdcch_dump_record_reader.register_callback(PDCCH_LLR_BUFFER_RECORD,
 			(record_callback_t) &pdcch_decoder_process_data_record, this);
 	pdcch_dump_record_reader.register_callback(PDCCH_ADD_CELL_INFO_RECORD,
 			(record_callback_t) &pdcch_decoder_process_add_cell_info_record, this);

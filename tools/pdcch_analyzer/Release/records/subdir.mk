@@ -6,24 +6,30 @@
 CPP_SRCS += \
 ../records/PdcchAddCellInfoRecord.cpp \
 ../records/PdcchDataRecord.cpp \
+../records/PdcchDciRecord.cpp \
 ../records/PdcchDumpRecord.cpp \
 ../records/PdcchGpsRecord.cpp \
+../records/PdcchLlrBufferRecord.cpp \
 ../records/PdcchMainCellInfoRecord.cpp \
 ../records/PdcchTimeRecord.cpp 
 
 OBJS += \
 ./records/PdcchAddCellInfoRecord.o \
 ./records/PdcchDataRecord.o \
+./records/PdcchDciRecord.o \
 ./records/PdcchDumpRecord.o \
 ./records/PdcchGpsRecord.o \
+./records/PdcchLlrBufferRecord.o \
 ./records/PdcchMainCellInfoRecord.o \
 ./records/PdcchTimeRecord.o 
 
 CPP_DEPS += \
 ./records/PdcchAddCellInfoRecord.d \
 ./records/PdcchDataRecord.d \
+./records/PdcchDciRecord.d \
 ./records/PdcchDumpRecord.d \
 ./records/PdcchGpsRecord.d \
+./records/PdcchLlrBufferRecord.d \
 ./records/PdcchMainCellInfoRecord.d \
 ./records/PdcchTimeRecord.d 
 
