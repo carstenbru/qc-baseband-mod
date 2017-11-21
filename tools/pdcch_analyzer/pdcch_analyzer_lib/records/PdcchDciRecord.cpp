@@ -10,7 +10,9 @@
 using namespace std;
 
 #define PDCCH_DCI_RECORD_VERSION 0
-#define DCI_BYTE_LENGTH 17 //TODO
+#define DCI_BYTE_LENGTH 17
+
+//TODO compress payload data when writing/reading to file, most of the time less bytes needed
 
 PdcchDciRecord::PdcchDciRecord(unsigned int record_version, char* data,
 		unsigned int length) :
@@ -68,10 +70,10 @@ list<DciResult*>* PdcchDciRecord::get_dcis() {
 	}
 	for (unsigned int pos = 0; pos < num_dcis; pos++) {
 		char* dci_src = data + 10 + pos * DCI_BYTE_LENGTH;
-		DciResult* dci_result = new DciResult((srslte_dci_format_t)(*dci_src & 0x1F),
-				*((uint64_t*) (dci_src + 4)), (*(dci_src + 1) >> 2),
+		DciResult* dci_result = new DciResult((srslte_dci_format_t)(*((uint8_t*)dci_src) & 0x1F),
+				*((uint64_t*) (dci_src + 4)), (*((uint8_t*)(dci_src + 1)) >> 2),
 				*((uint16_t*) (dci_src + 2)), get_num_rbs(), tx_ports,
-				(*(dci_src) >> 5));
+				(*((uint8_t*)dci_src) >> 5));
 		dci_result->set_agl_from_idx(*(dci_src + 1) & 0x3);
 		dci_result->set_start_cce(*(dci_src + 16));
 		dci_result->set_decoding_success_prob(*((float*) (dci_src + 12)));

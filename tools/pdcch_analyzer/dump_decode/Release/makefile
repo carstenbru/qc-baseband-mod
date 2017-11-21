@@ -37,26 +37,26 @@ endif
 # Add inputs and outputs from these tool invocations to the build variables 
 
 # All Target
-all: network_load
+all: dump_decode
 
 dependents:
-	-cd /home/carsten/Uni/ma/qc-baseband/tools/pdcch_analyzer/pdcch_analyzer_lib/Debug && $(MAKE) clean all
+	-cd /home/carsten/Uni/ma/qc-baseband/tools/pdcch_analyzer/pdcch_analyzer_lib/Release && $(MAKE) clean all
 
 # Tool invocations
-network_load: $(OBJS) $(USER_OBJS) /home/carsten/Uni/ma/qc-baseband/tools/pdcch_analyzer/pdcch_analyzer_lib/Debug/libpdcch_analyzer_lib.a
+dump_decode: $(OBJS) $(USER_OBJS) /home/carsten/Uni/ma/qc-baseband/tools/pdcch_analyzer/pdcch_analyzer_lib/Release/libpdcch_analyzer_lib.a
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C++ Linker'
-	g++ -L"/home/carsten/Uni/ma/qc-baseband/tools/pdcch_analyzer/pdcch_analyzer_lib/Debug" -o "network_load" $(OBJS) $(USER_OBJS) $(LIBS)
+	g++ -L"/home/carsten/Uni/ma/qc-baseband/tools/pdcch_analyzer/pdcch_analyzer_lib/Release" -o "dump_decode" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(CC_DEPS)$(C++_DEPS)$(EXECUTABLES)$(C_UPPER_DEPS)$(CXX_DEPS)$(OBJS)$(CPP_DEPS)$(C_DEPS) network_load
+	-$(RM) $(CC_DEPS)$(C++_DEPS)$(EXECUTABLES)$(C_UPPER_DEPS)$(CXX_DEPS)$(OBJS)$(CPP_DEPS)$(C_DEPS) dump_decode
 	-@echo ' '
 
 .PHONY: all clean dependents
 .SECONDARY:
-/home/carsten/Uni/ma/qc-baseband/tools/pdcch_analyzer/pdcch_analyzer_lib/Debug/libpdcch_analyzer_lib.a:
+/home/carsten/Uni/ma/qc-baseband/tools/pdcch_analyzer/pdcch_analyzer_lib/Release/libpdcch_analyzer_lib.a:
 
 -include ../makefile.targets

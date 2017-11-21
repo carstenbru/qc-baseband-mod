@@ -4,13 +4,16 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 CPP_SRCS += \
-../PdcchDumpRecordReader.cpp 
+../PdcchDumpRecordReader.cpp \
+../PdcchDumpRecordWriter.cpp 
 
 OBJS += \
-./PdcchDumpRecordReader.o 
+./PdcchDumpRecordReader.o \
+./PdcchDumpRecordWriter.o 
 
 CPP_DEPS += \
-./PdcchDumpRecordReader.d 
+./PdcchDumpRecordReader.d \
+./PdcchDumpRecordWriter.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes

@@ -14,17 +14,6 @@
 #include <fstream>
 #include <vector>
 
-enum record_type_enum {
-	PDCCH_LLR_BUFFER_RECORD = 0,
-	PDCCH_GPS_RECORD = 1,
-	PDCCH_TIME_RECORD = 2,
-	PDCCH_MAIN_CELL_INFO_RECORD = 3,
-	PDCCH_ADD_CELL_INFO_RECORD = 4,
-	PDCCH_DCI_RECORD = 5,
-	PDCCH_ALL_RECORDS,
-	PDCCH_RECORD_MAX
-};
-
 /**
  * callback function type
  *

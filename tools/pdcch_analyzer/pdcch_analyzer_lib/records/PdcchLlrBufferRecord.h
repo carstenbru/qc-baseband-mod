@@ -15,6 +15,9 @@ public:
 	virtual ~PdcchLlrBufferRecord();
 
 	virtual std::string to_string();
+	virtual int get_record_type() {
+		return PDCCH_LLR_BUFFER_RECORD;
+	}
 
 	/**
 	 * gets a word (12bit) from the buffer

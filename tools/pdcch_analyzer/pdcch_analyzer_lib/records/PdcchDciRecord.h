@@ -20,6 +20,9 @@ public:
 	virtual ~PdcchDciRecord();
 
 	virtual std::string to_string();
+	virtual int get_record_type() {
+		return PDCCH_DCI_RECORD;
+	}
 
 	int get_num_dcis() {
 		return dcis_in_data_bytes ? ((*((uint8_t*) (data + 8)))) : dcis->size();

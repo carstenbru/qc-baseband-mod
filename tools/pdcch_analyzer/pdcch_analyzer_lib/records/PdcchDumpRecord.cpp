@@ -5,7 +5,8 @@
  */
 #include "PdcchDumpRecord.h"
 
-PdcchDumpRecord::PdcchDumpRecord(unsigned int record_version, char* data, unsigned int length) :
+PdcchDumpRecord::PdcchDumpRecord(unsigned int record_version, char* data,
+		unsigned int length) :
 		record_version(record_version), data(data), length(length) {
 }
 
@@ -13,7 +14,11 @@ PdcchDumpRecord::~PdcchDumpRecord() {
 	delete[] data;
 }
 
-bool PdcchDumpRecord::equals(PdcchDumpRecord other) {
+bool PdcchDumpRecord::equals(PdcchDumpRecord& other) {
+	if (get_record_type() != other.get_record_type()) {
+		return false;
+	}
+
 	if (record_version != other.record_version) {
 		return false;
 	}

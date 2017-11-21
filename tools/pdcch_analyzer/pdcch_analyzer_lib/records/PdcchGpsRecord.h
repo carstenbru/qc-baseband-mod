@@ -14,14 +14,38 @@ public:
 	virtual ~PdcchGpsRecord();
 
 	virtual std::string to_string();
+	virtual int get_record_type() {
+		return PDCCH_GPS_RECORD;
+	}
 
-	double get_latitude() { return *((double*) (data)); };
-	double get_longitude() { return *((double*) (data + 8)); };
-	double get_altitude() { return *((double*) (data + 16)); };
-	float get_bearing() { return *((float*) (data + 24)); };
-	float get_accuracy() { return *((float*) (data + 28)); };
-	float get_speed() { return *((float*) (data + 32)); };
-	uint64_t get_time() { return *((uint64_t*) (data + 36)); };
+	double get_latitude() {
+		return *((double*) (data));
+	}
+	;
+	double get_longitude() {
+		return *((double*) (data + 8));
+	}
+	;
+	double get_altitude() {
+		return *((double*) (data + 16));
+	}
+	;
+	float get_bearing() {
+		return *((float*) (data + 24));
+	}
+	;
+	float get_accuracy() {
+		return *((float*) (data + 28));
+	}
+	;
+	float get_speed() {
+		return *((float*) (data + 32));
+	}
+	;
+	uint64_t get_time() {
+		return *((uint64_t*) (data + 36));
+	}
+	;
 };
 
 #endif /* PDCCHGPSRECORD_H_ */

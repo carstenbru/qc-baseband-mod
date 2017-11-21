@@ -32,5 +32,7 @@ tools/pdcch_analyzer/network_load/Debug/*.csv
 tools/pdcch_analyzer/network_load/Release/*.csv
 tools/pdcch_analyzer/dump_record_print/Debug/dump_record_print
 tools/pdcch_analyzer/dump_record_print/Release/dump_record_print
+tools/pdcch_analyzer/dump_decode/Debug/dump_decode
+tools/pdcch_analyzer/dump_decode/Release/dump_decode
 .settings/
 *.a

@@ -26,6 +26,9 @@ public:
 	virtual ~PdcchAddCellInfoRecord();
 
 	virtual std::string to_string();
+	virtual int get_record_type() {
+		return PDCCH_ADD_CELL_INFO_RECORD;
+	}
 
 	uint16_t get_phy_cell_id() {
 		return ((*((uint32_t*) (data))) & 0x1FF);

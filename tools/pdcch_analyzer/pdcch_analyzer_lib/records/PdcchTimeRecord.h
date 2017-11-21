@@ -16,6 +16,9 @@ public:
 	virtual std::string to_string() {
 		return "PdcchTimeRecord: " + getTimeString();
 	}
+	virtual int get_record_type() {
+		return PDCCH_TIME_RECORD;
+	}
 
 	long getTime();
 	std::string getTimeString();

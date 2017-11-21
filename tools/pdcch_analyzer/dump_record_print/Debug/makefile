@@ -40,7 +40,7 @@ endif
 all: dump_record_print
 
 dependents:
-	-cd /home/carsten/Uni/ma/qc-baseband/tools/pdcch_analyzer/pdcch_analyzer_lib/Debug && $(MAKE) all
+	-cd /home/carsten/Uni/ma/qc-baseband/tools/pdcch_analyzer/pdcch_analyzer_lib/Debug && $(MAKE) clean all
 
 # Tool invocations
 dump_record_print: $(OBJS) $(USER_OBJS) /home/carsten/Uni/ma/qc-baseband/tools/pdcch_analyzer/pdcch_analyzer_lib/Debug/libpdcch_analyzer_lib.a
