@@ -135,6 +135,30 @@ bool dci_callback_load_data_rate(PdcchDciRecord* dci_record, void* arg) {
 		}
 
 		/* output writing */
+		if (last_sfn > dci_record->get_sfn()) {  // once per SFN iteration (i.e. every 1024th frame)
+			sfn_iteration++;
+			if (samples[1] > 100) {  // only if we have enough samples
+				long diff_ms = (sfn_iteration_time_record - sfn_iteration) * 10240;
+				diff_ms += (sfn_time_record - dci_record->get_sfn()) * 10;
+				it_sfn_file_stream << last_time_record->getTimeString(diff_ms) << "\t"
+						<< sfn_iteration << "\t" << data_rate[1] / (float) samples[1]
+						<< "\t" << paging_data_rate[1] / (float) samples[1] << "\t"
+						<< ue_data_rate[1] / (float) samples[1] << "\t"
+						<< allocated_rbs[1] / (float) samples[1] << "\t"
+						<< paging_allocated_rbs[1] / (float) samples[1] << "\t"
+						<< ue_allocated_rbs[1] / (float) samples[1] << "\n";
+			}
+
+			// reset all counters
+			data_rate[1] = 0;
+			paging_data_rate[1] = 0;
+			ue_data_rate[1] = 0;
+			allocated_rbs[1] = 0;
+			paging_allocated_rbs[1] = 0;
+			ue_allocated_rbs[1] = 0;
+
+			samples[1] = 0;
+		}
 		samples[0]++;
 		if (dci_record->get_subframe() == 9) {  // once per SFN
 			// copy to counters for SFN iteration statistics
@@ -163,30 +187,6 @@ bool dci_callback_load_data_rate(PdcchDciRecord* dci_record, void* arg) {
 
 			samples[1] += samples[0];
 			samples[0] = 0;
-		}
-		if (last_sfn > dci_record->get_sfn()) {  // once per SFN iteration (i.e. every 1024th frame)
-			if (samples[1] > 100) {  // only if we have enough samples
-				long diff_ms = (sfn_iteration_time_record - sfn_iteration) * 10240;
-				diff_ms += (sfn_time_record - dci_record->get_sfn()) * 10;
-				it_sfn_file_stream << last_time_record->getTimeString(diff_ms) << "\t"
-						<< sfn_iteration << "\t" << data_rate[1] / (float) samples[1]
-						<< "\t" << paging_data_rate[1] / (float) samples[1] << "\t"
-						<< ue_data_rate[1] / (float) samples[1] << "\t"
-						<< allocated_rbs[1] / (float) samples[1] << "\t"
-						<< paging_allocated_rbs[1] / (float) samples[1] << "\t"
-						<< ue_allocated_rbs[1] / (float) samples[1] << "\n";
-			}
-
-			// reset all counters
-			data_rate[1] = 0;
-			paging_data_rate[1] = 0;
-			ue_data_rate[1] = 0;
-			allocated_rbs[1] = 0;
-			paging_allocated_rbs[1] = 0;
-			ue_allocated_rbs[1] = 0;
-
-			samples[1] = 0;
-			sfn_iteration++;
 		}
 		cout << "it: " << sfn_iteration << " sfn: " << dci_record->get_sfn()
 				<< " subframe: " << dci_record->get_subframe() << endl;
