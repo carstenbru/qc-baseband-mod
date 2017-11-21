@@ -3,6 +3,7 @@
 	<name>network_load</name>
 	<comment></comment>
 	<projects>
+		<project>pdcch_analyzer_lib</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

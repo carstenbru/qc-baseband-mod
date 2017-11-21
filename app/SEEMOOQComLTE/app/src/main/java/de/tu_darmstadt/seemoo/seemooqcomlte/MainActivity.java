@@ -667,7 +667,7 @@ public class MainActivity extends AppCompatActivity {
      * fragment for the PDCCH dump service
      */
     public static class PdcchDumpFragment extends Fragment {
-        private static final int PDCCH_DATA_RECORD = 0;
+        private static final int PDCCH_LLR_BUFFER_RECORD = 0;
         private static final int PDCCH_GPS_RECORD = 1;
         private static final int PDCCH_TIME_RECORD = 2;
         private static final int PDCCH_MAIN_CELL_INFO_RECORD = 3;
@@ -1158,7 +1158,7 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void newDumpData(PdcchDumpService.PdcchDumpEvent e) {
                     long dumpRecordVersion = SeemooQmi.readIntLittleEndian(e.getData(), 4);
-                    writeRecord(PDCCH_DATA_RECORD, (int)dumpRecordVersion, e.getData(), 8, e.getDataLength() - 8);
+                    writeRecord(PDCCH_LLR_BUFFER_RECORD, (int)dumpRecordVersion, e.getData(), 8, e.getDataLength() - 8);
 
                     if (showCfiCounter) {
                         int cfiIndex = (e.getData()[11] >> 6) & 0x3;

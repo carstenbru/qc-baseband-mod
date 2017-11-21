@@ -1,20 +1,14 @@
 /*
- main.cpp
+ dump_record_print.cpp
 
  Carsten Bruns (carst.bruns@gmx.de)
  */
 
-#include <stdio.h>
-#include <string>
-#include <iostream>
-#include <string.h>
+#include <PdcchDumpRecordReader.h>
+#include <records/PdcchDumpRecord.h>
 
-#include "PdcchDumpRecordReader.h"
-#include "pdcch_decoder/PdcchDecoder.h"
-#include "records/PdcchDumpRecord.h"
-#include "records/PdcchLlrBufferRecord.h"
-#include "records/PdcchAddCellInfoRecord.h"
-#include "records/PdcchTimeRecord.h"
+#include <iostream>
+#include <string>
 
 using namespace std;
 
