@@ -4,23 +4,20 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 CPP_SRCS += \
-../pdcch_decoder/DciResult.cpp \
-../pdcch_decoder/PdcchDecoder.cpp 
+../main.cpp 
 
 OBJS += \
-./pdcch_decoder/DciResult.o \
-./pdcch_decoder/PdcchDecoder.o 
+./main.o 
 
 CPP_DEPS += \
-./pdcch_decoder/DciResult.d \
-./pdcch_decoder/PdcchDecoder.d 
+./main.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
-pdcch_decoder/%.o: ../pdcch_decoder/%.cpp
+%.o: ../%.cpp
 	@echo 'Building file: $<'
 	@echo 'Invoking: GCC C++ Compiler'
-	g++ -O3 -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -o "$@" "$<"
+	g++ -I"/home/carsten/Uni/ma/qc-baseband/tools/pdcch_analyzer/pdcch_analyzer_lib" -O3 -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 

@@ -8,9 +8,6 @@ RM := rm -rf
 
 # All of the sources participating in the build are defined here
 -include sources.mk
--include records/subdir.mk
--include pdcch_decoder/srsLTE/subdir.mk
--include pdcch_decoder/subdir.mk
 -include subdir.mk
 -include objects.mk
 
@@ -40,22 +37,26 @@ endif
 # Add inputs and outputs from these tool invocations to the build variables 
 
 # All Target
-all: pdcch_analyzer
+all: dump_record_print
+
+dependents:
+	-cd /home/carsten/Uni/ma/qc-baseband/tools/pdcch_analyzer/pdcch_analyzer_lib/Release && $(MAKE) clean all
 
 # Tool invocations
-pdcch_analyzer: $(OBJS) $(USER_OBJS)
+dump_record_print: $(OBJS) $(USER_OBJS) /home/carsten/Uni/ma/qc-baseband/tools/pdcch_analyzer/pdcch_analyzer_lib/Release/libpdcch_analyzer_lib.a
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C++ Linker'
-	g++  -o "pdcch_analyzer" $(OBJS) $(USER_OBJS) $(LIBS)
+	g++ -L"/home/carsten/Uni/ma/qc-baseband/tools/pdcch_analyzer/pdcch_analyzer_lib/Release" -o "dump_record_print" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(CC_DEPS)$(C++_DEPS)$(EXECUTABLES)$(C_UPPER_DEPS)$(CXX_DEPS)$(OBJS)$(CPP_DEPS)$(C_DEPS) pdcch_analyzer
+	-$(RM) $(CC_DEPS)$(C++_DEPS)$(EXECUTABLES)$(C_UPPER_DEPS)$(CXX_DEPS)$(OBJS)$(CPP_DEPS)$(C_DEPS) dump_record_print
 	-@echo ' '
 
 .PHONY: all clean dependents
 .SECONDARY:
+/home/carsten/Uni/ma/qc-baseband/tools/pdcch_analyzer/pdcch_analyzer_lib/Release/libpdcch_analyzer_lib.a:
 
 -include ../makefile.targets

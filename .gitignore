@@ -25,8 +25,12 @@ fw_patching/base_fw/test/
 fw_patching/projects/pdcch_test/
 fw_patching/projects/pdcch_dump_bak*
 tools/pdcch_analyzer/data/
-tools/pdcch_analyzer/Debug/pdcch_analyzer
-tools/pdcch_analyzer/Release/pdcch_analyzer
-tools/pdcch_analyzer/*.csv
-tools/pdcch_analyzer/Debug/*.csv
-tools/pdcch_analyzer/Release/*.csv
+tools/pdcch_analyzer/network_load/Debug/network_load
+tools/pdcch_analyzer/network_load/Release/network_load
+tools/pdcch_analyzer/network_load/*.csv
+tools/pdcch_analyzer/network_load/Debug/*.csv
+tools/pdcch_analyzer/network_load/Release/*.csv
+tools/pdcch_analyzer/dump_record_print/Debug/dump_record_print
+tools/pdcch_analyzer/dump_record_print/Release/dump_record_print
+.settings/
+*.a

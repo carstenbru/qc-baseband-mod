@@ -18,22 +18,6 @@
 
 using namespace std;
 
-//TODO count number of decoding fails (CCEs with energy but no DCI, more than available RBs)
-
-//TODO fix num antennas
-//TODO include other missing fields in dump
-
-//TODO use "better" (faster) viterbi decoder implementation (srsLTE has some fancy ones)
-//TODO parallelize decoding code
-//TODO keep list of active RNTIs in decoder, increase probability for those in next decodings (or save re-encoding for known RNTIs completly), also increase for reserved RNTIs (e.g. paging) -> maybe simple whitelist like OWL (they keep it for two cycles of sfn)
-//TODO remove dependency on PdcchAddCellInfoRecord record type from decoder
-//TODO make it a library?
-
-//TODO support SPS scheduling
-
-//TODO support for more DCIs and ALL UE specific configurations in UESSS, clean implementation..size gets ambiguous then for different UEs, strategy to distinguish needed
-//TODO support for DCI_FORMAT3, DCI_FORMAT3A (just iplink transmit power control)
-
 ofstream it_sfn_file_stream;
 ofstream sfn_file_stream;
 
@@ -47,12 +31,6 @@ int sfn_iteration_time_record = 0;
 int sfn_time_record = 0;
 
 /*
- bool process_record(PdcchDumpRecord* record, void* arg) {
- cout << "next record: " << record->to_string() << endl;
-
- return false;
- }
-
  bool decoder_callback(PdcchDataRecord& data_record,
  std::list<DciResult*> decoded_dcis, void* arg) {
  for (list<DciResult*>::iterator it = decoded_dcis.begin();
