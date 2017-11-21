@@ -11,10 +11,9 @@
 #include <vector>
 #include <list>
 
-#include "../records/PdcchLlrBufferRecord.h"
+#include "../records/PdcchDciRecord.h"
 #include "../records/PdcchAddCellInfoRecord.h"
 
-#include "../PdcchDumpRecordReader.h"
 #include "DciResult.h"
 
 extern "C" {
@@ -26,14 +25,15 @@ typedef struct {
 	uint16_t reg_nr;
 } reg_idx;
 
+class PdcchDumpRecordReader;
+
 /**
  * callback function type
  *
  * @param arg argument defined by user
- * @return true if the passed DciResults are still needed, i.e. should not be deleted
+ * @return true if the passed PdcchDciRecord is still needed, i.e. should not be deleted
  */
-typedef bool (*decoder_callback_t)(PdcchLlrBufferRecord& data_record,
-		std::list<DciResult*> decoded_dcis, void* arg);
+typedef bool (*decoder_callback_t)(PdcchDciRecord* pdcch_dci_record, void* arg);
 
 class PdcchDecoder {
 public:

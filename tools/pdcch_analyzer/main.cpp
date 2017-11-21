@@ -106,8 +106,7 @@ bool process_timestamp_record(PdcchTimeRecord* time_record, void* arg) {
 	return true;
 }
 
-bool decoder_callback_load_data_rate(PdcchLlrBufferRecord& data_record,
-		std::list<DciResult*> decoded_dcis, void* arg) {
+bool dci_callback_load_data_rate(PdcchDciRecord* dci_record, void* arg) {
 	static int samples[] = { 0, 0 };
 	static unsigned long int data_rate[] = { 0, 0 };
 	static unsigned long int paging_data_rate[] = { 0, 0 };
@@ -119,8 +118,8 @@ bool decoder_callback_load_data_rate(PdcchLlrBufferRecord& data_record,
 	/* collect statistics */
 	if (last_time_record != 0) {  // only write if we have seen a timestamp
 		unsigned int subframe_rbs = 0;
-		for (list<DciResult*>::iterator it = decoded_dcis.begin();
-				it != decoded_dcis.end(); it++) {
+		for (list<DciResult*>::iterator it = dci_record->get_dcis()->begin();
+				it != dci_record->get_dcis()->end(); it++) {
 			DciResult* dci_result = *it;
 			rnti_count[dci_result->get_rnti()]++;
 
@@ -144,21 +143,21 @@ bool decoder_callback_load_data_rate(PdcchLlrBufferRecord& data_record,
 					paging_data_rate[0] += d_rate;
 					paging_allocated_rbs[0] += rbs;
 				}
-				if (dci_result->get_rnti() == data_record.get_ue_crnti()) {  // UE statistics
+				if (dci_result->get_rnti() == dci_record->get_ue_crnti()) {  // UE statistics
 					ue_data_rate[0] += d_rate;
 					ue_allocated_rbs[0] += rbs;
 				}
 			}
 		}
-		if (subframe_rbs > data_record.get_num_rbs()) {  // if the grants sum up to more than we have, there is something wrong..
+		if (subframe_rbs > dci_record->get_num_rbs()) {  // if the grants sum up to more than we have, there is something wrong..
 			cout << "%%%%%%%%%%%%%%%%%%%%%%%%%%" << endl;
 			cout << "warning: more RBs allocated (" << subframe_rbs
-					<< ") than available (" << data_record.get_num_rbs() << ")" << endl;
+					<< ") than available (" << dci_record->get_num_rbs() << ")" << endl;
 		}
 
 		/* output writing */
 		samples[0]++;
-		if (data_record.get_subframe() == 9) {  // once per SFN
+		if (dci_record->get_subframe() == 9) {  // once per SFN
 			// copy to counters for SFN iteration statistics
 			data_rate[1] += data_rate[0];
 			paging_data_rate[1] += paging_data_rate[0];
@@ -167,7 +166,7 @@ bool decoder_callback_load_data_rate(PdcchLlrBufferRecord& data_record,
 			paging_allocated_rbs[1] += paging_allocated_rbs[0];
 			ue_allocated_rbs[1] += ue_allocated_rbs[0];
 
-			sfn_file_stream << sfn_iteration << "\t" << data_record.get_sfn() << "\t"
+			sfn_file_stream << sfn_iteration << "\t" << dci_record->get_sfn() << "\t"
 					<< data_rate[0] / (float) samples[0] << "\t"
 					<< paging_data_rate[0] / (float) samples[0] << "\t"
 					<< ue_data_rate[0] / (float) samples[0] << "\t"
@@ -186,10 +185,10 @@ bool decoder_callback_load_data_rate(PdcchLlrBufferRecord& data_record,
 			samples[1] += samples[0];
 			samples[0] = 0;
 		}
-		if (last_sfn > data_record.get_sfn()) {  // once per SFN iteration (i.e. every 1024th frame)
+		if (last_sfn > dci_record->get_sfn()) {  // once per SFN iteration (i.e. every 1024th frame)
 			if (samples[1] > 100) {  // only if we have enough samples
 				long diff_ms = (sfn_iteration_time_record - sfn_iteration) * 10240;
-				diff_ms += (sfn_time_record - data_record.get_sfn()) * 10;
+				diff_ms += (sfn_time_record - dci_record->get_sfn()) * 10;
 				it_sfn_file_stream << last_time_record->getTimeString(diff_ms) << "\t"
 						<< sfn_iteration << "\t" << data_rate[1] / (float) samples[1]
 						<< "\t" << paging_data_rate[1] / (float) samples[1] << "\t"
@@ -210,10 +209,10 @@ bool decoder_callback_load_data_rate(PdcchLlrBufferRecord& data_record,
 			samples[1] = 0;
 			sfn_iteration++;
 		}
-		cout << "it: " << sfn_iteration << " sfn: " << data_record.get_sfn()
-				<< " subframe: " << data_record.get_subframe() << endl;
+		cout << "it: " << sfn_iteration << " sfn: " << dci_record->get_sfn()
+				<< " subframe: " << dci_record->get_subframe() << endl;
 	}
-	last_sfn = data_record.get_sfn();
+	last_sfn = dci_record->get_sfn();
 
 	return false;
 }
@@ -240,14 +239,12 @@ int main(int argc, char* argv[]) {
 	filename.append(".bin");
 	memset(rnti_count, 0, sizeof(unsigned int) * 65536);
 
-	/* create record reader and decoder and connect them */
-	PdcchDumpRecordReader pdcch_dump_record_reader(filename);
+	/* create record reader, activate decoder and register callbacks */
+	PdcchDumpRecordReader pdcch_dump_record_reader(filename, true);
 	pdcch_dump_record_reader.register_callback(PDCCH_TIME_RECORD,
 			(record_callback_t) &process_timestamp_record, 0);
-
-	PdcchDecoder pdcch_decoder;
-	pdcch_decoder.register_callback(decoder_callback_load_data_rate, 0);
-	pdcch_decoder.connect_to_record_reader(pdcch_dump_record_reader);
+	pdcch_dump_record_reader.register_callback(PDCCH_DCI_RECORD,
+			(record_callback_t) &dci_callback_load_data_rate, 0);
 
 	/* let's go! */
 	pdcch_dump_record_reader.read_all_records();

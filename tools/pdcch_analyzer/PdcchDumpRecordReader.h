@@ -8,6 +8,7 @@
 #define PDCCHDUMPRECORDREADER_H_
 
 #include "records/PdcchDumpRecord.h"
+#include "pdcch_decoder/PdcchDecoder.h"
 
 #include <string>
 #include <fstream>
@@ -19,6 +20,7 @@ enum record_type_enum {
 	PDCCH_TIME_RECORD = 2,
 	PDCCH_MAIN_CELL_INFO_RECORD = 3,
 	PDCCH_ADD_CELL_INFO_RECORD = 4,
+	PDCCH_DCI_RECORD = 5,
 	PDCCH_ALL_RECORDS,
 	PDCCH_RECORD_MAX
 };
@@ -38,8 +40,9 @@ public:
 	 * constructor
 	 *
 	 * @param filename base filename (part number will be appended automatically)
+	 * @param decode_llr_records true to decode PdcchLlrBufferRecords into PdcchDciRecords
 	 */
-	PdcchDumpRecordReader(std::string filename);
+	PdcchDumpRecordReader(std::string filename, bool decode_llr_records);
 	virtual ~PdcchDumpRecordReader();
 
 	/**
@@ -76,6 +79,8 @@ private:
 
 	std::vector<record_callback_t> callbacks[PDCCH_RECORD_MAX];
 	std::vector<void*> callback_args[PDCCH_RECORD_MAX];
+
+	PdcchDecoder* pdcchDecoder;
 };
 
 #endif /* PDCCHDUMPRECORDREADER_H_ */

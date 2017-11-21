@@ -9,6 +9,8 @@
 #include <string>
 #include <cstring>
 
+#include "../PdcchDumpRecordReader.h"
+
 extern "C" {
 #include "srsLTE/crc.h"
 #include "srsLTE/rm_conv.h"
@@ -355,7 +357,7 @@ bool PdcchDecoder::validate_rnti_in_search_space(unsigned int agl,
 
 void PdcchDecoder::blind_decode(int16_t* cce_buf, unsigned int num_regs,
 		PdcchLlrBufferRecord& llr_buffer_record) {
-	list<DciResult*> detected_dcis;
+	list<DciResult*>* detected_dcis = new list<DciResult*>;
 
 	bool cce_dci_detected[num_regs / 9];
 	for (unsigned int cce = 0; cce < num_regs / 9; cce++) {
@@ -461,7 +463,7 @@ void PdcchDecoder::blind_decode(int16_t* cce_buf, unsigned int num_regs,
 				dci_result->set_agl(agl);
 				dci_result->set_start_cce(candidate * agl);
 				dci_result->set_decoding_success_prob(best_prob);
-				detected_dcis.push_back(dci_result);
+				detected_dcis->push_back(dci_result);
 			}
 		}
 	}
@@ -485,17 +487,15 @@ void PdcchDecoder::blind_decode(int16_t* cce_buf, unsigned int num_regs,
 	}
 
 	/* callbacks */
-	bool keep_dcis = false;
+	PdcchDciRecord* pdcchDciRecord = new PdcchDciRecord(llr_buffer_record, detected_dcis);
+	bool keep_record = false;
 	if (callbacks.size() > 0) {
 		for (unsigned int i = 0; i < callbacks.size(); i++) {
-			keep_dcis |= callbacks[i](llr_buffer_record, detected_dcis, callback_args[i]);
+			keep_record |= callbacks[i](pdcchDciRecord, callback_args[i]);
 		}
 	}
-	if (!keep_dcis) {
-		for (list<DciResult*>::iterator it = detected_dcis.begin();
-				it != detected_dcis.end(); it++) {
-			delete *it;
-		}
+	if (!keep_record) {
+		delete pdcchDciRecord;
 	}
 }
 

@@ -23,6 +23,9 @@ public:
 	void set_agl(unsigned int agl) {
 		this->agl = agl;
 	}
+	void set_agl_from_idx(unsigned int agl_idx) {
+		this->agl = (1 << agl_idx);
+	}
 	void set_start_cce(unsigned int start_cce) {
 		this->start_cce = start_cce;
 	}
@@ -45,6 +48,10 @@ public:
 	unsigned int get_agl() {
 		return agl;
 	}
+	unsigned int get_agl_idx() {
+		unsigned int idx = agl / 2;
+		return (idx >= 4) ? 3 : idx;
+	}
 	unsigned int get_start_cce() {
 		return start_cce;
 	}
@@ -53,6 +60,12 @@ public:
 	}
 	char* get_format_as_string() {
 		return srslte_dci_format_string(format);
+	}
+	unsigned int get_harq_pid() {
+		return harq_pid;
+	}
+	unsigned int get_tx_ports() {
+		return tx_ports;
 	}
 
 	bool has_ul_grant() {

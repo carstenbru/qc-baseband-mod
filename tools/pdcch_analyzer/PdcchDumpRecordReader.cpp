@@ -10,18 +10,26 @@
 #include "records/PdcchTimeRecord.h"
 #include "records/PdcchMainCellInfoRecord.h"
 #include "records/PdcchAddCellInfoRecord.h"
+#include "records/PdcchDciRecord.h"
 
 #include <iostream>
 
 using namespace std;
 
-PdcchDumpRecordReader::PdcchDumpRecordReader(string filename) :
+PdcchDumpRecordReader::PdcchDumpRecordReader(string filename,
+		bool decode_llr_records) :
 		base_filename(filename), cur_split_file(-2), file_stream(base_filename,
 				ios::in | ios::binary) {
 	if (file_stream.is_open()) {
 		cout << "reading file: " << filename << endl;
 	} else {
 		cur_split_file = -1;
+	}
+	if (decode_llr_records) {
+		pdcchDecoder = new PdcchDecoder();
+		pdcchDecoder->connect_to_record_reader(*this);
+	} else {
+		pdcchDecoder = 0;
 	}
 }
 
@@ -34,14 +42,15 @@ PdcchDumpRecord* PdcchDumpRecordReader::read_next_record(
 
 	uint32_t header_data[2];
 	if (!(file_stream.read((char*) header_data, 8))) {
-		if (cur_split_file == -2) { //single file mode
+		if (cur_split_file == -2) {  //single file mode
 			return 0;
-		} else { //split file mode
-			cur_split_file++; //try if a next file exists
+		} else {  //split file mode
+			cur_split_file++;  //try if a next file exists
 			if (file_stream.is_open()) {
 				file_stream.close();
 			}
-			file_stream.open(base_filename + to_string(cur_split_file), ios::in | ios::binary);
+			file_stream.open(base_filename + to_string(cur_split_file),
+					ios::in | ios::binary);
 			if (!(file_stream.read((char*) header_data, 8))) {
 				return 0;
 			}
@@ -76,6 +85,10 @@ PdcchDumpRecord* PdcchDumpRecordReader::read_next_record(
 		break;
 	case (PDCCH_ADD_CELL_INFO_RECORD):
 		record = new PdcchAddCellInfoRecord(record_version, payload_data,
+				record_payload_length);
+		break;
+	case (PDCCH_DCI_RECORD):
+		record = new PdcchDciRecord(record_version, payload_data,
 				record_payload_length);
 		break;
 	default:
@@ -115,5 +128,10 @@ void PdcchDumpRecordReader::register_callback(record_type_enum type,
 	if (type < PDCCH_RECORD_MAX) {
 		callbacks[type].push_back(callback);
 		callback_args[type].push_back(arg);
+	}
+	if (pdcchDecoder != 0) {
+		if ((type == PDCCH_DCI_RECORD) || (type == PDCCH_ALL_RECORDS)) {
+			pdcchDecoder->register_callback((decoder_callback_t)callback, arg);
+		}
 	}
 }

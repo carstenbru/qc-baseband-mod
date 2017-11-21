@@ -18,7 +18,7 @@ PdcchLlrBufferRecord::~PdcchLlrBufferRecord() {
 string PdcchLlrBufferRecord::to_string() {
 	char buf[256];
 	snprintf(buf, sizeof(buf),
-			"PdcchDataRecord: phy cell ID: %d\tRBs: %d\tsfn: %04d\tsubframe: %d\tCFI: %d",
+			"PdcchLlrBufferRecord: phy cell ID: %d\tRBs: %d\tsfn: %04d\tsubframe: %d\tCFI: %d",
 			get_phy_cell_id(), get_num_rbs(), get_sfn(), get_subframe(), get_cfi());
 
 	return string(buf);
