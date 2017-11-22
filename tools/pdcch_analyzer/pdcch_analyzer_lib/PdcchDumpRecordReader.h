@@ -107,6 +107,7 @@ public:
 	 * returns a string with the current time
 	 */
 	std::string get_time_string(PdcchDataRecord* data_record);
+	void new_record(PdcchDumpRecord* record, bool inc_sfn_it);
 private:
 	bool call_callback(record_type_enum type, PdcchDumpRecord* record);
 

@@ -484,16 +484,16 @@ void PdcchDecoder::blind_decode(int16_t* cce_buf, unsigned int num_regs,
 	}
 
 	/* callbacks */
-	PdcchDciRecord* pdcchDciRecord = new PdcchDciRecord(llr_buffer_record,
+	PdcchDciRecord* pdcch_dci_record = new PdcchDciRecord(llr_buffer_record,
 			detected_dcis);
 	bool keep_record = false;
 	if (callbacks.size() > 0) {
 		for (unsigned int i = 0; i < callbacks.size(); i++) {
-			keep_record |= callbacks[i](pdcchDciRecord, callback_args[i]);
+			keep_record |= callbacks[i](pdcch_dci_record, callback_args[i]);
 		}
 	}
 	if (!keep_record) {
-		delete pdcchDciRecord;
+		delete pdcch_dci_record;
 	}
 }
 
