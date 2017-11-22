@@ -24,49 +24,12 @@ ofstream sfn_file_stream;
 
 unsigned int rnti_count[65536];
 
-int sfn_iteration = 0;
-int last_sfn = 0;
-
-PdcchTimeRecord* last_time_record = 0;
-int sfn_iteration_time_record = 0;
-int sfn_time_record = 0;
-
 /*
- bool decoder_callback(PdcchDataRecord& data_record,
- std::list<DciResult*> decoded_dcis, void* arg) {
- for (list<DciResult*>::iterator it = decoded_dcis.begin();
- it != decoded_dcis.end(); it++) {
- DciResult* dci_result = *it;
- cout << "format: " << dci_result->get_format_as_string() << endl;
- cout << "agl: " << dci_result->get_agl() << " dci bits: "
- << dci_result->get_payload_length() << endl;
- cout << "recovered RNTI: " << dci_result->get_rnti() << endl;
- cout << "start_cce: " << dci_result->get_start_cce() << endl;
- cout << "decoding success likeliness: "
- << dci_result->get_decoding_success_prob() << endl << endl;
-
- rnti_count[dci_result->get_rnti()]++;
-
- srslte_ra_dl_grant_t* dl_grant = dci_result->get_dl_grant();
- if (dl_grant != 0) {
- srslte_ra_dl_grant_fprint(stdout, dl_grant);
- }
- //		srslte_ra_ul_grant_t* ul_grant = dci_result->get_ul_grant();
- //		if (ul_grant != 0) {
- //			srslte_ra_ul_grant_fprint(stdout, ul_grant);
- //		}
- }
-
- return false;
- } */
-
-/*
- * store timestamp record and write headers in output files if it is the first timestamp (the output only starts then)
+ * write headers in output files if it is the first timestamp (the output only starts then)
  */
 bool process_timestamp_record(PdcchTimeRecord* time_record, void* arg) {
-	if (last_time_record != 0) {
-		delete last_time_record;
-	} else {
+	PdcchDumpRecordReader* pdcch_dump_record_reader = (PdcchDumpRecordReader*) arg;
+	if (pdcch_dump_record_reader->get_last_record(PDCCH_TIME_RECORD) == 0) {  //first time record
 		sfn_file_stream << "#" << time_record->getTimeString() << "\n";
 		it_sfn_file_stream << "#" << time_record->getTimeString() << "\n";
 
@@ -79,9 +42,6 @@ bool process_timestamp_record(PdcchTimeRecord* time_record, void* arg) {
 				<< "\t" << "UE data rate [kbit/s]" << "\t" << "total allocated RBs"
 				<< "\t" << "paging allocated RBs" << "\t" << "UE allocated RBs" << "\n";
 	}
-	last_time_record = time_record;
-	sfn_iteration_time_record = sfn_iteration;
-	sfn_time_record = last_sfn;
 	return true;
 }
 
@@ -94,8 +54,10 @@ bool dci_callback_load_data_rate(PdcchDciRecord* dci_record, void* arg) {
 	static unsigned long int paging_allocated_rbs[] = { 0, 0 };
 	static unsigned long int ue_allocated_rbs[] = { 0, 0 };
 
+	PdcchDumpRecordReader* pdcch_dump_record_reader = (PdcchDumpRecordReader*) arg;
+
 	/* collect statistics */
-	if (last_time_record != 0) {  // only write if we have seen a timestamp
+	if (pdcch_dump_record_reader->get_last_record(PDCCH_TIME_RECORD) != 0) {  // only write if we have seen a timestamp
 		unsigned int subframe_rbs = 0;
 		for (list<DciResult*>::iterator it = dci_record->get_dcis()->begin();
 				it != dci_record->get_dcis()->end(); it++) {
@@ -135,14 +97,13 @@ bool dci_callback_load_data_rate(PdcchDciRecord* dci_record, void* arg) {
 		}
 
 		/* output writing */
-		if (last_sfn > dci_record->get_sfn()) {  // once per SFN iteration (i.e. every 1024th frame)
-			sfn_iteration++;
+		if (pdcch_dump_record_reader->get_last_sfn() > dci_record->get_sfn()) {  // once per SFN iteration (i.e. every 1024th frame)
 			if (samples[1] > 100) {  // only if we have enough samples
-				long diff_ms = (sfn_iteration_time_record - sfn_iteration) * 10240;
-				diff_ms += (sfn_time_record - dci_record->get_sfn()) * 10;
-				it_sfn_file_stream << last_time_record->getTimeString(diff_ms) << "\t"
-						<< sfn_iteration << "\t" << data_rate[1] / (float) samples[1]
-						<< "\t" << paging_data_rate[1] / (float) samples[1] << "\t"
+				it_sfn_file_stream
+						<< pdcch_dump_record_reader->get_time_string(dci_record) << "\t"
+						<< pdcch_dump_record_reader->get_sfn_iteration() << "\t"
+						<< data_rate[1] / (float) samples[1] << "\t"
+						<< paging_data_rate[1] / (float) samples[1] << "\t"
 						<< ue_data_rate[1] / (float) samples[1] << "\t"
 						<< allocated_rbs[1] / (float) samples[1] << "\t"
 						<< paging_allocated_rbs[1] / (float) samples[1] << "\t"
@@ -169,9 +130,9 @@ bool dci_callback_load_data_rate(PdcchDciRecord* dci_record, void* arg) {
 			paging_allocated_rbs[1] += paging_allocated_rbs[0];
 			ue_allocated_rbs[1] += ue_allocated_rbs[0];
 
-			sfn_file_stream << sfn_iteration << "\t" << dci_record->get_sfn() << "\t"
-					<< data_rate[0] / (float) samples[0] << "\t"
-					<< paging_data_rate[0] / (float) samples[0] << "\t"
+			sfn_file_stream << pdcch_dump_record_reader->get_sfn_iteration() << "\t"
+					<< dci_record->get_sfn() << "\t" << data_rate[0] / (float) samples[0]
+					<< "\t" << paging_data_rate[0] / (float) samples[0] << "\t"
 					<< ue_data_rate[0] / (float) samples[0] << "\t"
 					<< allocated_rbs[0] / (float) samples[0] << "\t"
 					<< paging_allocated_rbs[0] / (float) samples[0] << "\t"
@@ -188,10 +149,10 @@ bool dci_callback_load_data_rate(PdcchDciRecord* dci_record, void* arg) {
 			samples[1] += samples[0];
 			samples[0] = 0;
 		}
-		cout << "it: " << sfn_iteration << " sfn: " << dci_record->get_sfn()
-				<< " subframe: " << dci_record->get_subframe() << endl;
+		cout << "it: " << pdcch_dump_record_reader->get_sfn_iteration() << " sfn: "
+				<< dci_record->get_sfn() << " subframe: " << dci_record->get_subframe()
+				<< endl;
 	}
-	last_sfn = dci_record->get_sfn();
 
 	return false;
 }
@@ -221,9 +182,10 @@ int main(int argc, char* argv[]) {
 	/* create record reader, activate decoder and register callbacks */
 	PdcchDumpRecordReader pdcch_dump_record_reader(filename, true);
 	pdcch_dump_record_reader.register_callback(PDCCH_TIME_RECORD,
-			(record_callback_t) &process_timestamp_record, 0);
+			(record_callback_t) &process_timestamp_record, &pdcch_dump_record_reader);
 	pdcch_dump_record_reader.register_callback(PDCCH_DCI_RECORD,
-			(record_callback_t) &dci_callback_load_data_rate, 0);
+			(record_callback_t) &dci_callback_load_data_rate,
+			&pdcch_dump_record_reader);
 
 	/* let's go! */
 	pdcch_dump_record_reader.read_all_records();

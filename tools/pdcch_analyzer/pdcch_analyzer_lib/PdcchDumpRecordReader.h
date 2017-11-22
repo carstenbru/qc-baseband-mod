@@ -37,12 +37,13 @@ public:
 	/**
 	 * reads the next record from the input stream
 	 *
-	 * The caller is responsible to free the memory of the result after using it.
+	 * The memory of the result is freed when the next record with the same type is read by a feature call of this function, if no
+	 * callback requested to take ownership (by returning true in the callback method).
+	 * The caller should must not free the memory and make a copy in case it needs the result longer.
 	 *
-	 *  @param callback_needs_record true if one of the callback functions still needs the record, false if it can be deleted
 	 *  @return next record in stream, 0 if there are no more
 	 */
-	PdcchDumpRecord* read_next_record(bool& callback_needs_record);
+	PdcchDumpRecord* read_next_record();
 	/**
 	 * reads all records in the input stream
 	 *
@@ -59,6 +60,53 @@ public:
 	 */
 	void register_callback(record_type_enum type, record_callback_t callback,
 			void* arg);
+
+	/**
+	 * returns the current "iteration" of the SFN, i.e. how often the SFN overflowed since the beginning of the dump
+	 */
+	unsigned int get_sfn_iteration() {
+		return sfn_iteration;
+	}
+	/**
+	 * gets the last observed SFN value in a PdcchDataRecord
+	 *
+	 * In a callback for such a record type it will return the previous SFN (not yet updated)
+	 */
+	unsigned int get_last_sfn() {
+		return last_sfn;
+	}
+
+	/**
+	 * gets the last read record of a certain type, or 0 if such a record was not yet seen
+	 *
+	 * After a null pointer check, the result can safely be casted to the concrete record type (e.g. PdcchTimeRecord).
+	 * In a callback, it will return the previous record (not yet updated)
+	 *
+	 * @returns the last read record of a certain type, or 0 if such a record was not yet seen
+	 */
+	PdcchDumpRecord* get_last_record(record_type_enum type) {
+		return last_records[type];
+	}
+	/**
+	 * gets the SFN iteration (see get_sfn_iteration()) when the record returned by get_last_record() was seen
+	 */
+	unsigned int get_last_record_sfn_iteration(record_type_enum type) {
+		return last_record_sfn_iteration[type];
+	}
+	/**
+	 * gets the SFN when the record returned by get_last_record() was seen
+	 */
+	unsigned int get_last_record_sfn(record_type_enum type) {
+		return last_record_sfn[type];
+	}
+	/**
+	 * returns the milliseconds since the last time record
+	 */
+	long ms_since_last_time_record(PdcchDataRecord* data_record);
+	/**
+	 * returns a string with the current time
+	 */
+	std::string get_time_string(PdcchDataRecord* data_record);
 private:
 	bool call_callback(record_type_enum type, PdcchDumpRecord* record);
 
@@ -70,6 +118,14 @@ private:
 	std::vector<void*> callback_args[PDCCH_RECORD_MAX];
 
 	PdcchDecoder* pdcchDecoder;
+
+	unsigned int sfn_iteration;
+	unsigned int last_sfn;
+
+	PdcchDumpRecord* last_records[PDCCH_RECORD_MAX - 1];
+	unsigned int last_record_sfn_iteration[PDCCH_RECORD_MAX - 1];
+	unsigned int last_record_sfn[PDCCH_RECORD_MAX - 1];
+	bool last_records_keep[PDCCH_RECORD_MAX - 1];
 };
 
 #endif /* PDCCHDUMPRECORDREADER_H_ */
