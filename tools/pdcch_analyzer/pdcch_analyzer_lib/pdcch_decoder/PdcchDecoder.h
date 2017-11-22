@@ -49,9 +49,6 @@ public:
 	 */
 	bool decode_record(PdcchLlrBufferRecord& llr_buffer_record);
 
-	bool new_pdcch_add_cell_info_record(
-			PdcchAddCellInfoRecord* pdcch_add_cell_info_record);
-
 	/**
 	 * register a callback for decoding results
 	 *
@@ -121,8 +118,6 @@ private:
 
 	float decode_success_prob_threshold;
 
-	PdcchAddCellInfoRecord* pdcch_add_cell_info_record;
-
 	// pre-calculated values (only depending on cell)
 	int16_t last_phy_cell_id;
 	reg_idx* cce_reg_to_reg_pos_mapping[3];
@@ -131,6 +126,8 @@ private:
 	unsigned int dci_format_lengths[SRSLTE_DCI_NOF_FORMATS];
 
 	unsigned int reg_energy_threshold;
+
+	PdcchDumpRecordReader* pdcch_dump_record_reader;
 };
 
 #endif /* PDCCHDECODER_H_ */

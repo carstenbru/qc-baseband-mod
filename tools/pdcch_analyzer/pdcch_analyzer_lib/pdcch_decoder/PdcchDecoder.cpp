@@ -39,9 +39,9 @@ srslte_dci_format_t active_dci_formats[] = { SRSLTE_DCI_FORMAT1C,
 //ordered by increasing length, as for same probabilities the first result is kept and mistakes are less likely for shorter DCI types (more bits for error correction)
 
 PdcchDecoder::PdcchDecoder() :
-		decode_success_prob_threshold(DEFAULT_DECODE_SUCCESS_PROB_THRESHOLD), pdcch_add_cell_info_record(
-				0), last_phy_cell_id(-1), num_dci_formats(0), reg_energy_threshold(
-		DEFAULT_REG_ENERGY_THRESHOLD) {
+		decode_success_prob_threshold(DEFAULT_DECODE_SUCCESS_PROB_THRESHOLD), last_phy_cell_id(
+				-1), num_dci_formats(0), reg_energy_threshold(
+		DEFAULT_REG_ENERGY_THRESHOLD), pdcch_dump_record_reader(0) {
 	for (unsigned int i = 0; i < 3; i++) {
 		cce_reg_to_reg_pos_mapping[i] = 0;
 	}
@@ -56,15 +56,6 @@ PdcchDecoder::~PdcchDecoder() {
 void PdcchDecoder::register_callback(decoder_callback_t callback, void* arg) {
 	callbacks.push_back(callback);
 	callback_args.push_back(arg);
-}
-
-bool PdcchDecoder::new_pdcch_add_cell_info_record(
-		PdcchAddCellInfoRecord* pdcch_add_cell_info_record) {
-	if (this->pdcch_add_cell_info_record != 0) {
-		delete this->pdcch_add_cell_info_record;
-	}
-	this->pdcch_add_cell_info_record = pdcch_add_cell_info_record;
-	return true;
 }
 
 /**
@@ -188,6 +179,9 @@ void calc_scrambling_sequence(unsigned int len, uint32_t x2_start_seed,
 void PdcchDecoder::pre_calculate_values(uint16_t phy_cell_id, unsigned int prbs,
 		unsigned int tx_ports) {
 	last_phy_cell_id = phy_cell_id;
+	PdcchAddCellInfoRecord* pdcch_add_cell_info_record =
+			(PdcchAddCellInfoRecord*) pdcch_dump_record_reader->get_last_record(
+					PDCCH_ADD_CELL_INFO_RECORD);
 
 	/* REG mapping (interleaving, cyclic-shift, ordering) */
 	for (unsigned int cfi = 1; cfi <= 3; cfi++) {
@@ -358,6 +352,9 @@ bool PdcchDecoder::validate_rnti_in_search_space(unsigned int agl,
 void PdcchDecoder::blind_decode(int16_t* cce_buf, unsigned int num_regs,
 		PdcchLlrBufferRecord& llr_buffer_record) {
 	list<DciResult*>* detected_dcis = new list<DciResult*>;
+	PdcchAddCellInfoRecord* pdcch_add_cell_info_record =
+			(PdcchAddCellInfoRecord*) pdcch_dump_record_reader->get_last_record(
+					PDCCH_ADD_CELL_INFO_RECORD);
 
 	bool cce_dci_detected[num_regs / 9];
 	for (unsigned int cce = 0; cce < num_regs / 9; cce++) {
@@ -487,7 +484,8 @@ void PdcchDecoder::blind_decode(int16_t* cce_buf, unsigned int num_regs,
 	}
 
 	/* callbacks */
-	PdcchDciRecord* pdcchDciRecord = new PdcchDciRecord(llr_buffer_record, detected_dcis);
+	PdcchDciRecord* pdcchDciRecord = new PdcchDciRecord(llr_buffer_record,
+			detected_dcis);
 	bool keep_record = false;
 	if (callbacks.size() > 0) {
 		for (unsigned int i = 0; i < callbacks.size(); i++) {
@@ -500,6 +498,9 @@ void PdcchDecoder::blind_decode(int16_t* cce_buf, unsigned int num_regs,
 }
 
 bool PdcchDecoder::decode_record(PdcchLlrBufferRecord& llr_buffer_record) {
+	PdcchAddCellInfoRecord* pdcch_add_cell_info_record =
+			(PdcchAddCellInfoRecord*) pdcch_dump_record_reader->get_last_record(
+					PDCCH_ADD_CELL_INFO_RECORD);
 	if (pdcch_add_cell_info_record == 0) {
 		return false;
 	}
@@ -554,17 +555,9 @@ bool pdcch_decoder_process_data_record(PdcchLlrBufferRecord* llr_buffer_record,
 	return false;
 }
 
-bool pdcch_decoder_process_add_cell_info_record(
-		PdcchAddCellInfoRecord* pdcch_add_cell_info_record, void* arg) {
-	PdcchDecoder* pdcch_decoder = (PdcchDecoder*) arg;
-	return pdcch_decoder->new_pdcch_add_cell_info_record(
-			pdcch_add_cell_info_record);
-}
-
 void PdcchDecoder::connect_to_record_reader(
 		PdcchDumpRecordReader& pdcch_dump_record_reader) {
 	pdcch_dump_record_reader.register_callback(PDCCH_LLR_BUFFER_RECORD,
 			(record_callback_t) &pdcch_decoder_process_data_record, this);
-	pdcch_dump_record_reader.register_callback(PDCCH_ADD_CELL_INFO_RECORD,
-			(record_callback_t) &pdcch_decoder_process_add_cell_info_record, this);
+	this->pdcch_dump_record_reader = &pdcch_dump_record_reader;
 }
