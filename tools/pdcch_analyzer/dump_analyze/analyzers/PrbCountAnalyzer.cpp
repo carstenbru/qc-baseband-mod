@@ -31,7 +31,6 @@ bool PrbCountAnalyzer::analyze_subframe(PdcchDciRecord* dci_record,
 	for (list<DciResult*>::iterator it = dci_record->get_dcis()->begin();
 			it != dci_record->get_dcis()->end(); it++) {
 		DciResult* dci_result = *it;
-		//rnti_count[dci_result->get_rnti()]++; //TODO RNTI count
 
 		/* get (downlink) grant encoded in DCI and add to counters */
 		srslte_ra_dl_grant_t* dl_grant = dci_result->get_dl_grant();

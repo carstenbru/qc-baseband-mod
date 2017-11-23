@@ -36,6 +36,7 @@ unsigned int rnti_count[65536];
 bool dci_callback(PdcchDciRecord* dci_record, void* arg) {
 	dump_analyze_struct_t* dump_analyze_struct = (dump_analyze_struct_t*) arg;
 
+	/* run analyzers */
 	for (list<SubframeAnalyzer*>::iterator it =
 			dump_analyze_struct->analyzers.begin();
 			it != dump_analyze_struct->analyzers.end(); it++) {
@@ -43,10 +44,18 @@ bool dci_callback(PdcchDciRecord* dci_record, void* arg) {
 				dump_analyze_struct->pdcch_dump_record_reader);
 	}
 
+	/* run writers */
 	for (list<ResultWriter*>::iterator it = dump_analyze_struct->writers.begin();
 			it != dump_analyze_struct->writers.end(); it++) {
 		(*it)->new_results(dci_record,
 				dump_analyze_struct->pdcch_dump_record_reader);
+	}
+
+	/* information for user: RNTI counters, current position */
+	for (list<DciResult*>::iterator it = dci_record->get_dcis()->begin();
+				it != dci_record->get_dcis()->end(); it++) {
+			DciResult* dci_result = *it;
+			rnti_count[dci_result->get_rnti()]++;
 	}
 
 	cout << "it: "
