@@ -39,14 +39,11 @@ endif
 # All Target
 all: network_load
 
-dependents:
-	-cd /home/carsten/Uni/ma/qc-baseband/tools/pdcch_analyzer/pdcch_analyzer_lib/Release && $(MAKE) clean all
-
 # Tool invocations
-network_load: $(OBJS) $(USER_OBJS) /home/carsten/Uni/ma/qc-baseband/tools/pdcch_analyzer/pdcch_analyzer_lib/Release/libpdcch_analyzer_lib.a
+network_load: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C++ Linker'
-	g++ -L"/home/carsten/Uni/ma/qc-baseband/tools/pdcch_analyzer/pdcch_analyzer_lib/Release" -o "network_load" $(OBJS) $(USER_OBJS) $(LIBS)
+	g++ -L../../pdcch_analyzer_lib/Release -o "network_load" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -57,6 +54,5 @@ clean:
 
 .PHONY: all clean dependents
 .SECONDARY:
-/home/carsten/Uni/ma/qc-baseband/tools/pdcch_analyzer/pdcch_analyzer_lib/Release/libpdcch_analyzer_lib.a:
 
 -include ../makefile.targets
