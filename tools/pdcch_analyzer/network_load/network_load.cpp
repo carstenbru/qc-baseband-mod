@@ -10,6 +10,12 @@
 #include <PdcchDumpRecordReader.h>
 #include <records/PdcchDciRecord.h>
 #include <records/PdcchTimeRecord.h>
+#include "writers/ResultWriter.h"
+#include "writers/FrameAverageWriter.h"
+#include "writers/SfnIterationAverageWriter.h"
+#include "analyzers/SubframeAnalyzer.h"
+#include "analyzers/PrbCountAnalyzer.h"
+#include "analyzers/DataRateAnalyzer.h"
 
 #include <string.h>
 #include <fstream>
@@ -19,140 +25,34 @@
 
 using namespace std;
 
-ofstream it_sfn_file_stream;
-ofstream sfn_file_stream;
+typedef struct {
+	PdcchDumpRecordReader* pdcch_dump_record_reader;
+	list<SubframeAnalyzer*> analyzers;
+	list<ResultWriter*> writers;
+} dump_analyze_struct_t;
 
 unsigned int rnti_count[65536];
 
-/*
- * write headers in output files if it is the first timestamp (the output only starts then)
- */
-bool process_timestamp_record(PdcchTimeRecord* time_record, void* arg) {
-	PdcchDumpRecordReader* pdcch_dump_record_reader = (PdcchDumpRecordReader*) arg;
-	if (pdcch_dump_record_reader->get_last_record(PDCCH_TIME_RECORD) == 0) {  //first time record
-		sfn_file_stream << "#" << time_record->getTimeString() << "\n";
-		it_sfn_file_stream << "#" << time_record->getTimeString() << "\n";
-
-		sfn_file_stream << "SFN iteration" << "\t" << "SFN" << "\t"
-				<< "cell data rate [kbit/s]" << "\t" << "paging data rate [kbit/s]"
-				<< "\t" << "UE data rate [kbit/s]" << "\t" << "total allocated RBs"
-				<< "\t" << "paging allocated RBs" << "\t" << "UE allocated RBs" << "\n";
-		it_sfn_file_stream << "Timestamp" << "\t" << "SFN iteration" << "\t"
-				<< "cell data rate [kbit/s]" << "\t" << "paging data rate [kbit/s]"
-				<< "\t" << "UE data rate [kbit/s]" << "\t" << "total allocated RBs"
-				<< "\t" << "paging allocated RBs" << "\t" << "UE allocated RBs" << "\n";
-	}
-	return true;
-}
-
 bool dci_callback_load_data_rate(PdcchDciRecord* dci_record, void* arg) {
-	static int samples[] = { 0, 0 };
-	static unsigned long int data_rate[] = { 0, 0 };
-	static unsigned long int paging_data_rate[] = { 0, 0 };
-	static unsigned long int ue_data_rate[] = { 0, 0 };
-	static unsigned long int allocated_rbs[] = { 0, 0 };
-	static unsigned long int paging_allocated_rbs[] = { 0, 0 };
-	static unsigned long int ue_allocated_rbs[] = { 0, 0 };
+	dump_analyze_struct_t* dump_analyze_struct = (dump_analyze_struct_t*) arg;
 
-	PdcchDumpRecordReader* pdcch_dump_record_reader = (PdcchDumpRecordReader*) arg;
-
-	/* collect statistics */
-	if (pdcch_dump_record_reader->get_last_record(PDCCH_TIME_RECORD) != 0) {  // only write if we have seen a timestamp
-		unsigned int subframe_rbs = 0;
-		for (list<DciResult*>::iterator it = dci_record->get_dcis()->begin();
-				it != dci_record->get_dcis()->end(); it++) {
-			DciResult* dci_result = *it;
-			rnti_count[dci_result->get_rnti()]++;
-
-			/* get (downlink) grant encoded in DCI and add to counters */
-			srslte_ra_dl_grant_t* dl_grant = dci_result->get_dl_grant();
-			if (dl_grant != 0) {
-				unsigned int rbs = 0;
-				rbs = dl_grant->nof_prb;
-				unsigned int d_rate = 0;
-				for (int i = 0; i < SRSLTE_MAX_CODEWORDS; i++) {
-					if (dl_grant->tb_en[i]) {
-						if (dl_grant->mcs[i].tbs != -1) {
-							d_rate += dl_grant->mcs[i].tbs;
-						}
-					}
-				}
-				data_rate[0] += d_rate;
-				allocated_rbs[0] += rbs;
-				subframe_rbs += rbs;
-				if (dci_result->get_rnti() == 0xFFFE) {  // paging statistics
-					paging_data_rate[0] += d_rate;
-					paging_allocated_rbs[0] += rbs;
-				}
-				if (dci_result->get_rnti() == dci_record->get_ue_crnti()) {  // UE statistics
-					ue_data_rate[0] += d_rate;
-					ue_allocated_rbs[0] += rbs;
-				}
-			}
-		}
-		if (subframe_rbs > dci_record->get_num_rbs()) {  // if the grants sum up to more than we have, there is something wrong..
-			cout << "%%%%%%%%%%%%%%%%%%%%%%%%%%" << endl;
-			cout << "warning: more RBs allocated (" << subframe_rbs
-					<< ") than available (" << dci_record->get_num_rbs() << ")" << endl;
-		}
-
-		/* output writing */
-		if (pdcch_dump_record_reader->get_last_sfn() > dci_record->get_sfn()) {  // once per SFN iteration (i.e. every 1024th frame)
-			if (samples[1] > 100) {  // only if we have enough samples
-				it_sfn_file_stream
-						<< pdcch_dump_record_reader->get_time_string(dci_record) << "\t"
-						<< pdcch_dump_record_reader->get_sfn_iteration() << "\t"
-						<< data_rate[1] / (float) samples[1] << "\t"
-						<< paging_data_rate[1] / (float) samples[1] << "\t"
-						<< ue_data_rate[1] / (float) samples[1] << "\t"
-						<< allocated_rbs[1] / (float) samples[1] << "\t"
-						<< paging_allocated_rbs[1] / (float) samples[1] << "\t"
-						<< ue_allocated_rbs[1] / (float) samples[1] << "\n";
-			}
-
-			// reset all counters
-			data_rate[1] = 0;
-			paging_data_rate[1] = 0;
-			ue_data_rate[1] = 0;
-			allocated_rbs[1] = 0;
-			paging_allocated_rbs[1] = 0;
-			ue_allocated_rbs[1] = 0;
-
-			samples[1] = 0;
-		}
-		samples[0]++;
-		if (dci_record->get_subframe() == 9) {  // once per SFN
-			// copy to counters for SFN iteration statistics
-			data_rate[1] += data_rate[0];
-			paging_data_rate[1] += paging_data_rate[0];
-			ue_data_rate[1] += ue_data_rate[0];
-			allocated_rbs[1] += allocated_rbs[0];
-			paging_allocated_rbs[1] += paging_allocated_rbs[0];
-			ue_allocated_rbs[1] += ue_allocated_rbs[0];
-
-			sfn_file_stream << pdcch_dump_record_reader->get_sfn_iteration() << "\t"
-					<< dci_record->get_sfn() << "\t" << data_rate[0] / (float) samples[0]
-					<< "\t" << paging_data_rate[0] / (float) samples[0] << "\t"
-					<< ue_data_rate[0] / (float) samples[0] << "\t"
-					<< allocated_rbs[0] / (float) samples[0] << "\t"
-					<< paging_allocated_rbs[0] / (float) samples[0] << "\t"
-					<< ue_allocated_rbs[0] / (float) samples[0] << "\n";
-
-			// reset all counters
-			data_rate[0] = 0;
-			paging_data_rate[0] = 0;
-			ue_data_rate[0] = 0;
-			allocated_rbs[0] = 0;
-			paging_allocated_rbs[0] = 0;
-			ue_allocated_rbs[0] = 0;
-
-			samples[1] += samples[0];
-			samples[0] = 0;
-		}
-		cout << "it: " << pdcch_dump_record_reader->get_sfn_iteration() << " sfn: "
-				<< dci_record->get_sfn() << " subframe: " << dci_record->get_subframe()
-				<< endl;
+	for (list<SubframeAnalyzer*>::iterator it =
+			dump_analyze_struct->analyzers.begin();
+			it != dump_analyze_struct->analyzers.end(); it++) {
+		(*it)->analyze_subframe(dci_record,
+				dump_analyze_struct->pdcch_dump_record_reader);
 	}
+
+	for (list<ResultWriter*>::iterator it = dump_analyze_struct->writers.begin();
+			it != dump_analyze_struct->writers.end(); it++) {
+		(*it)->new_results(dci_record,
+				dump_analyze_struct->pdcch_dump_record_reader);
+	}
+
+	cout << "it: "
+			<< dump_analyze_struct->pdcch_dump_record_reader->get_sfn_iteration()
+			<< " sfn: " << dci_record->get_sfn() << " subframe: "
+			<< dci_record->get_subframe() << endl;
 
 	return false;
 }
@@ -167,11 +67,12 @@ int main(int argc, char* argv[]) {
 	string it_sfn_filename = "./it_sfn_";
 	it_sfn_filename.append(argv[2]);
 	it_sfn_filename.append(".csv");
-	it_sfn_file_stream.open(it_sfn_filename);
+	ResultWriter* sfn_iteration_average_writer = new SfnIterationAverageWriter(
+			it_sfn_filename);
 	string sfn_filename = "./sfn_";
 	sfn_filename.append(argv[2]);
 	sfn_filename.append(".csv");
-	sfn_file_stream.open(sfn_filename);
+	ResultWriter* frame_average_writer = new FrameAverageWriter(sfn_filename);
 
 	string filename = argv[1];
 	filename.append("/");
@@ -179,13 +80,26 @@ int main(int argc, char* argv[]) {
 	filename.append(".bin");
 	memset(rnti_count, 0, sizeof(unsigned int) * 65536);
 
+	/* create analyzers and add to writers */
+	DataRateAnalyzer* data_rate_anaylzer = new DataRateAnalyzer();
+	PrbCountAnalyzer* prb_count_anaylzer = new PrbCountAnalyzer();
+	sfn_iteration_average_writer->add_analyzer(data_rate_anaylzer);
+	sfn_iteration_average_writer->add_analyzer(prb_count_anaylzer);
+	frame_average_writer->add_analyzer(data_rate_anaylzer);
+	frame_average_writer->add_analyzer(prb_count_anaylzer);
+
+	/* setup dump_analyze_struct */
+	dump_analyze_struct_t dump_analyze_struct;
+	dump_analyze_struct.writers.push_back(sfn_iteration_average_writer);
+	dump_analyze_struct.writers.push_back(frame_average_writer);
+	dump_analyze_struct.analyzers.push_back(data_rate_anaylzer);
+	dump_analyze_struct.analyzers.push_back(prb_count_anaylzer);
+
 	/* create record reader, activate decoder and register callbacks */
 	PdcchDumpRecordReader pdcch_dump_record_reader(filename, true);
-	pdcch_dump_record_reader.register_callback(PDCCH_TIME_RECORD,
-			(record_callback_t) &process_timestamp_record, &pdcch_dump_record_reader);
+	dump_analyze_struct.pdcch_dump_record_reader = &pdcch_dump_record_reader;
 	pdcch_dump_record_reader.register_callback(PDCCH_DCI_RECORD,
-			(record_callback_t) &dci_callback_load_data_rate,
-			&pdcch_dump_record_reader);
+			(record_callback_t) &dci_callback_load_data_rate, &dump_analyze_struct);
 
 	/* let's go! */
 	pdcch_dump_record_reader.read_all_records();
@@ -197,6 +111,12 @@ int main(int argc, char* argv[]) {
 		if (rnti_count[i] > 0) {
 			cout << "RNTI " << i << ": " << rnti_count[i] << endl;
 		}
+	}
+
+	/* delete writers in order to close output files clean */
+	for (list<ResultWriter*>::iterator it = dump_analyze_struct.writers.begin();
+			it != dump_analyze_struct.writers.end(); it++) {
+		delete (*it);
 	}
 
 	return 0;
