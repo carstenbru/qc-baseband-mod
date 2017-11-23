@@ -39,19 +39,19 @@ endif
 # Add inputs and outputs from these tool invocations to the build variables 
 
 # All Target
-all: network_load
+all: dump_analyze
 
 # Tool invocations
-network_load: $(OBJS) $(USER_OBJS)
+dump_analyze: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C++ Linker'
-	g++ -L../../pdcch_analyzer_lib/Release -o "network_load" $(OBJS) $(USER_OBJS) $(LIBS)
+	g++ -L../../pdcch_analyzer_lib/Debug -o "dump_analyze" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(CC_DEPS)$(C++_DEPS)$(EXECUTABLES)$(C_UPPER_DEPS)$(CXX_DEPS)$(OBJS)$(CPP_DEPS)$(C_DEPS) network_load
+	-$(RM) $(CC_DEPS)$(C++_DEPS)$(EXECUTABLES)$(C_UPPER_DEPS)$(CXX_DEPS)$(OBJS)$(CPP_DEPS)$(C_DEPS) dump_analyze
 	-@echo ' '
 
 .PHONY: all clean dependents
