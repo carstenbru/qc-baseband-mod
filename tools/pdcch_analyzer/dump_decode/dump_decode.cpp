@@ -29,8 +29,12 @@ bool process_record(PdcchDumpRecord* record, void* arg) {
 
 int main(int argc, char* argv[]) {
 	if (argc < 4) {
-		cout << "Usage: " << argv[0]
+		cout << "Usage:\n" << argv[0]
 				<< " DUMP_FILE_PATH DUMP_NAME [OUTPUT_PATH] OUTPUT_BASE_NAME" << endl;
+		cout << "\tDUMP_FILE_PATH: path to the input dump file" << endl;
+		cout << "\tDUMP_NAME: name of the input file (without .binX file extension)" << endl;
+		cout << "\tOUTPUT_PATH (optional): path to the output dump file, if not provided, DUMP_FILE_PATH is used" << endl;
+		cout << "\tOUTPUT_BASE_NAME: desired name of the output file (without .binX file extension)" << endl;
 		return 0;
 	}
 

@@ -33,7 +33,7 @@ typedef struct {
 
 unsigned int rnti_count[65536];
 
-bool dci_callback_load_data_rate(PdcchDciRecord* dci_record, void* arg) {
+bool dci_callback(PdcchDciRecord* dci_record, void* arg) {
 	dump_analyze_struct_t* dump_analyze_struct = (dump_analyze_struct_t*) arg;
 
 	for (list<SubframeAnalyzer*>::iterator it =
@@ -60,6 +60,9 @@ bool dci_callback_load_data_rate(PdcchDciRecord* dci_record, void* arg) {
 int main(int argc, char* argv[]) {
 	if (argc != 3) {
 		cout << "Usage: " << argv[0] << " DUMP_FILE_PATH DUMP_NAME" << endl;
+		cout << "\tDUMP_FILE_PATH: path to the input dump file" << endl;
+		cout << "\tDUMP_NAME: name of the input file (without .binX file extension)"
+				<< endl;
 		return 0;
 	}
 
@@ -99,7 +102,7 @@ int main(int argc, char* argv[]) {
 	PdcchDumpRecordReader pdcch_dump_record_reader(filename, true);
 	dump_analyze_struct.pdcch_dump_record_reader = &pdcch_dump_record_reader;
 	pdcch_dump_record_reader.register_callback(PDCCH_DCI_RECORD,
-			(record_callback_t) &dci_callback_load_data_rate, &dump_analyze_struct);
+			(record_callback_t) &dci_callback, &dump_analyze_struct);
 
 	/* let's go! */
 	pdcch_dump_record_reader.read_all_records();

@@ -25,9 +25,11 @@ Our software may damage your hardware and may void your hardware's warranty! You
         *  **channel_estimation**: Access to LTE channel estimation matrices
         *  **common**: Code used by multiple projects (QMI communication)
         *  **func_counter_snprintf**: Counting of calls of standard C functions, forwarding of snprintf outputs
-        *  **mem_access**: Direct access (read & write) to the modem memory
         *  **lte_mac**: LTE MAC Layer messages sniffing
         *  **lte_sec**: LTE security: key extraction, cryptography functions
+        *  **mem_access**: Direct access (read & write) to the modem memory
+        *  **pdcch_dump**: LTE PDCCH dumping, see also *tools/pdcch_analyzer* directory
+        *  **version_string**: Only modification of the firmware version string, no code patches
   *  **scripts**: Scripts implementing the framework's functionality
 * **kernel**: Android kernel with patches and additional modules
 * **thesis**: Master thesis during which this code was developed
@@ -82,7 +84,7 @@ A kernel prepared with all needed patches is located in the *kernel* subdirector
 2. Setup the build environment `source setup_env.sh`
 3. Start the build `make`. Grab a coffee as this will take some time.
 4. The kernel is now ready to be installed, you can use fastboot to do so:
-    * If you want to install it permanently: `fastboot flash boot boot.img`
+    * If you want to install it permanently: `fastboot flash boot+boot1 boot.img`
     * If you just want to boot it once: `fastboot boot boot.img`
 
 ### Android App
