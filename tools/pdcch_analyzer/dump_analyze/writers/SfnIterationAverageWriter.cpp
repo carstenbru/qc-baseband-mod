@@ -19,7 +19,7 @@ SfnIterationAverageWriter::~SfnIterationAverageWriter() {
 bool SfnIterationAverageWriter::write_data_condition(PdcchDciRecord* dci_record,
 		PdcchDumpRecordReader* pdcch_dump_record_reader) {
 	if (pdcch_dump_record_reader->get_last_sfn() > dci_record->get_sfn()) {
-		if (get_num_samples() > 100) {
+		if (get_num_subframes() > 100) {
 			return true;
 		} else {
 			clear_samples();

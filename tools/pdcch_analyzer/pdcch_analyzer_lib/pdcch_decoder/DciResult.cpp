@@ -63,3 +63,13 @@ srslte_ra_ul_grant_t* DciResult::get_ul_grant() {
 	}
 	return ul_grant;
 }
+
+srslte_ra_ul_dci_t* DciResult::get_ul_dec_dci() {
+	if (!has_ul_grant()) {
+		return 0;
+	}
+	if (!ul_grant_computed) {
+		get_ul_grant();
+	}
+	return ul_dci;
+}

@@ -27,11 +27,15 @@ public:
 	std::vector<double> get_values() {
 		return values;
 	}
+	unsigned int get_num_samples() {
+		return num_samples;
+	}
 	std::vector<std::string> get_value_names() {
 		return value_names;
 	}
 protected:
 	std::vector<double> values;
+	unsigned int num_samples;
 	std::vector<std::string> value_names;
 };
 

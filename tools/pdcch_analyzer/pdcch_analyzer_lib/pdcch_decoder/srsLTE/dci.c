@@ -468,8 +468,10 @@ int dci_format0_unpack(srslte_dci_msg_t *msg, srslte_ra_ul_dci_t *data,
 	uint32_t n_ul_hop;
 
 	/* Make sure it's a SRSLTE_DCI_FORMAT0 message */
-	if (msg->nof_bits
-			!= srslte_dci_format_sizeof(SRSLTE_DCI_FORMAT0, nof_prb, 1)) {
+	if ((msg->nof_bits
+			!= srslte_dci_format_sizeof(SRSLTE_DCI_FORMAT0, nof_prb, 1))
+			&& (msg->nof_bits
+					!= srslte_dci_format_sizeof(SRSLTE_DCI_FORMAT0, nof_prb, 1) + 1)) {
 		fprintf(stderr, "Invalid message length for format 0\n");
 		return SRSLTE_ERROR;
 	}
@@ -509,6 +511,11 @@ int dci_format0_unpack(srslte_dci_msg_t *msg, srslte_ra_ul_dci_t *data,
 
 	// CQI request
 	data->cqi_request = *y++ ? true : false;
+	if (msg->format == SRSLTE_DCI_FORMAT0_SRS) { //2-bit CQI request
+		data->cqi_request_2 = *y++ ? true : false;
+	} else {
+		data->cqi_request_2 = false;
+	}
 
 	return SRSLTE_SUCCESS;
 }

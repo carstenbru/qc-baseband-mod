@@ -28,14 +28,14 @@ Once all these components are installed, you can start and control dumping of th
 ## Build instructions
 
 There are two options to build the tools:
-* Each tool folder (*dump_analyze*, *dump_decode*, *dump_record_print*) and the library (*pdcch_analyzer_lib*) contains an Eclipse project. Therefore, you can import them in this IDE an build from there.
+* Each tool folder (*dump_analyze*, *dump_decode*, *dump_record_print*) and the library (*pdcch_analyzer_lib*) contains an Eclipse project. Therefore, you can import them in this IDE and build from there.
 * Each tool also contains two subfolders *Debug* and *Release* with makefiles such that it can be build using *make*. Therefore, simply go to the right configuration subfolder of the tool you want to build and type `make all`. Before building the tools, you have to build the library (*pdcch_analyzer_lib*) in the same way, in the same configuration (Debug/Release) as you want to build the tool.
 
 ## Usage
 
 Each of the tools can operate either on "raw" dumps as they are recoreded by the App or on pre-decoded files, which contains only DCIs and not the complete PDCCH buffer values anymore. In most cases, expecially when multiple analyses are expected, it is recommended to run the slow decoding step only once, i.e. first convert the "raw" dump into a pre-decoded one by decoding it with the *dump_decode* tool. The resulting output file can then be used as input to the other tools.
 A common tool flow would thus be (with example filenames used again in the individual tool descriptions):
-1. Collect dump with App (and patched modem firmware) -> pdcch.bin
+1. Collect dump with the App (and patched modem firmware) -> pdcch.bin
 2. Decode dump with *dump_decode* -> pdcch_dec.bin
 3. Run analysis on pre-decoded dump with *dump_analyze* -> data.csv
 4. Use gnuplot to visualize the result -> graph.svg
@@ -82,7 +82,7 @@ Example:
 ```
 
 ### Data plotting
-The other tools convert the data to *CSV* values. These can easily be plotted using common tools, e.g. gnuplot. The *plotting* subfolder contains some example gnuplot scripts for this, their usage is documented in the header of each script. This step highly depends on your aim and which analyses where performed in the analysis step before.
+The dump processing tools convert the data to *CSV* files. These can easily be plotted using common tools, e.g. gnuplot. The *plotting* subfolder contains some example gnuplot scripts for this, their usage is documented in the header of each script. This step highly depends on your aim and on which analyses where performed in the analysis step before.
 
 ## Contact
 

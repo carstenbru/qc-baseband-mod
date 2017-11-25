@@ -9,7 +9,7 @@
 using namespace std;
 
 ResultWriter::ResultWriter(string filename) :
-		file_stream(filename), first_write(true), num_samples(0), write_timestamps(
+		file_stream(filename), first_write(true), num_subframes(0), write_timestamps(
 				false), write_sfn_iteration(false), write_sfn(false) {
 }
 
@@ -17,9 +17,11 @@ ResultWriter::~ResultWriter() {
 	file_stream.close();
 }
 
+#include <iostream>
 void ResultWriter::add_analyzer(SubframeAnalyzer* subframe_analyzer) {
 	analyzers.push_back(subframe_analyzer);
 	values.resize(values.size() + subframe_analyzer->get_value_names().size());
+	num_samples.resize(num_samples.size() + 1);
 }
 
 void ResultWriter::write_file_header(
@@ -55,20 +57,26 @@ void ResultWriter::clear_samples() {
 	for (unsigned int i = 0; i < values.size(); i++) {
 		values[i] = 0;
 	}
-	num_samples = 0;
+	for (unsigned int i = 0; i < num_samples.size(); i++) {
+		num_samples[i] = 0;
+	}
+	num_subframes = 0;
 }
 
 void ResultWriter::new_results(PdcchDciRecord* dci_record,
 		PdcchDumpRecordReader* pdcch_dump_record_reader) {
 	unsigned int val_pos = 0;
+	unsigned int list_pos = 0;
 	for (list<SubframeAnalyzer*>::iterator it = analyzers.begin();
 			it != analyzers.end(); it++) {
 		vector<double> analyzer_values = (*it)->get_values();
 		for (unsigned int i = 0; i < analyzer_values.size(); i++) {
 			values[val_pos++] += analyzer_values[i];
 		}
+		num_samples[list_pos] += (*it)->get_num_samples();
+		list_pos++;
 	}
-	num_samples++;
+	num_subframes++;
 
 	if (pdcch_dump_record_reader->get_last_record(PDCCH_TIME_RECORD) != 0) {  // only write if we have seen a timestamp
 		if (write_data_condition(dci_record, pdcch_dump_record_reader)) {
@@ -87,8 +95,16 @@ void ResultWriter::new_results(PdcchDciRecord* dci_record,
 			if (write_sfn) {
 				file_stream << dci_record->get_sfn() << "\t";
 			}
-			for (unsigned int i = 0; i < values.size(); i++) {
-				file_stream << (values[i] / (double) num_samples) << "\t";
+
+			unsigned int val_pos = 0;
+			unsigned int list_pos = 0;
+			for (list<SubframeAnalyzer*>::iterator it = analyzers.begin();
+					it != analyzers.end(); it++) {
+				for (unsigned int i = 0; i < (*it)->get_value_names().size(); i++) {
+					file_stream << (values[val_pos++] / (double) num_samples[list_pos])
+							<< "\t";
+				}
+				list_pos++;
 			}
 			file_stream << "\n";
 			clear_samples();

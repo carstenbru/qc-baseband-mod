@@ -78,6 +78,7 @@ public:
 
 	srslte_ra_dl_grant_t* get_dl_grant();
 	srslte_ra_ul_grant_t* get_ul_grant();
+	srslte_ra_ul_dci_t* get_ul_dec_dci();
 private:
 	srslte_dci_format_t format;
 	uint64_t payload;

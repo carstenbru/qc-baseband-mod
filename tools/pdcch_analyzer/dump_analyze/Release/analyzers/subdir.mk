@@ -5,18 +5,24 @@
 # Add inputs and outputs from these tool invocations to the build variables 
 CPP_SRCS += \
 ../analyzers/DataRateAnalyzer.cpp \
+../analyzers/DlMcsAnalyzer.cpp \
 ../analyzers/PrbCountAnalyzer.cpp \
-../analyzers/SubframeAnalyzer.cpp 
+../analyzers/SubframeAnalyzer.cpp \
+../analyzers/UlMcsAnalyzer.cpp 
 
 OBJS += \
 ./analyzers/DataRateAnalyzer.o \
+./analyzers/DlMcsAnalyzer.o \
 ./analyzers/PrbCountAnalyzer.o \
-./analyzers/SubframeAnalyzer.o 
+./analyzers/SubframeAnalyzer.o \
+./analyzers/UlMcsAnalyzer.o 
 
 CPP_DEPS += \
 ./analyzers/DataRateAnalyzer.d \
+./analyzers/DlMcsAnalyzer.d \
 ./analyzers/PrbCountAnalyzer.d \
-./analyzers/SubframeAnalyzer.d 
+./analyzers/SubframeAnalyzer.d \
+./analyzers/UlMcsAnalyzer.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes

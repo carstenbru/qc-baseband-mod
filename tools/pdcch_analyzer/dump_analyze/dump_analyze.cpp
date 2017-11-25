@@ -16,6 +16,8 @@
 #include "analyzers/SubframeAnalyzer.h"
 #include "analyzers/PrbCountAnalyzer.h"
 #include "analyzers/DataRateAnalyzer.h"
+#include "analyzers/DlMcsAnalyzer.h"
+#include "analyzers/UlMcsAnalyzer.h"
 
 #include <string.h>
 #include <fstream>
@@ -93,19 +95,25 @@ int main(int argc, char* argv[]) {
 	memset(rnti_count, 0, sizeof(unsigned int) * 65536);
 
 	/* create analyzers and add to writers */
-	DataRateAnalyzer* data_rate_anaylzer = new DataRateAnalyzer();
-	PrbCountAnalyzer* prb_count_anaylzer = new PrbCountAnalyzer();
-	sfn_iteration_average_writer->add_analyzer(data_rate_anaylzer);
-	sfn_iteration_average_writer->add_analyzer(prb_count_anaylzer);
-	frame_average_writer->add_analyzer(data_rate_anaylzer);
-	frame_average_writer->add_analyzer(prb_count_anaylzer);
+	DataRateAnalyzer* data_rate_analyzer = new DataRateAnalyzer();
+	PrbCountAnalyzer* prb_count_analyzer = new PrbCountAnalyzer();
+	DlMcsAnalyzer* dl_mcs_analyzer = new DlMcsAnalyzer();
+	UlMcsAnalyzer* ul_mcs_analyzer = new UlMcsAnalyzer();
+	sfn_iteration_average_writer->add_analyzer(data_rate_analyzer);
+	sfn_iteration_average_writer->add_analyzer(prb_count_analyzer);
+	sfn_iteration_average_writer->add_analyzer(dl_mcs_analyzer);
+	sfn_iteration_average_writer->add_analyzer(ul_mcs_analyzer);
+	frame_average_writer->add_analyzer(data_rate_analyzer);
+	frame_average_writer->add_analyzer(prb_count_analyzer);
 
 	/* setup dump_analyze_struct */
 	dump_analyze_struct_t dump_analyze_struct;
 	dump_analyze_struct.writers.push_back(sfn_iteration_average_writer);
 	dump_analyze_struct.writers.push_back(frame_average_writer);
-	dump_analyze_struct.analyzers.push_back(data_rate_anaylzer);
-	dump_analyze_struct.analyzers.push_back(prb_count_anaylzer);
+	dump_analyze_struct.analyzers.push_back(data_rate_analyzer);
+	dump_analyze_struct.analyzers.push_back(prb_count_analyzer);
+	dump_analyze_struct.analyzers.push_back(dl_mcs_analyzer);
+	dump_analyze_struct.analyzers.push_back(ul_mcs_analyzer);
 
 	/* create record reader, activate decoder and register callbacks */
 	PdcchDumpRecordReader pdcch_dump_record_reader(filename, true);
