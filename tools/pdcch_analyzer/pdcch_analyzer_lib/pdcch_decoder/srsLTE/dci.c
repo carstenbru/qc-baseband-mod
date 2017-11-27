@@ -511,7 +511,7 @@ int dci_format0_unpack(srslte_dci_msg_t *msg, srslte_ra_ul_dci_t *data,
 
 	// CQI request
 	data->cqi_request = *y++ ? true : false;
-	if (msg->format == SRSLTE_DCI_FORMAT0_SRS) { //2-bit CQI request
+	if (msg->format == SRSLTE_DCI_FORMAT0_2CQI) { //2-bit CQI request
 		data->cqi_request_2 = *y++ ? true : false;
 	} else {
 		data->cqi_request_2 = false;
@@ -1293,7 +1293,7 @@ char* srslte_dci_format_string(srslte_dci_format_t format) {
 		return "Format2A";
 	case SRSLTE_DCI_FORMAT2B:
 		return "Format2B";
-	case SRSLTE_DCI_FORMAT0_SRS:
+	case SRSLTE_DCI_FORMAT0_2CQI:
 		return "Format0_srs";
 	default:
 		return "N/A";  // fatal error

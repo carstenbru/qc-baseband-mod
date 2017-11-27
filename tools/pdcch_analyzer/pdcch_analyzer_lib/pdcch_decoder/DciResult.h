@@ -70,10 +70,10 @@ public:
 
 	bool has_ul_grant() {
 		return ((format == SRSLTE_DCI_FORMAT0)
-				|| ((format == SRSLTE_DCI_FORMAT0_SRS)));
+				|| ((format == SRSLTE_DCI_FORMAT0_2CQI)));
 	}
 	bool has_dl_grant() {
-		return ((format != SRSLTE_DCI_FORMAT0) && (format != SRSLTE_DCI_FORMAT0_SRS));
+		return ((format != SRSLTE_DCI_FORMAT0) && (format != SRSLTE_DCI_FORMAT0_2CQI));
 	}
 
 	srslte_ra_dl_grant_t* get_dl_grant();

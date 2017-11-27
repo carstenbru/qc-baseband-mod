@@ -34,7 +34,7 @@ const uint8_t PDCCH_PERM[PDCCH_NCOLS] = { 1, 17, 9, 25, 5, 21, 13, 29, 3, 19,
 
 //TODO dynamically update
 srslte_dci_format_t active_dci_formats[] = { SRSLTE_DCI_FORMAT1C,
-		SRSLTE_DCI_FORMAT0, SRSLTE_DCI_FORMAT0_SRS, SRSLTE_DCI_FORMAT1B,
+		SRSLTE_DCI_FORMAT0, SRSLTE_DCI_FORMAT0_2CQI, SRSLTE_DCI_FORMAT1B,
 		SRSLTE_DCI_FORMAT1, SRSLTE_DCI_FORMAT2A };  //, SRSLTE_DCI_FORMAT2 };  //SRSLTE_DCI_FORMAT1A is activated with SRSLTE_DCI_FORMAT0 as they always have the same length
 //ordered by increasing length, as for same probabilities the first result is kept and mistakes are less likely for shorter DCI types (more bits for error correction)
 
@@ -211,7 +211,7 @@ void PdcchDecoder::pre_calculate_values(uint16_t phy_cell_id, unsigned int prbs,
 	/* DCI format lengths */
 	num_dci_formats = sizeof(active_dci_formats) / sizeof(srslte_dci_format_t);
 	for (unsigned int f = 0; f < num_dci_formats; f++) {
-		if (active_dci_formats[f] == SRSLTE_DCI_FORMAT0_SRS) {  //TODO clean implementation
+		if (active_dci_formats[f] == SRSLTE_DCI_FORMAT0_2CQI) {  //TODO clean implementation
 			dci_format_lengths[f] = srslte_dci_format_sizeof(SRSLTE_DCI_FORMAT0, prbs,
 					tx_ports) + 1;
 		} else {
