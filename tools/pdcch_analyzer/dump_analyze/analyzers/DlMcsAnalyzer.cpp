@@ -8,7 +8,8 @@
 using namespace std;
 
 #include <iostream>
-DlMcsAnalyzer::DlMcsAnalyzer() {
+DlMcsAnalyzer::DlMcsAnalyzer() :
+		exclude_special_rntis(true), exclude_own_rnti(true) {
 	//initialize value field names (used by writers)
 	char buf[100];
 	for (unsigned int mcs_index = 0; mcs_index < 32; mcs_index++) {
@@ -39,8 +40,23 @@ bool DlMcsAnalyzer::analyze_subframe(PdcchDciRecord* dci_record,
 		if (dl_grant != 0) {  //TODO how to deal with new (256-QAM supported) devices? MCS has a different meaning then and is not comparable
 			for (int i = 0; i < SRSLTE_MAX_CODEWORDS; i++) {  //TODO how to deal with two transport blocks with different/same MCS? add both to distribution?
 				if (dl_grant->tb_en[i]) {
-					values[dl_grant->mcs[i].idx]++;
-					num_samples++;
+					bool exclude = false;
+					if (exclude_special_rntis) {
+						if ((dci_result->get_rnti() < 0x0001)
+								|| (dci_result->get_rnti() > 0xFFF3)) {
+							exclude = true;
+						}
+					}
+					if (exclude_own_rnti) {
+						if (dci_result->get_rnti() == dci_record->get_ue_crnti()) {
+							exclude = true;
+						}
+					}
+
+					if (!exclude) {
+						values[dl_grant->mcs[i].idx]++;
+						num_samples++;
+					}
 				}
 			}
 		}
