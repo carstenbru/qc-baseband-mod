@@ -20,7 +20,7 @@ bool new_record_callback(PdcchDumpRecord* record, void* arg) {
 	PdcchDumpRecordReader* pdcch_dump_record_reader = (PdcchDumpRecordReader*) arg;
 	pdcch_dump_record_reader->new_record(record, false);
 
-	return true; //we take the ownership for the record
+	return true;  //we take the ownership for the record
 }
 
 PdcchDumpRecordReader::PdcchDumpRecordReader(string filename,
@@ -51,7 +51,8 @@ PdcchDumpRecordReader::~PdcchDumpRecordReader() {
 	file_stream.close();
 }
 
-void PdcchDumpRecordReader::new_record(PdcchDumpRecord* record, bool inc_sfn_it) {
+void PdcchDumpRecordReader::new_record(PdcchDumpRecord* record,
+		bool inc_sfn_it) {
 	int record_type = record->get_record_type();
 
 	unsigned int cur_sfn = last_sfn;
@@ -169,10 +170,10 @@ void PdcchDumpRecordReader::register_callback(record_type_enum type,
 
 long PdcchDumpRecordReader::ms_since_last_time_record(
 		PdcchDataRecord* data_record) {
-	long diff_ms = (get_last_record_sfn_iteration(PDCCH_TIME_RECORD)
-			- (long) get_sfn_iteration()) * 10240;
-	diff_ms += (get_last_record_sfn(PDCCH_TIME_RECORD)
-			- (long) data_record->get_sfn()) * 10;
+	long diff_ms = (get_sfn_iteration()
+			- (long) get_last_record_sfn_iteration(PDCCH_TIME_RECORD)) * 10240;
+	diff_ms += (data_record->get_sfn()
+			- (long) get_last_record_sfn(PDCCH_TIME_RECORD)) * 10;
 	return diff_ms;
 }
 

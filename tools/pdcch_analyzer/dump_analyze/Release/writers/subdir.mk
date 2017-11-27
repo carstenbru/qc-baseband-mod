@@ -6,17 +6,20 @@
 CPP_SRCS += \
 ../writers/FrameAverageWriter.cpp \
 ../writers/ResultWriter.cpp \
-../writers/SfnIterationAverageWriter.cpp 
+../writers/SfnIterationAverageWriter.cpp \
+../writers/TimeAverageWriter.cpp 
 
 OBJS += \
 ./writers/FrameAverageWriter.o \
 ./writers/ResultWriter.o \
-./writers/SfnIterationAverageWriter.o 
+./writers/SfnIterationAverageWriter.o \
+./writers/TimeAverageWriter.o 
 
 CPP_DEPS += \
 ./writers/FrameAverageWriter.d \
 ./writers/ResultWriter.d \
-./writers/SfnIterationAverageWriter.d 
+./writers/SfnIterationAverageWriter.d \
+./writers/TimeAverageWriter.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes

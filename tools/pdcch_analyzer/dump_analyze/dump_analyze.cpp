@@ -13,6 +13,7 @@
 #include "writers/ResultWriter.h"
 #include "writers/FrameAverageWriter.h"
 #include "writers/SfnIterationAverageWriter.h"
+#include "writers/TimeAverageWriter.h"
 #include "analyzers/SubframeAnalyzer.h"
 #include "analyzers/PrbCountAnalyzer.h"
 #include "analyzers/DataRateAnalyzer.h"
@@ -55,9 +56,9 @@ bool dci_callback(PdcchDciRecord* dci_record, void* arg) {
 
 	/* information for user: RNTI counters, current position */
 	for (list<DciResult*>::iterator it = dci_record->get_dcis()->begin();
-				it != dci_record->get_dcis()->end(); it++) {
-			DciResult* dci_result = *it;
-			rnti_count[dci_result->get_rnti()]++;
+			it != dci_record->get_dcis()->end(); it++) {
+		DciResult* dci_result = *it;
+		rnti_count[dci_result->get_rnti()]++;
 	}
 
 	cout << "it: "
@@ -87,6 +88,10 @@ int main(int argc, char* argv[]) {
 	sfn_filename.append(argv[2]);
 	sfn_filename.append(".csv");
 	ResultWriter* frame_average_writer = new FrameAverageWriter(sfn_filename);
+	string time_filename = "./time_";
+	time_filename.append(argv[2]);
+	time_filename.append(".csv");
+	ResultWriter* time_average_writer = new TimeAverageWriter(time_filename, 10*60*1000);
 
 	string filename = argv[1];
 	filename.append("/");
@@ -105,11 +110,14 @@ int main(int argc, char* argv[]) {
 	sfn_iteration_average_writer->add_analyzer(ul_mcs_analyzer);
 	frame_average_writer->add_analyzer(data_rate_analyzer);
 	frame_average_writer->add_analyzer(prb_count_analyzer);
+	time_average_writer->add_analyzer(dl_mcs_analyzer);
+	time_average_writer->add_analyzer(ul_mcs_analyzer);
 
 	/* setup dump_analyze_struct */
 	dump_analyze_struct_t dump_analyze_struct;
 	dump_analyze_struct.writers.push_back(sfn_iteration_average_writer);
 	dump_analyze_struct.writers.push_back(frame_average_writer);
+	dump_analyze_struct.writers.push_back(time_average_writer);
 	dump_analyze_struct.analyzers.push_back(data_rate_analyzer);
 	dump_analyze_struct.analyzers.push_back(prb_count_analyzer);
 	dump_analyze_struct.analyzers.push_back(dl_mcs_analyzer);
