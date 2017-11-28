@@ -36,3 +36,5 @@ tools/pdcch_analyzer/dump_decode/Debug/dump_decode
 tools/pdcch_analyzer/dump_decode/Release/dump_decode
 .settings/
 *.a
+tools/pdcch_analyzer/plotting/*.eps
+tools/pdcch_analyzer/plotting/*.png

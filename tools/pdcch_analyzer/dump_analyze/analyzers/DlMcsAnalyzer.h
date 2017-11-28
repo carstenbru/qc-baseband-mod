@@ -20,7 +20,9 @@ public:
 	 *
 	 * only DCIs with RNTIs in [0x0001, 0xFFF3] are evaluated then
 	 */
-	void set_exclude_special_rntis(bool exclude_special_rntis);
+	void set_exclude_special_rntis(bool exclude_special_rntis) {
+		this->exclude_special_rntis = exclude_special_rntis;
+	}
 
 	/**
 	 * if set to true, DCIs with the RNTI value currently assigned to the dumping UE are excluded from the distribution

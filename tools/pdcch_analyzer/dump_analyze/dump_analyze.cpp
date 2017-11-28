@@ -28,6 +28,8 @@
 
 using namespace std;
 
+#define PRINT_RNTI_DISTR (0)
+
 typedef struct {
 	PdcchDumpRecordReader* pdcch_dump_record_reader;
 	list<SubframeAnalyzer*> analyzers;
@@ -35,6 +37,7 @@ typedef struct {
 } dump_analyze_struct_t;
 
 unsigned int rnti_count[65536];
+unsigned int last_ue_rnti = 0;
 
 bool dci_callback(PdcchDciRecord* dci_record, void* arg) {
 	dump_analyze_struct_t* dump_analyze_struct = (dump_analyze_struct_t*) arg;
@@ -61,10 +64,24 @@ bool dci_callback(PdcchDciRecord* dci_record, void* arg) {
 		rnti_count[dci_result->get_rnti()]++;
 	}
 
-	cout << "it: "
-			<< dump_analyze_struct->pdcch_dump_record_reader->get_sfn_iteration()
-			<< " sfn: " << dci_record->get_sfn() << " subframe: "
-			<< dci_record->get_subframe() << endl;
+	if (dci_record->get_ue_crnti() != last_ue_rnti) {
+		cout << "UE C-RNTI changed at it: "
+				<< dump_analyze_struct->pdcch_dump_record_reader->get_sfn_iteration()
+				<< " sfn: " << dci_record->get_sfn() << " subframe: "
+				<< dci_record->get_subframe() << "; new C-RNTI: "
+				<< dci_record->get_ue_crnti() << endl;
+		last_ue_rnti = dci_record->get_ue_crnti();
+	}
+	if (dci_record->get_sfn() == 0) {
+		if (dci_record->get_subframe() == 0) {
+			if ((dump_analyze_struct->pdcch_dump_record_reader->get_sfn_iteration()
+					% 10) == 0) {
+				cout << "SFN iteration: "
+						<< dump_analyze_struct->pdcch_dump_record_reader->get_sfn_iteration()
+						<< endl;
+			}
+		}
+	}
 
 	return false;
 }
@@ -91,7 +108,8 @@ int main(int argc, char* argv[]) {
 	string time_filename = "./time_";
 	time_filename.append(argv[2]);
 	time_filename.append(".csv");
-	ResultWriter* time_average_writer = new TimeAverageWriter(time_filename, 10*60*1000);
+	ResultWriter* time_average_writer = new TimeAverageWriter(time_filename,
+			10 * 60 * 1000);
 
 	string filename = argv[1];
 	filename.append("/");
@@ -135,9 +153,11 @@ int main(int argc, char* argv[]) {
 	cout << "finished processing dump" << endl;
 
 	/* output list of seen RNTIs */
-	for (unsigned int i = 0; i < 65536; i++) {
-		if (rnti_count[i] > 0) {
-			cout << "RNTI " << i << ": " << rnti_count[i] << endl;
+	if (PRINT_RNTI_DISTR) {
+		for (unsigned int i = 0; i < 65536; i++) {
+			if (rnti_count[i] > 0) {
+				cout << "RNTI " << i << ": " << rnti_count[i] << endl;
+			}
 		}
 	}
 
