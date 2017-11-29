@@ -3,8 +3,8 @@
 # Plots the downlink MCS distribution. Each line of the file is considered as a new dataset. Use the TimeAverageWriter of dump_analyze to average over the desired time interval.
 
 # examples:
-#   gnuplot -c ./mcs_dl.gp time_pdcch_0_dec.csv mcs_dl.svg
-#   gnuplot -c ./mcs_dl.gp time_pdcch_0_dec.csv mcs_dl.png
+#   gnuplot -c ./mcs_dl.gp 10min_avg_pdcch_0.csv mcs_dl.svg
+#   gnuplot -c ./mcs_dl.gp 10min_avg_pdcch_0.csv mcs_dl.png
 
 start_column = 1 #first colum with DL MCS data, to adapt to different data formats (different analyzers used)
 width = 1280

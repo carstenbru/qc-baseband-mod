@@ -3,8 +3,8 @@
 # Plots the uplink MCS distribution. Each line of the file is considered as a new dataset. Use the TimeAverageWriter of dump_analyze to average over the desired time interval.
 
 # examples:
-#   gnuplot -c ./mcs_ul.gp time_pdcch_0_dec.csv mcs_ul.svg
-#   gnuplot -c ./mcs_ul.gp time_pdcch_0_dec.csv mcs_ul.png
+#   gnuplot -c ./mcs_ul.gp 10min_avg_pdcch_0.csv mcs_ul.svg
+#   gnuplot -c ./mcs_ul.gp 10min_avg_pdcch_0.csv mcs_ul.png
 
 start_column = 33 #first colum with UL MCS data, to adapt to different data formats (different analyzers used)
 width = 1280

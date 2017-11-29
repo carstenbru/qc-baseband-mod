@@ -8,8 +8,8 @@
 # Also plots for a single iteration of the SFN are supported by passing an additional argument with the desired iteration number.
 
 # examples:
-#   all data:                  gnuplot -c ./aloc_rbs.gp sfn_pdcch_0_dec.csv aloc_rbs.svg
-#   only 3rd iteration of SFN: gnuplot -c ./aloc_rbs.gp sfn_pdcch_0_dec.csv aloc_rbs.png 3
+#   all data:                  gnuplot -c ./aloc_rbs.gp frame_avg_pdcch_0.csv aloc_rbs.svg
+#   only 3rd iteration of SFN: gnuplot -c ./aloc_rbs.gp frame_avg_pdcch_0.csv aloc_rbs.png 3
 
 #to adapt to different data formats (different analyzers used), set to -1 if not wanted in plot
 cell_rbs_column = 6

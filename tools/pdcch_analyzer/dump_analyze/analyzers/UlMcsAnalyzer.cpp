@@ -9,7 +9,8 @@ using namespace std;
 
 #include <iostream>
 UlMcsAnalyzer::UlMcsAnalyzer() :
-		exclude_cqi_request_only(true), exclude_retransmission_mcs(false) {
+		exclude_cqi_request_only(true), exclude_retransmission_mcs(false), exclude_own_rnti(
+				true) {
 	update_fields();
 }
 
@@ -59,6 +60,7 @@ bool UlMcsAnalyzer::analyze_subframe(PdcchDciRecord* dci_record,
 		if (ul_grant != 0) {  //TODO how to deal with UE supporting 64-QAM or not? MCS has a different meaning then and is not comparable
 			bool cqi_only_req = false;
 			bool retx = false;
+			bool exclude = false;
 			if (exclude_cqi_request_only || exclude_retransmission_mcs) {
 				if (ul_grant->mcs.idx == 29) {
 					srslte_ra_ul_dci_t* ul_dec_dci = dci_result->get_ul_dec_dci();
@@ -71,9 +73,14 @@ bool UlMcsAnalyzer::analyze_subframe(PdcchDciRecord* dci_record,
 				}
 				retx = (ul_grant->mcs.idx >= 29) && !cqi_only_req;
 			}
+			if (exclude_own_rnti) {
+				if (dci_result->get_rnti() == dci_record->get_ue_crnti()) {
+					exclude = true;
+				}
+			}
 
 			if (!(exclude_cqi_request_only && cqi_only_req)
-					&& !(exclude_retransmission_mcs && retx)) {
+					&& !(exclude_retransmission_mcs && retx) && !exclude) {
 				values[ul_grant->mcs.idx]++;
 				num_samples++;
 			}
