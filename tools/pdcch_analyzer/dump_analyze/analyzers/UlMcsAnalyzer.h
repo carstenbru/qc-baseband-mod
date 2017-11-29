@@ -30,6 +30,8 @@ public:
 	void set_exclude_own_rnti(bool exclude_own_rnti) {
 		this->exclude_own_rnti = exclude_own_rnti;
 	}
+
+	virtual bool set_parameter(std::string name, std::string value);
 private:
 	void update_fields();
 

@@ -1,0 +1,40 @@
+ 
+// analyzers
+
+DataRateAnalyzer "data_rate_analyzer" //analyzer type and name by which we can refer to it for writers
+
+PrbCountAnalyzer "prb_count_analyzer"
+
+DlMcsAnalyzer "dl_mcs_analyzer" //analyzers with default settings
+
+UlMcsAnalyzer "ul_mcs_analyzer"
+
+DlMcsAnalyzer "dl_mcs_analyzer_all" //here we set optional parameters of the analyzer
+exclude_special_rntis 0 //also include paging and system information DCIs
+exclude_own_rnti 0 //also include DCIs for the dumping UE
+
+UlMcsAnalyzer "ul_mcs_analyzer_all"
+exclude_cqi_request_only 0 //also include DCIs which contain only a CQI request but no user data
+exclude_own_rnti 0 //also include DCIs for the dumping UE
+
+// #############################
+
+// writers
+
+SfnIterationAverageWriter "./it_avg_%s.csv" //writer type and output filename (use %s for dataset name)
+data_rate_analyzer //list of anaylzer to add to the writer
+prb_count_analyzer
+dl_mcs_analyzer
+ul_mcs_analyzer
+
+FrameAverageWriter "./frame_avg_%s.csv"
+data_rate_analyzer
+prb_count_analyzer
+
+TimeAverageWriter "./10min_avg_%s.csv" 600000 //TimeAverageWriter in addition requires the average time in ms
+dl_mcs_analyzer
+ul_mcs_analyzer
+
+TimeAverageWriter "./10min_avg_%s_all.csv" 600000
+dl_mcs_analyzer_all
+ul_mcs_analyzer_all

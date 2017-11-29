@@ -17,6 +17,24 @@ UlMcsAnalyzer::UlMcsAnalyzer() :
 UlMcsAnalyzer::~UlMcsAnalyzer() {
 }
 
+bool UlMcsAnalyzer::set_parameter(string name, string value) {
+	if (SubframeAnalyzer::set_parameter(name, value)) {
+		return true;
+	}
+	if (name.compare("exclude_cqi_request_only") == 0) {
+		int int_val = atoi(value.c_str());
+		set_exclude_cqi_request_only(int_val);
+	} else if (name.compare("exclude_retransmission_mcs") == 0) {
+		int int_val = atoi(value.c_str());
+		set_exclude_retransmission_mcs(int_val);
+	} else if (name.compare("exclude_own_rnti") == 0) {
+		int int_val = atoi(value.c_str());
+		set_exclude_own_rnti(int_val);
+	}
+
+	return false;
+}
+
 void UlMcsAnalyzer::update_fields() {
 	unsigned int num_mcs =
 			(exclude_cqi_request_only && exclude_retransmission_mcs) ? 29 : 32;

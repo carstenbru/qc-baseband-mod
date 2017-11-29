@@ -13,7 +13,8 @@ public:
 	DlMcsAnalyzer();
 	virtual ~DlMcsAnalyzer();
 
-	virtual bool analyze_subframe(PdcchDciRecord* dci_record, PdcchDumpRecordReader* pdcch_dump_record_reader);
+	virtual bool analyze_subframe(PdcchDciRecord* dci_record,
+			PdcchDumpRecordReader* pdcch_dump_record_reader);
 
 	/**
 	 * if set to true, special RNTI values (paging RNTI, system information RNTI, ...) are excluded from the distribution
@@ -27,7 +28,11 @@ public:
 	/**
 	 * if set to true, DCIs with the RNTI value currently assigned to the dumping UE are excluded from the distribution
 	 */
-	void set_exclude_own_rnti(bool exclude_own_rnti);
+	void set_exclude_own_rnti(bool exclude_own_rnti) {
+		this->exclude_own_rnti = exclude_own_rnti;
+	}
+
+	virtual bool set_parameter(std::string name, std::string value);
 private:
 	bool exclude_special_rntis;
 	bool exclude_own_rnti;

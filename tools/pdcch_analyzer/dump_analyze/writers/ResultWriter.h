@@ -29,6 +29,7 @@ public:
 	void set_write_sfn(bool write_sfn) {
 		this->write_sfn = write_sfn;
 	}
+	virtual bool set_parameter(std::string name, std::string value);
 protected:
 	virtual bool write_data_condition(PdcchDciRecord* dci_record,
 			PdcchDumpRecordReader* pdcch_dump_record_reader) = 0;

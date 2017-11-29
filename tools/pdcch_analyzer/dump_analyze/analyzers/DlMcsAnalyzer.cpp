@@ -23,6 +23,21 @@ DlMcsAnalyzer::DlMcsAnalyzer() :
 DlMcsAnalyzer::~DlMcsAnalyzer() {
 }
 
+bool DlMcsAnalyzer::set_parameter(string name, string value) {
+	if (SubframeAnalyzer::set_parameter(name, value)) {
+		return true;
+	}
+	if (name.compare("exclude_special_rntis") == 0) {
+		int int_val = atoi(value.c_str());
+		set_exclude_special_rntis(int_val);
+	} else if (name.compare("exclude_own_rnti") == 0) {
+		int int_val = atoi(value.c_str());
+		set_exclude_own_rnti(int_val);
+	}
+
+	return false;
+}
+
 bool DlMcsAnalyzer::analyze_subframe(PdcchDciRecord* dci_record,
 		PdcchDumpRecordReader* pdcch_dump_record_reader) {
 	//clear values (they will be summed up/averaged in the writers)

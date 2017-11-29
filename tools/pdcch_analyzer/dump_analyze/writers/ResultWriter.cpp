@@ -17,7 +17,21 @@ ResultWriter::~ResultWriter() {
 	file_stream.close();
 }
 
-#include <iostream>
+bool ResultWriter::set_parameter(string name, string value) {
+	if (name.compare("write_timestamps") == 0) {
+		int int_val = atoi(value.c_str());
+		set_write_timestamps(int_val);
+	} else if (name.compare("write_sfn_iteration") == 0) {
+		int int_val = atoi(value.c_str());
+		set_write_sfn_iteration(int_val);
+	} else if (name.compare("write_sfn") == 0) {
+		int int_val = atoi(value.c_str());
+		set_write_sfn(int_val);
+	}
+
+	return false;
+}
+
 void ResultWriter::add_analyzer(SubframeAnalyzer* subframe_analyzer) {
 	analyzers.push_back(subframe_analyzer);
 	values.resize(values.size() + subframe_analyzer->get_value_names().size());

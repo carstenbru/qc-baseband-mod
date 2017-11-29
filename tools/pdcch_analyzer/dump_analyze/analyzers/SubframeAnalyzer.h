@@ -33,6 +33,10 @@ public:
 	std::vector<std::string> get_value_names() {
 		return value_names;
 	}
+
+	virtual bool set_parameter(std::string name, std::string value) {
+		return false;
+	}
 protected:
 	std::vector<double> values;
 	unsigned int num_samples;
