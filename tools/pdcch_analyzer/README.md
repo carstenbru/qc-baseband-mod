@@ -62,11 +62,14 @@ Usage:
 ./dump_analyze DUMP_FILE_PATH DUMP_NAME
 	DUMP_FILE_PATH: path to the input dump file
 	DUMP_NAME: name of the input file (without .binX file extension)
+	CFG_FILE: analysis configuration file
 ```
 Example:
 ```
-./dump_analyze ./dumps/ pdcch_dec
+./dump_analyze ./dumps/ pdcch_dec ../config/default.awc
 ```
+The configuration file specifies the analyses which should be performed and how the tool should output the results. To understand this better, please have a look at an example configuration file provided in the *config* subfolder.
+In general, you can define different *analyzers* with parameters here and connect them to *writers* which store the results to files under certain conditions, e.g. the average of the data of the 10 subframes of an LTE frame.
 
 ### dump_record_print
 Prints information about all records in a dump file, mainly for debugging.
