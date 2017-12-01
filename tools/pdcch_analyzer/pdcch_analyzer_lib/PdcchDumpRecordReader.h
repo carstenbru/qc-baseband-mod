@@ -13,6 +13,7 @@
 #include <string>
 #include <fstream>
 #include <vector>
+#include <zlib.h>
 
 /**
  * callback function type
@@ -113,7 +114,7 @@ private:
 
 	std::string base_filename;
 	int cur_split_file;
-	std::ifstream file_stream;
+	gzFile input_file;
 
 	std::vector<record_callback_t> callbacks[PDCCH_RECORD_MAX];
 	std::vector<void*> callback_args[PDCCH_RECORD_MAX];

@@ -10,10 +10,11 @@
 
 #include <string>
 #include <fstream>
+#include <zlib.h>
 
 class PdcchDumpRecordWriter {
 public:
-	PdcchDumpRecordWriter(std::string filename);
+	PdcchDumpRecordWriter(std::string filename, bool compress_output);
 	virtual ~PdcchDumpRecordWriter();
 
 	void set_split_size(unsigned int split_size) {
@@ -26,7 +27,7 @@ private:
 	unsigned int cur_split_file;
 
 	std::string base_filename;
-	std::ofstream file_stream;
+	gzFile compressed_file;
 };
 
 #endif /* PDCCHDUMPRECORDWRITER_H_ */

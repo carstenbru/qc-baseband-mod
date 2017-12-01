@@ -25,9 +25,9 @@ bool new_record_callback(PdcchDumpRecord* record, void* arg) {
 
 PdcchDumpRecordReader::PdcchDumpRecordReader(string filename,
 		bool decode_llr_records) :
-		base_filename(filename), cur_split_file(-2), file_stream(base_filename,
-				ios::in | ios::binary), sfn_iteration(0), last_sfn(0) {
-	if (file_stream.is_open()) {
+		base_filename(filename), cur_split_file(-2), sfn_iteration(0), last_sfn(0) {
+	input_file = gzopen(base_filename.c_str(), "rb");
+	if (input_file != 0) {
 		cout << "reading file: " << filename << endl;
 	} else {
 		cur_split_file = -1;
@@ -48,7 +48,7 @@ PdcchDumpRecordReader::PdcchDumpRecordReader(string filename,
 }
 
 PdcchDumpRecordReader::~PdcchDumpRecordReader() {
-	file_stream.close();
+	gzclose(input_file);
 }
 
 void PdcchDumpRecordReader::new_record(PdcchDumpRecord* record,
@@ -90,17 +90,19 @@ void PdcchDumpRecordReader::new_record(PdcchDumpRecord* record,
 
 PdcchDumpRecord* PdcchDumpRecordReader::read_next_record() {
 	uint32_t header_data[2];
-	if (!(file_stream.read((char*) header_data, 8))) {
+
+	if (gzread(input_file, (char*) header_data, 8) <= 0) {
 		if (cur_split_file == -2) {  //single file mode
 			return 0;
 		} else {  //split file mode
 			cur_split_file++;  //try if a next file exists
-			if (file_stream.is_open()) {
-				file_stream.close();
+			if (input_file != 0) {
+				gzclose(input_file);
 			}
-			file_stream.open(base_filename + to_string(cur_split_file),
-					ios::in | ios::binary);
-			if (!(file_stream.read((char*) header_data, 8))) {
+			input_file = gzopen((base_filename + to_string(cur_split_file)).c_str(),
+					"rb");
+
+			if (gzread(input_file, (char*) header_data, 8) <= 0) {
 				return 0;
 			}
 			cout << "reading file: " << base_filename << cur_split_file << endl;
@@ -112,7 +114,7 @@ PdcchDumpRecord* PdcchDumpRecordReader::read_next_record() {
 	unsigned int record_payload_length = header_data[0] - 8;
 
 	char* payload_data = new char[record_payload_length];
-	file_stream.read(payload_data, record_payload_length);
+	gzread(input_file, payload_data, record_payload_length);
 
 	PdcchDumpRecord* record = 0;
 	switch (record_type) {

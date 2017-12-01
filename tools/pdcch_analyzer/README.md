@@ -44,11 +44,12 @@ A common tool flow would thus be (with example filenames used again in the indiv
 Decodes "raw" dumps and outputs the result (DCI data and metadata) to a new file.
 Usage:
 ```
-./dump_decode DUMP_FILE_PATH DUMP_NAME [OUTPUT_PATH] OUTPUT_BASE_NAME
-	DUMP_FILE_PATH: path to the input dump file
-	DUMP_NAME: name of the input file (without .binX file extension)
-	OUTPUT_PATH (optional): path to the output dump file, if not provided, DUMP_FILE_PATH is used
-	OUTPUT_BASE_NAME: desired name of the output file (without .binX file extension)
+./dump_decode [-nocompress] DUMP_FILE_PATH DUMP_NAME [OUTPUT_PATH] OUTPUT_BASE_NAME
+        -nocompress: if present, the output will not be gzip compressed
+        DUMP_FILE_PATH: path to the input dump file
+        DUMP_NAME: name of the input file (without .binX file extension)
+        OUTPUT_PATH (optional): path to the output dump file, if not provided, DUMP_FILE_PATH is used
+        OUTPUT_BASE_NAME: desired name of the output file (without .binX file extension)
 ```
 Example:
 ```

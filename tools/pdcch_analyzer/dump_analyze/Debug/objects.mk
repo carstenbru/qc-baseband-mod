@@ -4,5 +4,5 @@
 
 USER_OBJS :=
 
-LIBS := -lpdcch_analyzer_lib
+LIBS := -lpdcch_analyzer_lib -lz
 

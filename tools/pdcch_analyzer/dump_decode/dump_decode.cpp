@@ -48,7 +48,10 @@ bool process_record(PdcchDumpRecord* record, void* arg) {
 int main(int argc, char* argv[]) {
 	if (argc < 4) {
 		cout << "Usage:\n" << argv[0]
-				<< " DUMP_FILE_PATH DUMP_NAME [OUTPUT_PATH] OUTPUT_BASE_NAME" << endl;
+				<< " [-nocompress] DUMP_FILE_PATH DUMP_NAME [OUTPUT_PATH] OUTPUT_BASE_NAME"
+				<< endl;
+		cout << "\t-nocompress: if present, the output will not be gzip compressed"
+				<< endl;
 		cout << "\tDUMP_FILE_PATH: path to the input dump file" << endl;
 		cout << "\tDUMP_NAME: name of the input file (without .binX file extension)"
 				<< endl;
@@ -61,18 +64,28 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 
-	string in_filename = argv[1];
+	int arg_offset = 0;
+	bool compress_output = true;
+	string s = argv[1];
+	if (s.compare("-nocompress") == 0) {
+		arg_offset++;
+		compress_output = false;
+	}
+
+	string in_filename = argv[1 + arg_offset];
 	in_filename.append("/");
-	in_filename.append(argv[2]);
+	in_filename.append(argv[2 + arg_offset]);
 	in_filename.append(".bin");
 
-	string out_filename = (argc > 4) ? argv[3] : argv[1];
+	string out_filename =
+			(argc > 4 + arg_offset) ? argv[3 + arg_offset] : argv[1 + arg_offset];
 	out_filename.append("/");
-	out_filename.append((argc > 4) ? argv[4] : argv[3]);
+	out_filename.append(
+			(argc > 4 + arg_offset) ? argv[4 + arg_offset] : argv[3 + arg_offset]);
 	out_filename.append(".bin");
 
 	/* create writer for output of processed records */
-	PdcchDumpRecordWriter pdcch_dump_record_writer(out_filename);
+	PdcchDumpRecordWriter pdcch_dump_record_writer(out_filename, compress_output);
 	pdcch_dump_record_writer.set_split_size(OUTPUT_FILE_SPLIT_SIZE);
 
 	/* create record reader, activate decoder and register callbacks */
