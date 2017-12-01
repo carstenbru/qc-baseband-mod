@@ -31,6 +31,7 @@ public:
 	std::list<DciResult*>* get_dcis();
 
 	virtual char* get_data();
+	virtual int get_data_length();
 private:
 	bool dcis_in_data_bytes;
 	std::list<DciResult*>* dcis;
