@@ -14,14 +14,32 @@
 
 using namespace std;
 
+#define VERBOSE_MODE (0)
+
+typedef struct {
+	PdcchDumpRecordReader* pdcch_dump_record_reader;
+	PdcchDumpRecordWriter* pdcch_dump_record_writer;
+	unsigned int last_it;
+} dump_decode_struct_t;
+
 //size (in MB) after which a new output file is created
 #define OUTPUT_FILE_SPLIT_SIZE 2000
 
 bool process_record(PdcchDumpRecord* record, void* arg) {
-	cout << "next record: " << record->to_string() << endl;
-	PdcchDumpRecordWriter* pdcch_dump_record_writer = (PdcchDumpRecordWriter*) arg;
+	dump_decode_struct_t* dump_decode_struct = (dump_decode_struct_t*) arg;
+	if (VERBOSE_MODE) {
+		cout << "next record: " << record->to_string() << endl;
+	} else {
+		if (dump_decode_struct->last_it
+				!= dump_decode_struct->pdcch_dump_record_reader->get_sfn_iteration()) {
+			dump_decode_struct->last_it =
+					dump_decode_struct->pdcch_dump_record_reader->get_sfn_iteration();
+			cout << "processing next SFN iteration: " << dump_decode_struct->last_it
+					<< endl;
+		}
+	}
 	if (record->get_record_type() != PDCCH_LLR_BUFFER_RECORD) {
-		pdcch_dump_record_writer->write_record(record);
+		dump_decode_struct->pdcch_dump_record_writer->write_record(record);
 	}
 
 	return false;
@@ -32,9 +50,14 @@ int main(int argc, char* argv[]) {
 		cout << "Usage:\n" << argv[0]
 				<< " DUMP_FILE_PATH DUMP_NAME [OUTPUT_PATH] OUTPUT_BASE_NAME" << endl;
 		cout << "\tDUMP_FILE_PATH: path to the input dump file" << endl;
-		cout << "\tDUMP_NAME: name of the input file (without .binX file extension)" << endl;
-		cout << "\tOUTPUT_PATH (optional): path to the output dump file, if not provided, DUMP_FILE_PATH is used" << endl;
-		cout << "\tOUTPUT_BASE_NAME: desired name of the output file (without .binX file extension)" << endl;
+		cout << "\tDUMP_NAME: name of the input file (without .binX file extension)"
+				<< endl;
+		cout
+				<< "\tOUTPUT_PATH (optional): path to the output dump file, if not provided, DUMP_FILE_PATH is used"
+				<< endl;
+		cout
+				<< "\tOUTPUT_BASE_NAME: desired name of the output file (without .binX file extension)"
+				<< endl;
 		return 0;
 	}
 
@@ -54,8 +77,10 @@ int main(int argc, char* argv[]) {
 
 	/* create record reader, activate decoder and register callbacks */
 	PdcchDumpRecordReader pdcch_dump_record_reader(in_filename, true);
+	dump_decode_struct_t dump_decode_struct = { &pdcch_dump_record_reader,
+			&pdcch_dump_record_writer, 0 };
 	pdcch_dump_record_reader.register_callback(PDCCH_ALL_RECORDS,
-			(record_callback_t) &process_record, &pdcch_dump_record_writer);
+			(record_callback_t) &process_record, &dump_decode_struct);
 
 	/* let's go! */
 	pdcch_dump_record_reader.read_all_records();
