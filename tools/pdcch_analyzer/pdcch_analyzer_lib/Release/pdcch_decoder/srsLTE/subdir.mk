@@ -16,7 +16,10 @@ C_SRCS += \
 ../pdcch_decoder/srsLTE/sequence.c \
 ../pdcch_decoder/srsLTE/vector.c \
 ../pdcch_decoder/srsLTE/viterbi.c \
-../pdcch_decoder/srsLTE/viterbi37_port.c 
+../pdcch_decoder/srsLTE/viterbi37_avx2.c \
+../pdcch_decoder/srsLTE/viterbi37_neon.c \
+../pdcch_decoder/srsLTE/viterbi37_port.c \
+../pdcch_decoder/srsLTE/viterbi37_sse.c 
 
 OBJS += \
 ./pdcch_decoder/srsLTE/bit.o \
@@ -31,7 +34,10 @@ OBJS += \
 ./pdcch_decoder/srsLTE/sequence.o \
 ./pdcch_decoder/srsLTE/vector.o \
 ./pdcch_decoder/srsLTE/viterbi.o \
-./pdcch_decoder/srsLTE/viterbi37_port.o 
+./pdcch_decoder/srsLTE/viterbi37_avx2.o \
+./pdcch_decoder/srsLTE/viterbi37_neon.o \
+./pdcch_decoder/srsLTE/viterbi37_port.o \
+./pdcch_decoder/srsLTE/viterbi37_sse.o 
 
 C_DEPS += \
 ./pdcch_decoder/srsLTE/bit.d \
@@ -46,7 +52,10 @@ C_DEPS += \
 ./pdcch_decoder/srsLTE/sequence.d \
 ./pdcch_decoder/srsLTE/vector.d \
 ./pdcch_decoder/srsLTE/viterbi.d \
-./pdcch_decoder/srsLTE/viterbi37_port.d 
+./pdcch_decoder/srsLTE/viterbi37_avx2.d \
+./pdcch_decoder/srsLTE/viterbi37_neon.d \
+./pdcch_decoder/srsLTE/viterbi37_port.d \
+./pdcch_decoder/srsLTE/viterbi37_sse.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes

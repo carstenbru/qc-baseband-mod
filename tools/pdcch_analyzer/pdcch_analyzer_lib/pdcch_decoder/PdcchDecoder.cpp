@@ -14,9 +14,7 @@
 extern "C" {
 #include "srsLTE/crc.h"
 #include "srsLTE/rm_conv.h"
-#include "srsLTE/viterbi.h"
 #include "srsLTE/bit.h"
-#include "srsLTE/convcoder.h"
 }
 
 using namespace std;
@@ -48,9 +46,18 @@ PdcchDecoder::PdcchDecoder() :
 	for (unsigned int i = 0; i < 10; i++) {
 		scramble_seq[i] = 0;
 	}
+
+	int poly[3] = { 0x6D, 0x4F, 0x57 };
+	srslte_viterbi_init(&decoder, SRSLTE_VITERBI_37, poly,
+	SRSLTE_DCI_MAX_BITS + 16, true);
+	encoder.K = 7;
+	encoder.R = 3;
+	encoder.tail_biting = true;
+	memcpy(encoder.poly, poly, 3 * sizeof(int));
 }
 
 PdcchDecoder::~PdcchDecoder() {
+	srslte_viterbi_free(&decoder);
 }
 
 void PdcchDecoder::register_callback(decoder_callback_t callback, void* arg) {
@@ -251,13 +258,8 @@ float PdcchDecoder::try_decode_dci(int16_t* ch_data, unsigned int agl,
 	/* unrate matching */
 	srslte_rm_conv_rx_s(ch_data, num_ch_bits, rm, 3 * (dci_bits + 16));
 
-	/* viterbi decoder */
-	srslte_viterbi_t decoder;
-	int poly[3] = { 0x6D, 0x4F, 0x57 };
-	srslte_viterbi_init(&decoder, SRSLTE_VITERBI_37, poly,
-	SRSLTE_DCI_MAX_BITS + 16, true);
+	/* viterbi decode */
 	srslte_viterbi_decode_s(&decoder, rm, recovered_dci_bits, dci_bits + 16);
-	srslte_viterbi_free(&decoder);  //TODO use same decoder multiple times (make it a member of the decoder class)
 
 	x = &recovered_dci_bits[dci_bits];
 	p_bits = (uint16_t) srslte_bit_pack(&x, 16);
@@ -272,12 +274,6 @@ float PdcchDecoder::try_decode_dci(int16_t* ch_data, unsigned int agl,
 	uint8_t tmp[3 * (SRSLTE_DCI_MAX_BITS + 16)];
 	uint8_t tmp2[10 * (SRSLTE_DCI_MAX_BITS + 16)];
 	uint8_t check[(SRSLTE_DCI_MAX_BITS + 16)];
-	srslte_convcoder_t encoder;
-
-	encoder.K = 7;
-	encoder.R = 3;
-	encoder.tail_biting = true;
-	memcpy(encoder.poly, poly, 3 * sizeof(int));
 
 	memcpy(check, recovered_dci_bits, dci_bits);
 
@@ -399,7 +395,7 @@ void PdcchDecoder::blind_decode(int16_t* cce_buf, unsigned int num_regs,
 			float best_prob = 0;
 			unsigned int best_format_idx = SRSLTE_DCI_NOF_FORMATS;
 			uint16_t best_decoded_rnti = 0;
-			uint64_t best_decoded_dci_bits;
+			uint64_t best_decoded_dci_bits = 0;
 
 			for (unsigned int dci_format = 0; dci_format < num_dci_formats;
 					dci_format++) {

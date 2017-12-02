@@ -18,6 +18,8 @@
 
 extern "C" {
 #include "srsLTE/dci.h"
+#include "srsLTE/viterbi.h"
+#include "srsLTE/convcoder.h"
 }
 
 typedef struct {
@@ -126,6 +128,9 @@ private:
 	unsigned int dci_format_lengths[SRSLTE_DCI_NOF_FORMATS];
 
 	unsigned int reg_energy_threshold;
+
+	srslte_viterbi_t decoder;
+	srslte_convcoder_t encoder;
 
 	PdcchDumpRecordReader* pdcch_dump_record_reader;
 };

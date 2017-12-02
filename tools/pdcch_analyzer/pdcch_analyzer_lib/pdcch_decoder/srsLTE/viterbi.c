@@ -42,6 +42,12 @@
 
 #define DEFAULT_GAIN 100
 
+#if (__SSE__ == 1)
+#define LV_HAVE_SSE
+#endif
+#if (__AVX2__ == 1)
+#define LV_HAVE_AVX2
+#endif
 
 //#undef LV_HAVE_SSE
 
