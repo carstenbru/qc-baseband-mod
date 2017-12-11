@@ -1,6 +1,19 @@
 /*
  UserActivityAnalyzer.cpp
  
+ Analyzer which calculates statistics about user behavior.
+
+ In particular, it observes when RNTIs get active and inactive and counts the number of active RNTIs
+ in the cell at each subframe. As inactivity can only be detected after an inactivity timer expired, these
+ three output values ("active RNTIs", "RNTIs got active", "RNTIs got inactive") are delayed by some milliseconds,
+ defined by the parameter "inactivity_time_ms".
+
+ In addition, the analyzer can output the activity time of RNTIs and the consumed data (downlink & uplink) during
+ this period. Keep in mind that a base station will disconnect an UE when it is inacitve for some time (~12s) and
+ for its next activity a new RNTI will be assigned.
+ Thus, the same user/UE can be active with different RNTI values. The ouput values only represent the activity time
+ and data consumption in a SINGLE "BURST" of communication without breaks.
+
  Carsten Bruns (carst.bruns@gmx.de)
  */
 #include "UserActivityAnalyzer.h"
@@ -180,21 +193,15 @@ void UserActivityAnalyzer::classify_value_and_return(
 	}
 }
 
-bool UserActivityAnalyzer::analyze_subframe(PdcchDciRecord* dci_record,
-		PdcchDumpRecordReader* pdcch_dump_record_reader) {
-	//clear values (they will be summed up/averaged in the writers)
+void UserActivityAnalyzer::clear_values() {
 	for (unsigned int val_pos = 3; val_pos < value_names.size(); val_pos++) {  //we can skip the first 3 values
 		values[val_pos] = 0;
 	}
+}
 
-	unsigned int rntis_got_active = 0;
-	unsigned int rntis_got_inactive = 0;
-
-	uint64_t current_time =
-			(((uint64_t) pdcch_dump_record_reader->get_sfn_iteration()) * 10240)
-					+ ((uint64_t) dci_record->get_sfn() * 10)
-					+ ((uint64_t) dci_record->get_subframe());
-
+void UserActivityAnalyzer::evaluate_dcis(uint64_t current_time,
+		PdcchDciRecord* dci_record,
+		PdcchDumpRecordReader* pdcch_dump_record_reader) {
 	for (list<DciResult*>::iterator it = dci_record->get_dcis()->begin();
 			it != dci_record->get_dcis()->end(); it++) {
 		DciResult* dci_result = *it;
@@ -205,8 +212,8 @@ bool UserActivityAnalyzer::analyze_subframe(PdcchDciRecord* dci_record,
 			rnti_start_time[rnti] = current_time;  //store start time of activity
 			active_rntis.push_back(rnti);  //add to list of active RNTIs
 			if (is_c_rnti(rnti)) {  //only include c_rnti values in output data
-				num_active_rntis++;
-				rntis_got_active++;
+				rnti_got_active_event_t event = { rnti, current_time };
+				rnti_got_active_events.push_back(event);
 				if (verbose_text_output) {
 					if (rnti_last_seen[rnti] == 0) {
 						cout << "+++ RNTI got active (first-time): " << rnti << endl;
@@ -230,15 +237,19 @@ bool UserActivityAnalyzer::analyze_subframe(PdcchDciRecord* dci_record,
 		add_data_bits(dci_result, rnti);
 		rnti_last_seen[rnti] = current_time;
 	}
+}
 
-	if (current_time >= inactivity_time_ms) {
+unsigned int UserActivityAnalyzer::check_rntis_inactive_set_values(
+		uint64_t current_time) {
+	unsigned int rntis_got_inactive = 0;
+
+	if (current_time >= inactivity_time_ms) {  //RNTIs can only get inactive after some start period
 		uint64_t threshold_time = current_time - (uint64_t) inactivity_time_ms;
 		list<unsigned int>::iterator rnti_it = active_rntis.begin();
 		while (rnti_it != active_rntis.end()) {
 			unsigned int rnti = *rnti_it;
 			if (rnti_last_seen[rnti] <= threshold_time) {  //RNTI got inactive
 				if (is_c_rnti(rnti)) {  //only include c_rnti values in output data
-					num_active_rntis--;
 					rntis_got_inactive++;
 					uint64_t active_time = current_time - rnti_start_time[rnti]
 							- inactivity_time_ms;
@@ -264,9 +275,53 @@ bool UserActivityAnalyzer::analyze_subframe(PdcchDciRecord* dci_record,
 			}
 		}
 	}
+	return rntis_got_inactive;
+}
+
+unsigned int UserActivityAnalyzer::process_rnti_active_queue(
+		uint64_t current_time) {
+	unsigned int rntis_got_active = 0;
+	if (current_time < inactivity_time_ms) {  //RNTIs can only get (delayed) active after some start period
+		return 0;
+	}
+	uint64_t threshold_time = current_time - inactivity_time_ms;
+
+	while (!rnti_got_active_events.empty()) {
+		rnti_got_active_event_t event = rnti_got_active_events.front();
+		if (event.timestamp <= threshold_time) {
+			rnti_got_active_events.pop_front();
+			rntis_got_active++;
+		} else {
+			break;
+		}
+	}
+	return rntis_got_active;
+}
+
+bool UserActivityAnalyzer::analyze_subframe(PdcchDciRecord* dci_record,
+		PdcchDumpRecordReader* pdcch_dump_record_reader) {
+	//clear values (they will be summed up/averaged in the writers)
+	clear_values();
+
+	uint64_t current_time =
+			(((uint64_t) pdcch_dump_record_reader->get_sfn_iteration()) * 10240)
+					+ ((uint64_t) dci_record->get_sfn() * 10)
+					+ ((uint64_t) dci_record->get_subframe());
+
+	// evaluate received DCIs, for new RNTIs and consumed data
+	evaluate_dcis(current_time, dci_record, pdcch_dump_record_reader);
+
+	// check if an RNTI active event should be added to the counters (delay)
+	unsigned int rntis_got_active = process_rnti_active_queue(current_time);
+	num_active_rntis += rntis_got_active;
+
+	// check if RNTIs got inactive, update output values of data consumption and active time
+	unsigned int rntis_got_inactive = check_rntis_inactive_set_values(
+			current_time);
+	num_active_rntis -= rntis_got_inactive;
 
 	values[0] = num_active_rntis;
-	values[1] = rntis_got_active;  //TODO delay this guy? and accurately count number of RNTIs (delayed)? be careful as (sub-)frames might be missing!
+	values[1] = rntis_got_active;
 	values[2] = rntis_got_inactive;
 
 	return true;
