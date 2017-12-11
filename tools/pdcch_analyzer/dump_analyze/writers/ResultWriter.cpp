@@ -9,23 +9,23 @@
 using namespace std;
 
 ResultWriter::ResultWriter(string filename) :
-		file_stream(filename), first_write(true), num_subframes(0), write_timestamps(
-				false), write_sfn_iteration(false), write_sfn(false) {
+		file_stream(filename), first_write(true), write_timestamps(false), write_sfn_iteration(
+				false), write_sfn(false), num_subframes(0) {
 }
 
 ResultWriter::~ResultWriter() {
 	file_stream.close();
 }
 
-bool ResultWriter::set_parameter(string name, string value) {
+bool ResultWriter::set_parameter(string name, vector<string>& values) {
 	if (name.compare("write_timestamps") == 0) {
-		int int_val = atoi(value.c_str());
+		int int_val = atoi(values[1].c_str());
 		set_write_timestamps(int_val);
 	} else if (name.compare("write_sfn_iteration") == 0) {
-		int int_val = atoi(value.c_str());
+		int int_val = atoi(values[1].c_str());
 		set_write_sfn_iteration(int_val);
 	} else if (name.compare("write_sfn") == 0) {
-		int int_val = atoi(value.c_str());
+		int int_val = atoi(values[1].c_str());
 		set_write_sfn(int_val);
 	}
 
@@ -35,7 +35,8 @@ bool ResultWriter::set_parameter(string name, string value) {
 void ResultWriter::add_analyzer(SubframeAnalyzer* subframe_analyzer) {
 	analyzers.push_back(subframe_analyzer);
 	values.resize(values.size() + subframe_analyzer->get_value_names().size());
-	num_samples.resize(num_samples.size() + 1);
+	num_samples.resize(
+			num_samples.size() + subframe_analyzer->get_value_names().size());
 }
 
 void ResultWriter::write_file_header(
@@ -85,9 +86,10 @@ void ResultWriter::new_results(PdcchDciRecord* dci_record,
 			it != analyzers.end(); it++) {
 		vector<double> analyzer_values = (*it)->get_values();
 		for (unsigned int i = 0; i < analyzer_values.size(); i++) {
-			values[val_pos++] += analyzer_values[i];
+			values[val_pos] += analyzer_values[i];
+			num_samples[val_pos] += (*it)->get_num_samples(i);
+			val_pos++;
 		}
-		num_samples[list_pos] += (*it)->get_num_samples();
 		list_pos++;
 	}
 	num_subframes++;
@@ -115,8 +117,13 @@ void ResultWriter::new_results(PdcchDciRecord* dci_record,
 			for (list<SubframeAnalyzer*>::iterator it = analyzers.begin();
 					it != analyzers.end(); it++) {
 				for (unsigned int i = 0; i < (*it)->get_value_names().size(); i++) {
-					file_stream << (values[val_pos++] / (double) num_samples[list_pos])
-							<< "\t";
+					unsigned int num_samples_val = num_samples[val_pos];
+					if (num_samples_val != 0) {
+						file_stream << (values[val_pos] / (double) num_samples_val) << "\t";
+					} else {
+						file_stream << values[val_pos] << "\t";
+					}
+					val_pos++;
 				}
 				list_pos++;
 			}

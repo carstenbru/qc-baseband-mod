@@ -18,7 +18,7 @@ PrbCountAnalyzer::PrbCountAnalyzer() {
 
 	values.resize(3);
 
-	num_samples = 1; //we always provide 1 "sample" per subframe
+	set_num_samples(1); //we always provide 1 "sample" per subframe
 }
 
 PrbCountAnalyzer::~PrbCountAnalyzer() {

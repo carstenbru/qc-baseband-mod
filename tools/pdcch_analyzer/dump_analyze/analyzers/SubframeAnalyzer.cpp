@@ -6,7 +6,8 @@
 #include "SubframeAnalyzer.h"
 
 SubframeAnalyzer::SubframeAnalyzer() :
-		num_samples(0) {
+		single_num_samples(true) {
+	num_samples.push_back(0);
 }
 
 SubframeAnalyzer::~SubframeAnalyzer() {

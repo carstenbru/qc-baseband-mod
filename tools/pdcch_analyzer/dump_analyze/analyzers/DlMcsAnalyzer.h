@@ -32,7 +32,7 @@ public:
 		this->exclude_own_rnti = exclude_own_rnti;
 	}
 
-	virtual bool set_parameter(std::string name, std::string value);
+	virtual bool set_parameter(std::string name, std::vector<std::string>& values);
 private:
 	bool exclude_special_rntis;
 	bool exclude_own_rnti;

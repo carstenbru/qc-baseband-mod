@@ -8,7 +8,7 @@
 using namespace std;
 
 FrameAverageWriter::FrameAverageWriter(string filename) :
-		ResultWriter(filename) {
+		ResultWriter(filename), last_sfn(0) {
 	set_write_sfn_iteration(true);
 	set_write_sfn(true);
 }

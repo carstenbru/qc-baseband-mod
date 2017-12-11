@@ -19,6 +19,7 @@
 #include "analyzers/DataRateAnalyzer.h"
 #include "analyzers/DlMcsAnalyzer.h"
 #include "analyzers/UlMcsAnalyzer.h"
+#include "analyzers/UserActivityAnalyzer.h"
 
 #include <string.h>
 #include <fstream>
@@ -105,6 +106,8 @@ SubframeAnalyzer* create_subframe_analyzer(vector<string>& words) {
 		return new DlMcsAnalyzer();
 	} else if (words[0].compare("UlMcsAnalyzer") == 0) {
 		return new UlMcsAnalyzer();
+	} else if (words[0].compare("UserActivityAnalyzer") == 0) {
+		return new UserActivityAnalyzer();
 	}
 	return 0;
 }
@@ -173,7 +176,7 @@ void read_configuration(string cfg_filename,
 		} else {
 			if (last_analyzer) { //analyzer parameters
 				if (last_subframe_analyzer != 0) {
-					last_subframe_analyzer->set_parameter(words[0], words[1]);
+					last_subframe_analyzer->set_parameter(words[0], words);
 				}
 			} else { //writer parameters
 				if (analyzers_map.find(words[0]) != analyzers_map.end()) { //analyzers list
@@ -181,7 +184,7 @@ void read_configuration(string cfg_filename,
 							analyzers_map[words[0]]);
 				} else {
 					if (last_result_writer != 0) { //another parameter for the writer
-						last_result_writer->set_parameter(words[0], words[1]);
+						last_result_writer->set_parameter(words[0], words);
 					}
 				}
 			}

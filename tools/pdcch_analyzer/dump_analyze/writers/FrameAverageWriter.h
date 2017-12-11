@@ -15,6 +15,8 @@ public:
 protected:
 	virtual bool write_data_condition(PdcchDciRecord* dci_record,
 			PdcchDumpRecordReader* pdcch_dump_record_reader);
+private:
+	unsigned int last_sfn;
 };
 
 #endif /* FRAMEAVERAGEWRITER_H_ */

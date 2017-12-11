@@ -8,21 +8,24 @@ CPP_SRCS += \
 ../analyzers/DlMcsAnalyzer.cpp \
 ../analyzers/PrbCountAnalyzer.cpp \
 ../analyzers/SubframeAnalyzer.cpp \
-../analyzers/UlMcsAnalyzer.cpp 
+../analyzers/UlMcsAnalyzer.cpp \
+../analyzers/UserActivityAnalyzer.cpp 
 
 OBJS += \
 ./analyzers/DataRateAnalyzer.o \
 ./analyzers/DlMcsAnalyzer.o \
 ./analyzers/PrbCountAnalyzer.o \
 ./analyzers/SubframeAnalyzer.o \
-./analyzers/UlMcsAnalyzer.o 
+./analyzers/UlMcsAnalyzer.o \
+./analyzers/UserActivityAnalyzer.o 
 
 CPP_DEPS += \
 ./analyzers/DataRateAnalyzer.d \
 ./analyzers/DlMcsAnalyzer.d \
 ./analyzers/PrbCountAnalyzer.d \
 ./analyzers/SubframeAnalyzer.d \
-./analyzers/UlMcsAnalyzer.d 
+./analyzers/UlMcsAnalyzer.d \
+./analyzers/UserActivityAnalyzer.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes

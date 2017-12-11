@@ -23,15 +23,15 @@ DlMcsAnalyzer::DlMcsAnalyzer() :
 DlMcsAnalyzer::~DlMcsAnalyzer() {
 }
 
-bool DlMcsAnalyzer::set_parameter(string name, string value) {
-	if (SubframeAnalyzer::set_parameter(name, value)) {
+bool DlMcsAnalyzer::set_parameter(string name, vector<string>& values) {
+	if (SubframeAnalyzer::set_parameter(name, values)) {
 		return true;
 	}
 	if (name.compare("exclude_special_rntis") == 0) {
-		int int_val = atoi(value.c_str());
+		int int_val = atoi(values[1].c_str());
 		set_exclude_special_rntis(int_val);
 	} else if (name.compare("exclude_own_rnti") == 0) {
-		int int_val = atoi(value.c_str());
+		int int_val = atoi(values[1].c_str());
 		set_exclude_own_rnti(int_val);
 	}
 
@@ -44,7 +44,7 @@ bool DlMcsAnalyzer::analyze_subframe(PdcchDciRecord* dci_record,
 	for (unsigned int mcs_index = 0; mcs_index < 32; mcs_index++) {
 		values[mcs_index] = 0;
 	}
-	num_samples = 0;
+	unsigned int num_samples = 0;
 
 	for (list<DciResult*>::iterator it = dci_record->get_dcis()->begin();
 			it != dci_record->get_dcis()->end(); it++) {
@@ -76,5 +76,6 @@ bool DlMcsAnalyzer::analyze_subframe(PdcchDciRecord* dci_record,
 			}
 		}
 	}
+	set_num_samples(num_samples);
 	return true;
 }
