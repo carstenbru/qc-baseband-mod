@@ -14,6 +14,9 @@
  Thus, the same user/UE can be active with different RNTI values. The ouput values only represent the activity time
  and data consumption in a SINGLE "BURST" of communication without breaks.
 
+ The first few output values should be dropped, as they might be incorrect, e.g. the activity time might be
+ too short as the UE might have been active before the dump started.
+
  Carsten Bruns (carst.bruns@gmx.de)
  */
 #ifndef USERACTIVITYANALYZER_H_
@@ -54,6 +57,7 @@ private:
 			std::string unit);
 	void update_value_names(std::list<unsigned int>& classes_list,
 			std::string classes_name, std::string unit);
+	void update_rnti_value_names();
 	void classify_value_and_return(std::list<unsigned int>& classes_list,
 			unsigned int val, unsigned int output_values_start);
 

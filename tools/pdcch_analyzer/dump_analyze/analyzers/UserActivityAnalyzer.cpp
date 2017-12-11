@@ -14,6 +14,9 @@
  Thus, the same user/UE can be active with different RNTI values. The ouput values only represent the activity time
  and data consumption in a SINGLE "BURST" of communication without breaks.
 
+ The first few output values should be dropped, as they might be incorrect, e.g. the activity time might be
+ too short as the UE might have been active before the dump started.
+
  Carsten Bruns (carst.bruns@gmx.de)
  */
 #include "UserActivityAnalyzer.h"
@@ -32,17 +35,29 @@ UserActivityAnalyzer::UserActivityAnalyzer() :
 		rnti_bits_transmitted_dl[i] = 0;
 		rnti_bits_transmitted_ul[i] = 0;
 	}
-	value_names.push_back("active RNTIs");
+
 	set_num_samples(0, 1);
-	value_names.push_back("RNTIs got active");
 	set_num_samples(1, 0);
-	value_names.push_back("RNTIs got inactive");
 	set_num_samples(2, 0);
+	value_names.resize(3);
+	update_rnti_value_names();
 
 	values.resize(3);
 }
 
 UserActivityAnalyzer::~UserActivityAnalyzer() {
+}
+
+void UserActivityAnalyzer::update_rnti_value_names() {
+	char name_buf[512];
+	snprintf(name_buf, 512, "active RNTIs (delayed: %dms)", inactivity_time_ms);
+	value_names[0] = name_buf;
+	snprintf(name_buf, 512, "RNTIs got active (delayed: %dms)",
+			inactivity_time_ms);
+	value_names[1] = name_buf;
+	snprintf(name_buf, 512, "RNTIs got inactive (delayed: %dms)",
+			inactivity_time_ms);
+	value_names[2] = name_buf;
 }
 
 void UserActivityAnalyzer::update_value_names(list<unsigned int>& classes_list,
@@ -102,6 +117,7 @@ bool UserActivityAnalyzer::set_parameter(string name, vector<string>& values) {
 	if (name.compare("inactivity_time_ms") == 0) {
 		int int_val = atoi(values[1].c_str());
 		set_inactivity_time_ms(int_val);
+		update_rnti_value_names();
 	} else if (name.compare("verbose_text_output") == 0) {
 		int int_val = atoi(values[1].c_str());
 		verbose_text_output = int_val;
