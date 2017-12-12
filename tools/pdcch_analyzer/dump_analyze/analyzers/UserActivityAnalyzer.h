@@ -13,6 +13,7 @@
  for its next activity a new RNTI will be assigned.
  Thus, the same user/UE can be active with different RNTI values. The ouput values only represent the activity time
  and data consumption in a SINGLE "BURST" of communication without breaks.
+ Re-transmissions are excluded from the results, so only initial grants are considered.
 
  The first few output values should be dropped, as they might be incorrect, e.g. the activity time might be
  too short as the UE might have been active before the dump started.
@@ -50,13 +51,13 @@ public:
 private:
 	void add_data_bits(DciResult* dci_result, unsigned int rnti);
 	void define_classes(std::list<unsigned int>& classes_list,
-			std::vector<std::string>& values, std::string classes_name,
+			std::vector<std::string>& values, std::string classes_name, float divide,
 			std::string unit);
 	void define_classes_eq(std::list<unsigned int>& classes_list,
-			std::vector<std::string>& values, std::string classes_name,
+			std::vector<std::string>& values, std::string classes_name, float divide,
 			std::string unit);
 	void update_value_names(std::list<unsigned int>& classes_list,
-			std::string classes_name, std::string unit);
+			std::string classes_name, float divide, std::string unit);
 	void update_rnti_value_names();
 	void classify_value_and_return(std::list<unsigned int>& classes_list,
 			unsigned int val, unsigned int output_values_start);
@@ -80,6 +81,7 @@ private:
 	unsigned int inactivity_time_ms;
 	bool verbose_text_output;
 	unsigned int output_dcis_rnti;
+	bool output_headers_kb;
 
 	std::list<rnti_got_active_event_t> rnti_got_active_events;
 	unsigned int num_active_rntis;

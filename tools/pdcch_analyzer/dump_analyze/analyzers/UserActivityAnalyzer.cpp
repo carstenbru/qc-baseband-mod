@@ -13,6 +13,7 @@
  for its next activity a new RNTI will be assigned.
  Thus, the same user/UE can be active with different RNTI values. The ouput values only represent the activity time
  and data consumption in a SINGLE "BURST" of communication without breaks.
+ Re-transmissions are excluded from the results, so only initial grants are considered.
 
  The first few output values should be dropped, as they might be incorrect, e.g. the activity time might be
  too short as the UE might have been active before the dump started.
@@ -27,8 +28,9 @@ using namespace std;
 
 UserActivityAnalyzer::UserActivityAnalyzer() :
 		inactivity_time_ms(DEFAULT_INACTIVITY_TIME_MS), verbose_text_output(false), output_dcis_rnti(
-				0), num_active_rntis(0), active_time_values_start(0), transmitted_dl_bytes_values_start(
-				0), transmitted_ul_bytes_values_start(0) {
+				0), output_headers_kb(false), num_active_rntis(0), active_time_values_start(
+				0), transmitted_dl_bytes_values_start(0), transmitted_ul_bytes_values_start(
+				0) {
 	for (unsigned int i = 0; i < 65536; i++) {
 		rnti_start_time[i] = 0;
 		rnti_last_seen[i] = 0;
@@ -61,45 +63,44 @@ void UserActivityAnalyzer::update_rnti_value_names() {
 }
 
 void UserActivityAnalyzer::update_value_names(list<unsigned int>& classes_list,
-		string classes_name, string unit) {
+		string classes_name, float divide, string unit) {
 	unsigned int output_values_start = value_names.size();
 
 	unsigned int lower = classes_list.front();
 	char name_buf[512];
-	snprintf(name_buf, 512, "%s <= %d%s", classes_name.c_str(), lower,
+	snprintf(name_buf, 512, "%s [0, %.6g%s]", classes_name.c_str(), lower / divide,
 			unit.c_str());
 	value_names.push_back(name_buf);
-	lower++;
 	for (list<unsigned int>::iterator it = (++classes_list.begin());
 			it != classes_list.end(); it++) {
 		unsigned int upper = *it;
-		snprintf(name_buf, 512, "%s %d%s - %d%s", classes_name.c_str(), lower,
-				unit.c_str(), upper, unit.c_str());
+		snprintf(name_buf, 512, "%s (%.6g%s, %.6g%s]", classes_name.c_str(),
+				lower / divide, unit.c_str(), upper / divide, unit.c_str());
 		value_names.push_back(name_buf);
-		lower = upper + 1;
+		lower = upper;
 	}
-	snprintf(name_buf, 512, "%s >= %d%s", classes_name.c_str(), lower,
-			unit.c_str());
+	snprintf(name_buf, 512, "%s (%.6g%s, inf]", classes_name.c_str(),
+			lower / divide, unit.c_str());
 	value_names.push_back(name_buf);
 
 	for (unsigned int i = output_values_start + classes_list.size();
 			i >= output_values_start; i--) {
-		set_num_samples(i, 0);  //TODO also support normalized output?
+		set_num_samples(i, 0);  //TODO also support normalized output? maybe normalized to class width, to easily plot real histograms
 	}
 	values.resize(value_names.size());
 }
 
 void UserActivityAnalyzer::define_classes(list<unsigned int>& classes_list,
-		vector<string>& values, string classes_name, string unit) {
+		vector<string>& values, string classes_name, float divide, string unit) {
 	for (unsigned int i = 1; i < values.size(); i++) {
 		int int_val = atoi(values[i].c_str());
 		classes_list.push_back(int_val);
 	}
-	update_value_names(classes_list, classes_name, unit);
+	update_value_names(classes_list, classes_name, divide, unit);
 }
 
 void UserActivityAnalyzer::define_classes_eq(list<unsigned int>& classes_list,
-		vector<string>& values, string classes_name, string unit) {
+		vector<string>& values, string classes_name, float divide, string unit) {
 	unsigned int intervals = atoi(values[2].c_str());
 	float interval_size = atoi(values[1].c_str()) / (float) intervals;
 	float int_border = 0;
@@ -107,7 +108,7 @@ void UserActivityAnalyzer::define_classes_eq(list<unsigned int>& classes_list,
 		int_border += interval_size;
 		classes_list.push_back((unsigned int) int_border);
 	}
-	update_value_names(classes_list, classes_name, unit);
+	update_value_names(classes_list, classes_name, divide, unit);
 }
 
 bool UserActivityAnalyzer::set_parameter(string name, vector<string>& values) {
@@ -124,28 +125,51 @@ bool UserActivityAnalyzer::set_parameter(string name, vector<string>& values) {
 	} else if (name.compare("output_dcis_rnti") == 0) {
 		int int_val = atoi(values[1].c_str());
 		output_dcis_rnti = int_val;
+	} else if (name.compare("output_headers_kb") == 0) {
+		int int_val = atoi(values[1].c_str());
+		output_headers_kb = int_val;
 	} else if (name.compare("classes_active_time") == 0) {
 		active_time_values_start = value_names.size();
-		define_classes(classes_active_time, values, "active time", "ms");
+		define_classes(classes_active_time, values, "active time", 1, "ms");
 	} else if (name.compare("classes_transmitted_dl_bytes") == 0) {
 		transmitted_dl_bytes_values_start = value_names.size();
-		define_classes(classes_transmitted_dl_bytes, values, "DL transmitted",
-				"bytes");
+		if (output_headers_kb) {
+			define_classes(classes_transmitted_dl_bytes, values, "DL transmitted",
+					1000, "kB");
+		} else {
+			define_classes(classes_transmitted_dl_bytes, values, "DL transmitted", 1,
+					"bytes");
+		}
 	} else if (name.compare("classes_transmitted_ul_bytes") == 0) {
 		transmitted_ul_bytes_values_start = value_names.size();
-		define_classes(classes_transmitted_ul_bytes, values, "UL transmitted",
-				"bytes");
+		if (output_headers_kb) {
+			define_classes(classes_transmitted_ul_bytes, values, "UL transmitted",
+					1000, "kB");
+		} else {
+			define_classes(classes_transmitted_ul_bytes, values, "UL transmitted", 1,
+					"bytes");
+		}
 	} else if (name.compare("classes_active_time_eq") == 0) {
 		active_time_values_start = value_names.size();
-		define_classes_eq(classes_active_time, values, "active time", "ms");
+		define_classes_eq(classes_active_time, values, "active time", 1, "ms");
 	} else if (name.compare("classes_transmitted_dl_bytes_eq") == 0) {
 		transmitted_dl_bytes_values_start = value_names.size();
-		define_classes_eq(classes_transmitted_dl_bytes, values, "DL transmitted",
-				"bytes");
+		if (output_headers_kb) {
+			define_classes_eq(classes_transmitted_dl_bytes, values, "DL transmitted",
+					1000, "kB");
+		} else {
+			define_classes_eq(classes_transmitted_dl_bytes, values, "DL transmitted",
+					1, "bytes");
+		}
 	} else if (name.compare("classes_transmitted_ul_bytes_eq") == 0) {
 		transmitted_ul_bytes_values_start = value_names.size();
-		define_classes_eq(classes_transmitted_ul_bytes, values, "UL transmitted",
-				"bytes");
+		if (output_headers_kb) {
+			define_classes_eq(classes_transmitted_ul_bytes, values, "UL transmitted",
+					1000, "kB");
+		} else {
+			define_classes_eq(classes_transmitted_ul_bytes, values, "UL transmitted",
+					1, "bytes");
+		}
 	}
 	return false;
 }
