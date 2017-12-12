@@ -26,6 +26,7 @@
 #include "SubframeAnalyzer.h"
 
 #define DEFAULT_INACTIVITY_TIME_MS 12000
+#define DEFAULT_BURST_BREAK_INACTIVITY_MS 640
 
 typedef struct {
 	unsigned int rnti;
@@ -49,7 +50,7 @@ public:
 	virtual bool set_parameter(std::string name,
 			std::vector<std::string>& values);
 private:
-	void add_data_bits(DciResult* dci_result, unsigned int rnti);
+	bool add_data_bits(DciResult* dci_result, unsigned int rnti);
 	void define_classes(std::list<unsigned int>& classes_list,
 			std::vector<std::string>& values, std::string classes_name, float divide,
 			std::string unit);
@@ -92,6 +93,12 @@ private:
 	uint64_t rnti_bits_transmitted_dl[65536];
 	uint64_t rnti_bits_transmitted_ul[65536];
 
+	unsigned int burst_break_inactivity_ms;
+	uint64_t rnti_last_burst_end[65536];
+	uint64_t rnti_burst_start[65536];
+	uint64_t rnti_burst_end[65536];
+
+	unsigned int network_disconnect_max_burst_size;
 	unsigned int active_time_values_start;
 	unsigned int transmitted_dl_bytes_values_start;
 	unsigned int transmitted_ul_bytes_values_start;

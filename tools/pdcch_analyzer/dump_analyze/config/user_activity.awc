@@ -3,6 +3,8 @@
 
 UserActivityAnalyzer "user_activity_analyzer"
 inactivity_time_ms 20000 // time (in ms) after which an RNTI is considered as inactive, should correspond to cell configuration (unknown to phone, in the worst case choose a larger value, as the RNTI will likely not be re-used directly anyway)
+burst_break_inactivity_ms 320 //inactivity time (in ms) between data grants until which the data is considered as a single burst, e.g. used for detection of disconnect messages (to determine correct activity time)
+network_disconnect_max_burst_size 320 //maximum length (in ms) of a data burst in the end after some inactivity to be considered as a diconnect notification exchange, this exchange and the inactive time before are then excluded from the user's activity time, set to 0 to disable the detection
 verbose_text_output 0 //if 1, output RNTI active state changes to stdout
 output_dcis_rnti 0 //if not 0 (default), output DCIs (time and grant sizes) for this RNTI value to stdout
 output_headers_kb 1 //if 1, the data usage column headers are in kB instead of bytes
