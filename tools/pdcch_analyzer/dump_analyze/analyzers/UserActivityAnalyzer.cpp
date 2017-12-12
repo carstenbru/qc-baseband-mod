@@ -28,8 +28,8 @@ using namespace std;
 
 UserActivityAnalyzer::UserActivityAnalyzer() :
 		inactivity_time_ms(DEFAULT_INACTIVITY_TIME_MS), verbose_text_output(false), output_dcis_rnti(
-				0), output_headers_kb(false), num_active_rntis(0), active_time_values_start(
-				0), transmitted_dl_bytes_values_start(0), transmitted_ul_bytes_values_start(
+				0), output_headers_kb(false), output_headers_s(false), num_active_rntis(
+				0), active_time_values_start(0), transmitted_dl_bytes_values_start(0), transmitted_ul_bytes_values_start(
 				0) {
 	for (unsigned int i = 0; i < 65536; i++) {
 		rnti_start_time[i] = 0;
@@ -68,8 +68,8 @@ void UserActivityAnalyzer::update_value_names(list<unsigned int>& classes_list,
 
 	unsigned int lower = classes_list.front();
 	char name_buf[512];
-	snprintf(name_buf, 512, "%s [0, %.6g%s]", classes_name.c_str(), lower / divide,
-			unit.c_str());
+	snprintf(name_buf, 512, "%s [0, %.6g%s]", classes_name.c_str(),
+			lower / divide, unit.c_str());
 	value_names.push_back(name_buf);
 	for (list<unsigned int>::iterator it = (++classes_list.begin());
 			it != classes_list.end(); it++) {
@@ -128,9 +128,16 @@ bool UserActivityAnalyzer::set_parameter(string name, vector<string>& values) {
 	} else if (name.compare("output_headers_kb") == 0) {
 		int int_val = atoi(values[1].c_str());
 		output_headers_kb = int_val;
+	} else if (name.compare("output_headers_s") == 0) {
+		int int_val = atoi(values[1].c_str());
+		output_headers_s = int_val;
 	} else if (name.compare("classes_active_time") == 0) {
 		active_time_values_start = value_names.size();
-		define_classes(classes_active_time, values, "active time", 1, "ms");
+		if (output_headers_s) {
+			define_classes(classes_active_time, values, "active time", 1000, "s");
+		} else {
+			define_classes(classes_active_time, values, "active time", 1, "ms");
+		}
 	} else if (name.compare("classes_transmitted_dl_bytes") == 0) {
 		transmitted_dl_bytes_values_start = value_names.size();
 		if (output_headers_kb) {
@@ -151,7 +158,11 @@ bool UserActivityAnalyzer::set_parameter(string name, vector<string>& values) {
 		}
 	} else if (name.compare("classes_active_time_eq") == 0) {
 		active_time_values_start = value_names.size();
-		define_classes_eq(classes_active_time, values, "active time", 1, "ms");
+		if (output_headers_s) {
+			define_classes_eq(classes_active_time, values, "active time", 1000, "s");
+		} else {
+			define_classes_eq(classes_active_time, values, "active time", 1, "ms");
+		}
 	} else if (name.compare("classes_transmitted_dl_bytes_eq") == 0) {
 		transmitted_dl_bytes_values_start = value_names.size();
 		if (output_headers_kb) {

@@ -5,7 +5,8 @@ UserActivityAnalyzer "user_activity_analyzer"
 inactivity_time_ms 20000 // time (in ms) after which an RNTI is considered as inactive, should correspond to cell configuration (unknown to phone, in the worst case choose a larger value, as the RNTI will likely not be re-used directly anyway)
 verbose_text_output 0 //if 1, output RNTI active state changes to stdout
 output_dcis_rnti 0 //if not 0 (default), output DCIs (time and grant sizes) for this RNTI value to stdout
-output_headers_kb 1 //if 1, the data usage column headers are in kB insetad of bytes
+output_headers_kb 1 //if 1, the data usage column headers are in kB instead of bytes
+output_headers_s 1 //if 1, the active time column headers are in seconds instead of ms
 classes_active_time 100 500 1000 2000 5000 10000 11000 30000 //define intervals in which the RNTI active time should be classified: each number represents a the upper border of an interval in ms
 classes_transmitted_dl_bytes 200 1000 5000 20000 100000 500000
 classes_transmitted_ul_bytes 200 1000 5000 20000 100000 500000

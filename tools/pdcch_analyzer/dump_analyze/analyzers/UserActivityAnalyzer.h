@@ -82,6 +82,7 @@ private:
 	bool verbose_text_output;
 	unsigned int output_dcis_rnti;
 	bool output_headers_kb;
+	bool output_headers_s;
 
 	std::list<rnti_got_active_event_t> rnti_got_active_events;
 	unsigned int num_active_rntis;
