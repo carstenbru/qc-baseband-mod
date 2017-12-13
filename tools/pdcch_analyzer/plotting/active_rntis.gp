@@ -11,13 +11,21 @@
 #   gnuplot -c ./active_users.gp it_avg_pdcch_0_dec.csv active_users.svg
 #   gnuplot -c ./active_users.gp it_avg_pdcch_0_dec.csv active_users.svg
 
-#to adapt to different data formats (different analyzers used), set to -1 if not wanted in plot
-active_users_column = 3
-
 width = 1280
 height = 720
 inp_file = ARG1
 out_file = ARG2
+
+column = 0
+ctext = "not empty"
+while (ctext ne "") { # detect columns and other input data format parameters (e.g. number of classes)
+    ctext = system("head -2 " . inp_file . " | awk 'BEGIN {FS=\"\t\"}; {print $".(column+1)."}' | tail -1")
+    if (ctext[0:12] eq "active RNTIs") {
+        active_users_column = column
+    }
+    column = column+1
+}
+active_users_column = active_users_column + 1
 
 if (out_file[strstrt(out_file,".")+1:] eq "png") set terminal png size width, height
 if (out_file[strstrt(out_file,".")+1:] eq "svg") set terminal svg size width, height

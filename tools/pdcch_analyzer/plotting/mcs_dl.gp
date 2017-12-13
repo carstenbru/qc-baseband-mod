@@ -6,11 +6,22 @@
 #   gnuplot -c ./mcs_dl.gp 10min_avg_pdcch_0.csv mcs_dl.svg
 #   gnuplot -c ./mcs_dl.gp 10min_avg_pdcch_0.csv mcs_dl.png
 
-start_column = 1 #first colum with DL MCS data, to adapt to different data formats (different analyzers used)
 width = 1280
 height = 720
 inp_file = ARG1
 out_file = ARG2
+
+start_column = 0
+
+column = 0
+ctext = "not empty"
+while (ctext ne "") { # detect columns and other input data format parameters (e.g. number of classes)
+    ctext = system("head -2 " . inp_file . " | awk 'BEGIN {FS=\"\t\"}; {print $".(column+1)."}' | tail -1")
+    if (start_column == 0) && (ctext[0:6] eq "DL MCS") {
+        start_column = column #first colum with DL MCS data
+    }
+    column = column+1
+}
 
 if (out_file[strstrt(out_file,".")+1:] eq "png") set terminal png size width, height
 if (out_file[strstrt(out_file,".")+1:] eq "svg") set terminal svg size width, height

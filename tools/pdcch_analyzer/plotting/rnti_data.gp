@@ -6,18 +6,39 @@
 #   gnuplot -c ./rnti_data.gp 10min_avg_pdcch_0.csv rnti_data_dl.svg dl
 #   gnuplot -c ./rnti_data.gp 10min_avg_pdcch_0.csv rnti_data_ul.png ul
 
-rnti_got_inactive_column = 3
-rnti_dl_data_start_column = rnti_got_inactive_column+10 #first colum with RNTI dl data, to adapt to different data formats (different analyzers used)
-rnti_dl_data_classes = 7 #number of classes for RNTI DL data
-rnti_ul_data_start_column = rnti_dl_data_start_column + rnti_dl_data_classes
-rnti_ul_data_classes = rnti_dl_data_classes
 normalize = 0 #1 to normalize values (i.e. get the probability) or 0 to plot absolute values
-
 width = 1280
 height = 720
 inp_file = ARG1
 out_file = ARG2
 data_direction = ARG3
+
+rnti_dl_data_start_column = 0
+rnti_ul_data_start_column = 0
+rnti_dl_data_classes = 0
+rnti_ul_data_classes = 0
+
+column = 0
+ctext = "not empty"
+while (ctext ne "") { # detect columns and other input data format parameters (e.g. number of classes)
+    ctext = system("head -2 " . inp_file . " | awk 'BEGIN {FS=\"\t\"}; {print $".(column+1)."}' | tail -1")
+    if (ctext[0:18] eq "RNTIs got inactive") {
+        rnti_got_inactive_column = column
+    }
+    if (ctext[0:14] eq "DL transmitted") { 
+        rnti_dl_data_classes = rnti_dl_data_classes+1 #number of classes for RNTI DL data
+        if (rnti_dl_data_start_column == 0) {
+            rnti_dl_data_start_column = column #first colum with RNTI dl data
+        }
+    }
+    if (ctext[0:14] eq "UL transmitted") { 
+        rnti_ul_data_classes = rnti_ul_data_classes+1 #number of classes for RNTI UL data
+        if (rnti_ul_data_start_column == 0) {
+            rnti_ul_data_start_column = column #first colum with RNTI ul data
+        }
+    }
+    column = column+1
+}
 
 if (out_file[strstrt(out_file,".")+1:] eq "png") set terminal png size width, height
 if (out_file[strstrt(out_file,".")+1:] eq "svg") set terminal svg size width, height
