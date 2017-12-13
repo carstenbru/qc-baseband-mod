@@ -29,9 +29,9 @@ using namespace std;
 UserActivityAnalyzer::UserActivityAnalyzer() :
 		inactivity_time_ms(DEFAULT_INACTIVITY_TIME_MS), verbose_text_output(false), output_dcis_rnti(
 				0), output_headers_kb(false), output_headers_s(false), num_active_rntis(
-				0), burst_break_inactivity_ms(DEFAULT_BURST_BREAK_INACTIVITY_MS), active_time_values_start(
-				0), network_disconnect_max_burst_size(0), transmitted_dl_bytes_values_start(
-				0), transmitted_ul_bytes_values_start(0) {
+				0), burst_break_inactivity_ms(DEFAULT_BURST_BREAK_INACTIVITY_MS), network_disconnect_max_burst_size(
+				0), active_time_values_start(0), transmitted_dl_bytes_values_start(0), transmitted_ul_bytes_values_start(
+				0) {
 	for (unsigned int i = 0; i < 65536; i++) {
 		rnti_start_time[i] = 0;
 		rnti_last_seen[i] = 0;
@@ -302,7 +302,6 @@ void UserActivityAnalyzer::evaluate_dcis(uint64_t current_time,
 		bool contains_data_grant = add_data_bits(dci_result, rnti);
 
 		if (contains_data_grant) {  //data burst detection
-			//TODO at end: evaluate bursts data and report correct time
 			if ((rnti_burst_start[rnti] == 0)  // no previous burst active
 			|| ((rnti_burst_end[rnti] + burst_break_inactivity_ms) < current_time)) {  // last data grant was a long time ago...new burst
 				rnti_last_burst_end[rnti] = rnti_burst_end[rnti];  // store end time of last burst
@@ -331,8 +330,6 @@ unsigned int UserActivityAnalyzer::check_rntis_inactive_set_values(
 					uint64_t active_time = current_time - rnti_start_time[rnti]
 							- inactivity_time_ms;  // define active time as time between first and last DCI for this RNTI
 					if (rnti_last_burst_end[rnti] != 0) {  // we had (at least) two data bursts
-						//TODO parameter
-						//TODO enable/disable in settings (maybe same parameter, just set to 0)
 						if ((rnti_burst_end[rnti] - rnti_burst_start[rnti])
 								< network_disconnect_max_burst_size) {  // and the last burst was really short -> likely the last burst was just a disconnect message from the network
 							active_time = rnti_last_burst_end[rnti] - rnti_start_time[rnti];
