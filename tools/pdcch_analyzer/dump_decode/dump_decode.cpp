@@ -100,6 +100,8 @@ int main(int argc, char* argv[]) {
 
 	cout << "finished processing dump" << endl;
 
+	pdcch_dump_record_reader.print_stats();
+
 	return 0;
 }
 

@@ -21,6 +21,7 @@ using namespace std;
 
 #define DEFAULT_REG_ENERGY_THRESHOLD 128
 #define DEFAULT_DECODE_SUCCESS_PROB_THRESHOLD 0.99f
+#define DEFAULT_DECODE_SUCCESS_PROB_KNOWN_RNTI_THRESHOLD 0.95f
 #define DEFAULT_MIN_REGS_W_ENEGRY_CCE_ACTIVE 5
 
 #define PDCCH_NCOLS  32
@@ -37,9 +38,26 @@ srslte_dci_format_t active_dci_formats[] = { SRSLTE_DCI_FORMAT1C,
 //ordered by increasing length, as for same probabilities the first result is kept and mistakes are less likely for shorter DCI types (more bits for error correction)
 
 PdcchDecoder::PdcchDecoder() :
-		decode_success_prob_threshold(DEFAULT_DECODE_SUCCESS_PROB_THRESHOLD), last_phy_cell_id(
-				-1), num_dci_formats(0), reg_energy_threshold(
-		DEFAULT_REG_ENERGY_THRESHOLD), pdcch_dump_record_reader(0) {
+				decode_success_prob_threshold(DEFAULT_DECODE_SUCCESS_PROB_THRESHOLD),
+				decode_success_prob_known_rnti_threshold(
+				DEFAULT_DECODE_SUCCESS_PROB_KNOWN_RNTI_THRESHOLD),
+				last_phy_cell_id(-1),
+				num_dci_formats(0),
+				reg_energy_threshold(
+				DEFAULT_REG_ENERGY_THRESHOLD),
+				pdcch_dump_record_reader(0),
+				analyzed_subframes(0),
+				detected_decoded_dcis(0),
+				cces_w_energy_no_dci(0),
+				cces_w_dci_no_energy(0),
+				inactivity_time_ms(DEFAULT_INACTIVITY_TIME_MS),
+				rach_timeout_ms(DEFAULT_RACH_TIMEOUT_MS),
+				rnti_active_after_rach(0),
+				rnti_active_wo_rach(0),
+				rach_wo_new_rnti(0),
+				init_period_ms(DEFAULT_INIT_PERIOD_MS),
+				report_warnings(true),  //TODO false
+				last_time(0) {
 	for (unsigned int i = 0; i < 3; i++) {
 		cce_reg_to_reg_pos_mapping[i] = 0;
 	}
@@ -54,6 +72,10 @@ PdcchDecoder::PdcchDecoder() :
 	encoder.R = 3;
 	encoder.tail_biting = true;
 	memcpy(encoder.poly, poly, 3 * sizeof(int));
+
+	for (unsigned int i = 0; i < 65536; i++) {
+		rnti_last_seen[i] = 0;
+	}
 }
 
 PdcchDecoder::~PdcchDecoder() {
@@ -345,8 +367,12 @@ bool PdcchDecoder::validate_rnti_in_search_space(unsigned int agl,
 	return false;
 }
 
+bool is_c_rnti(unsigned int rnti) {
+	return ((rnti > 10) && (rnti <= 0xFFF3));
+}
+
 void PdcchDecoder::blind_decode(int16_t* cce_buf, unsigned int num_regs,
-		PdcchLlrBufferRecord& llr_buffer_record) {
+		PdcchLlrBufferRecord& llr_buffer_record, uint64_t current_time) {
 	list<DciResult*>* detected_dcis = new list<DciResult*>;
 	PdcchAddCellInfoRecord* pdcch_add_cell_info_record =
 			(PdcchAddCellInfoRecord*) pdcch_dump_record_reader->get_last_record(
@@ -413,7 +439,7 @@ void PdcchDecoder::blind_decode(int16_t* cce_buf, unsigned int num_regs,
 				/* checks whether P/SI/RA-RNTI addresses are used with formats other than 0 and 1A */
 				if (!(active_dci_formats[dci_format] == SRSLTE_DCI_FORMAT0
 						|| active_dci_formats[dci_format] == SRSLTE_DCI_FORMAT1A)
-						&& (decoded_rnti <= 0x000A || decoded_rnti > 0xFFF3)) {
+						&& !is_c_rnti(decoded_rnti)) {
 					prob = 0;
 				}
 
@@ -421,6 +447,13 @@ void PdcchDecoder::blind_decode(int16_t* cce_buf, unsigned int num_regs,
 				if (!validate_rnti_in_search_space(agl, num_regs / 9,
 						llr_buffer_record.get_subframe(), decoded_rnti, candidate * agl)) {
 					prob = 0;
+				}
+
+				/* always accept DCI as successful if the RNTI value is a special RNTI value (P/SI/RA-RNTI) or if the RNTI is known as active RNTI value */
+				if (!is_c_rnti(decoded_rnti) || (rnti_last_seen[decoded_rnti] != 0)) {
+					if (prob > decode_success_prob_known_rnti_threshold) {
+						prob = 1.0f;
+					}
 				}
 
 				if (prob > best_prob) {
@@ -434,12 +467,17 @@ void PdcchDecoder::blind_decode(int16_t* cce_buf, unsigned int num_regs,
 					}
 				}
 			}
-			if (best_prob >= decode_success_prob_threshold) {
-				//mark CCEs as DCI detected
+			float cur_threshold = decode_success_prob_threshold;  //use normal acceptance threshold value
+			if ((!observed_rach.empty()) && (current_time < init_period_ms)) {  //...except in init phase or when we saw a RACH procedure and expect new RNTIs
+				cur_threshold = decode_success_prob_known_rnti_threshold;
+			}
+			if (best_prob >= cur_threshold) {
+				/* mark CCEs as DCI detected */
 				for (unsigned int cce = 0; cce < agl; cce++) {
 					cce_dci_detected[candidate * agl + cce] = true;
 				}
 
+				/* determine format in ambiguous case of format 0/1A*/
 				srslte_dci_format_t best_format = active_dci_formats[best_format_idx];
 				if (best_format == SRSLTE_DCI_FORMAT0) {
 					if (best_decoded_dci_bits & 1) {
@@ -447,6 +485,7 @@ void PdcchDecoder::blind_decode(int16_t* cce_buf, unsigned int num_regs,
 					}
 				}
 
+				/* create DCI result object */
 				unsigned int harq_pid = (10 * llr_buffer_record.get_sfn()
 						+ llr_buffer_record.get_subframe()) % 8;
 				DciResult* dci_result = new DciResult(best_format,
@@ -457,6 +496,31 @@ void PdcchDecoder::blind_decode(int16_t* cce_buf, unsigned int num_regs,
 				dci_result->set_start_cce(candidate * agl);
 				dci_result->set_decoding_success_prob(best_prob);
 				detected_dcis->push_back(dci_result);
+
+				/* update list of active RNTIs and associated variables */
+				if (rnti_last_seen[best_decoded_rnti] == 0) {
+					if (is_c_rnti(best_decoded_rnti)) {
+						active_rntis.push_back(best_decoded_rnti);
+
+						if (!observed_rach.empty()) {  //check if a RACH was observed before for the new RNTI
+							observed_rach.pop_front();
+							rnti_active_after_rach++;
+						} else {
+							if (current_time > init_period_ms) {
+								rnti_active_wo_rach++;
+								if (report_warnings) {
+									cout << "RNTI got active without RACH: " << best_decoded_rnti
+											<< endl;
+								}
+							}
+						}
+					}
+				}
+				rnti_last_seen[best_decoded_rnti] = current_time;
+				detected_decoded_dcis++;
+				if (best_decoded_rnti <= 10) {  //RA-RNTI
+					observed_rach.push_back(current_time);  //add current time to list of observed random access procedures
+				}
 			}
 		}
 	}
@@ -466,15 +530,21 @@ void PdcchDecoder::blind_decode(int16_t* cce_buf, unsigned int num_regs,
 		for (unsigned int cce = 0; cce < num_regs / 9; cce++) {
 			if (!cce_dci_detected[cce]
 					&& (active_cce[cce] >= DEFAULT_MIN_REGS_W_ENEGRY_CCE_ACTIVE)) {
-				cout << "##########################" << endl;
-				cout << "warning: CCE " << cce << " has high energy ("
-						<< (int) active_cce[cce]
-						<< " REGs over threshold), but no DCI detected!" << endl;
+				cces_w_energy_no_dci++;
+				if (report_warnings) {
+					cout << "##########################" << endl;
+					cout << "warning: CCE " << cce << " has high energy ("
+							<< (int) active_cce[cce]
+							<< " REGs over threshold), but no DCI detected!" << endl;
+				}
 			}
 			if (!active_cce[cce] && cce_dci_detected[cce]) {
-				cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
-				cout << "warning: CCE " << cce << " has small energy, but DCI detected!"
-						<< endl;
+				cces_w_dci_no_energy++;
+				if (report_warnings) {
+					cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
+					cout << "warning: CCE " << cce
+							<< " has small energy, but DCI detected!" << endl;
+				}
 			}
 		}
 	}
@@ -500,6 +570,20 @@ bool PdcchDecoder::decode_record(PdcchLlrBufferRecord& llr_buffer_record) {
 	if (pdcch_add_cell_info_record == 0) {
 		return false;
 	}
+	uint64_t current_time =
+			(((uint64_t) pdcch_dump_record_reader->get_sfn_iteration()) * 10240)
+					+ ((uint64_t) llr_buffer_record.get_sfn() * 10)
+					+ ((uint64_t) llr_buffer_record.get_subframe());
+
+	if (report_warnings) {
+		if (current_time - last_time > 1) {
+			cout << "??? gap in subframes, last_time: " << last_time
+					<< ", current_time: " << current_time << ", gap length: "
+					<< (current_time - last_time) << endl;
+		}
+		last_time = current_time;
+	}
+
 	/* pre-calculate values only depending on cell: */
 	if (last_phy_cell_id != llr_buffer_record.get_phy_cell_id()) {
 		pre_calculate_values(llr_buffer_record.get_phy_cell_id(),
@@ -538,7 +622,11 @@ bool PdcchDecoder::decode_record(PdcchLlrBufferRecord& llr_buffer_record) {
 	}
 
 	/* blind decoding */
-	blind_decode(cce_buf, num_regs, llr_buffer_record);
+	blind_decode(cce_buf, num_regs, llr_buffer_record, current_time);
+
+	check_rntis_inactive(current_time);
+	check_rach_timeout(current_time);
+	analyzed_subframes++;
 
 	return true;
 }
@@ -551,9 +639,58 @@ bool pdcch_decoder_process_data_record(PdcchLlrBufferRecord* llr_buffer_record,
 	return false;
 }
 
+void PdcchDecoder::check_rntis_inactive(uint64_t current_time) {
+	if (current_time >= inactivity_time_ms) {  //RNTIs can only get inactive after some start period
+		uint64_t threshold_time = current_time - (uint64_t) inactivity_time_ms;
+		list<unsigned int>::iterator rnti_it = active_rntis.begin();
+		while (rnti_it != active_rntis.end()) {
+			unsigned int rnti = *rnti_it;
+			if (rnti_last_seen[rnti] <= threshold_time) {  //RNTI got inactive
+				rnti_last_seen[rnti] = 0;  //mark as inactive
+				rnti_it = active_rntis.erase(rnti_it);  //remove RNTI from active list
+			} else {
+				rnti_it++;
+			}
+		}
+	}
+}
+
+void PdcchDecoder::check_rach_timeout(uint64_t current_time) {
+	if (current_time >= rach_timeout_ms) {  //observed RACH can only expire after some start period
+		uint64_t threshold_time = current_time - (uint64_t) rach_timeout_ms;
+		while (!observed_rach.empty()) {
+			if (observed_rach.front() > threshold_time) {
+				return;
+			}
+			if (current_time > init_period_ms) {
+				if (report_warnings) {
+					cout << "dropping RACH from time: " << observed_rach.front()
+							<< " at time:" << current_time << endl;
+				}
+				rach_wo_new_rnti++;
+			}
+			observed_rach.pop_front();
+		}
+	}
+}
+
 void PdcchDecoder::connect_to_record_reader(
 		PdcchDumpRecordReader& pdcch_dump_record_reader) {
 	pdcch_dump_record_reader.register_callback(PDCCH_LLR_BUFFER_RECORD,
 			(record_callback_t) &pdcch_decoder_process_data_record, this);
 	this->pdcch_dump_record_reader = &pdcch_dump_record_reader;
+}
+
+void PdcchDecoder::print_stats() {
+	cout << "*** decoding statistics ***" << endl;
+	cout << "analyzed subframes: " << analyzed_subframes << endl;
+	cout << "detected DCIs: " << detected_decoded_dcis << endl;
+	cout << "CCEs with energy but no DCI detected: " << cces_w_energy_no_dci
+			<< endl;
+	cout << "CCEs with DCI detected but no energy: " << cces_w_dci_no_energy
+			<< endl;
+	cout << "RNTIs got active after observed RACH: " << rnti_active_after_rach
+			<< endl;
+	cout << "RNTIs got active without RACH: " << rnti_active_wo_rach << endl;
+	cout << "RACH procedures without new RNTIs: " << rach_wo_new_rnti << endl;
 }

@@ -29,6 +29,10 @@ typedef struct {
 
 class PdcchDumpRecordReader;
 
+#define DEFAULT_INACTIVITY_TIME_MS 20000
+#define DEFAULT_INIT_PERIOD_MS 30000
+#define DEFAULT_RACH_TIMEOUT_MS 200
+
 /**
  * callback function type
  *
@@ -72,6 +76,15 @@ public:
 	}
 
 	/**
+	 * sets the threshold for a decoding with a known RNTI value (P/SI/RA-RNTI or active C-RNTI) to be accepted immediately, i.e. its probability being set to 1.0
+	 */
+	void set_decode_success_prob_known_rnti_threshold(
+			float decode_success_prob_known_rnti_threshold) {
+		this->decode_success_prob_known_rnti_threshold =
+				decode_success_prob_known_rnti_threshold;
+	}
+
+	/**
 	 * sets the threshold for REGs "energy" to be considered as containing data
 	 *
 	 * The absolute sum of all LLR values in an REG has to be bigger than this threshold,
@@ -89,6 +102,31 @@ public:
 	 */
 	void connect_to_record_reader(
 			PdcchDumpRecordReader& pdcch_dump_record_reader);
+
+	/**
+	 * sets the time (in ms) after which a RNTI is considered as not active anymore
+	 */
+	void set_inactivity_time_ms(unsigned int inactivity_time_ms) {
+		this->inactivity_time_ms = inactivity_time_ms;
+	}
+	/**
+	 * sets the time (in ms) which is considered as init period, i.e. in which the list of active RNTIs is initialized
+	 */
+	void set_init_period_ms(unsigned int init_period_ms) {
+		this->init_period_ms = init_period_ms;
+	}
+
+	/**
+	 * prints various statistic values, can be called after decoding a set of records
+	 */
+	void print_stats();
+
+	/**
+	 * set to true to output warning messages to stdout
+	 */
+	void set_report_warnings(bool report_warnings) {
+		this->report_warnings = report_warnings;
+	}
 private:
 	/**
 	 * pre-calculates values only depending on cell for fast decoding
@@ -96,7 +134,7 @@ private:
 	void pre_calculate_values(uint16_t phy_cell_id, unsigned int prbs,
 			unsigned int tx_ports);
 	void blind_decode(int16_t* cce_buf, unsigned int num_regs,
-			PdcchLlrBufferRecord& llr_buffer_record);
+			PdcchLlrBufferRecord& llr_buffer_record, uint64_t current_time);
 	/**
 	 * validates if a CCE is part of the search space of a given RNTI
 	 */
@@ -114,11 +152,20 @@ private:
 	float try_decode_dci(int16_t* ch_data, unsigned int agl,
 			unsigned int dci_bits, uint16_t* decoded_rnti,
 			uint64_t* decoded_dci_bits);
+	/**
+	 * checks if RNTIs got inactive at the current timepoint and thus should be removed from the list of active RNTIs
+	 */
+	void check_rntis_inactive(uint64_t current_time);
+	/**
+	 * check if some of the observed RACH procedures are longer ago than the defined threshold
+	 */
+	void check_rach_timeout(uint64_t current_time);
 
 	std::vector<decoder_callback_t> callbacks;
 	std::vector<void*> callback_args;
 
 	float decode_success_prob_threshold;
+	float decode_success_prob_known_rnti_threshold;
 
 	// pre-calculated values (only depending on cell)
 	int16_t last_phy_cell_id;
@@ -133,6 +180,26 @@ private:
 	srslte_convcoder_t encoder;
 
 	PdcchDumpRecordReader* pdcch_dump_record_reader;
+
+	unsigned int analyzed_subframes;
+	unsigned int detected_decoded_dcis;
+	unsigned int cces_w_energy_no_dci;
+	unsigned int cces_w_dci_no_energy;
+
+	unsigned int inactivity_time_ms;
+	uint64_t rnti_last_seen[65536];
+	std::list<unsigned int> active_rntis;
+
+	unsigned int rach_timeout_ms;
+	std::list<uint64_t> observed_rach;
+	unsigned int rnti_active_after_rach;
+	unsigned int rnti_active_wo_rach;
+	unsigned int rach_wo_new_rnti;
+
+	unsigned int init_period_ms;
+
+	bool report_warnings;
+	uint64_t last_time;
 };
 
 #endif /* PDCCHDECODER_H_ */

@@ -25,7 +25,7 @@
 
 #include "SubframeAnalyzer.h"
 
-#define DEFAULT_INACTIVITY_TIME_MS 12000
+#define DEFAULT_INACTIVITY_TIME_MS 20000
 #define DEFAULT_BURST_BREAK_INACTIVITY_MS 640
 
 typedef struct {

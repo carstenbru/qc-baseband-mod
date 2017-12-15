@@ -27,11 +27,17 @@
 using namespace std;
 
 UserActivityAnalyzer::UserActivityAnalyzer() :
-		inactivity_time_ms(DEFAULT_INACTIVITY_TIME_MS), verbose_text_output(false), output_dcis_rnti(
-				0), output_headers_kb(false), output_headers_s(false), num_active_rntis(
-				0), burst_break_inactivity_ms(DEFAULT_BURST_BREAK_INACTIVITY_MS), network_disconnect_max_burst_size(
-				0), active_time_values_start(0), transmitted_dl_bytes_values_start(0), transmitted_ul_bytes_values_start(
-				0) {
+				inactivity_time_ms(DEFAULT_INACTIVITY_TIME_MS),
+				verbose_text_output(false),
+				output_dcis_rnti(0),
+				output_headers_kb(false),
+				output_headers_s(false),
+				num_active_rntis(0),
+				burst_break_inactivity_ms(DEFAULT_BURST_BREAK_INACTIVITY_MS),
+				network_disconnect_max_burst_size(0),
+				active_time_values_start(0),
+				transmitted_dl_bytes_values_start(0),
+				transmitted_ul_bytes_values_start(0) {
 	for (unsigned int i = 0; i < 65536; i++) {
 		rnti_start_time[i] = 0;
 		rnti_last_seen[i] = 0;
@@ -193,7 +199,7 @@ bool UserActivityAnalyzer::set_parameter(string name, vector<string>& values) {
 }
 
 bool is_c_rnti(unsigned int rnti) {
-	return ((rnti >= 10) && (rnti <= 0xFFF3));
+	return ((rnti > 10) && (rnti <= 0xFFF3));
 }
 
 bool UserActivityAnalyzer::add_data_bits(DciResult* dci_result,

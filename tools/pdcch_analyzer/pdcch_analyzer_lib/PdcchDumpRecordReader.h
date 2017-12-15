@@ -109,6 +109,15 @@ public:
 	 */
 	std::string get_time_string(PdcchDataRecord* data_record);
 	void new_record(PdcchDumpRecord* record, bool inc_sfn_it);
+
+	/**
+	 * prints various statistic values, can be called after decoding a file
+	 */
+	void print_stats() {
+		if (pdcchDecoder != 0) {
+			pdcchDecoder->print_stats();
+		}
+	}
 private:
 	bool call_callback(record_type_enum type, PdcchDumpRecord* record);
 
