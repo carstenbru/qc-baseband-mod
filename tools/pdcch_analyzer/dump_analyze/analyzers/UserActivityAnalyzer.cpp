@@ -198,7 +198,7 @@ bool UserActivityAnalyzer::set_parameter(string name, vector<string>& values) {
 	return false;
 }
 
-bool is_c_rnti(unsigned int rnti) {
+static bool is_c_rnti(unsigned int rnti) {
 	return ((rnti > 10) && (rnti <= 0xFFF3));
 }
 

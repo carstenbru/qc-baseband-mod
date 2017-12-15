@@ -19,7 +19,7 @@ extern "C" {
 
 using namespace std;
 
-#define DEFAULT_REG_ENERGY_THRESHOLD 128
+#define DEFAULT_REG_ENERGY_THRESHOLD 145
 #define DEFAULT_DECODE_SUCCESS_PROB_THRESHOLD 0.99f
 #define DEFAULT_DECODE_SUCCESS_PROB_KNOWN_RNTI_THRESHOLD 0.95f
 #define DEFAULT_MIN_REGS_W_ENEGRY_CCE_ACTIVE 5
@@ -56,7 +56,7 @@ PdcchDecoder::PdcchDecoder() :
 				rnti_active_wo_rach(0),
 				rach_wo_new_rnti(0),
 				init_period_ms(DEFAULT_INIT_PERIOD_MS),
-				report_warnings(true),  //TODO false
+				report_warnings(false),
 				last_time(0) {
 	for (unsigned int i = 0; i < 3; i++) {
 		cce_reg_to_reg_pos_mapping[i] = 0;
@@ -367,7 +367,7 @@ bool PdcchDecoder::validate_rnti_in_search_space(unsigned int agl,
 	return false;
 }
 
-bool is_c_rnti(unsigned int rnti) {
+static bool is_c_rnti(unsigned int rnti) {
 	return ((rnti > 10) && (rnti <= 0xFFF3));
 }
 
@@ -429,7 +429,7 @@ void PdcchDecoder::blind_decode(int16_t* cce_buf, unsigned int num_regs,
 					continue;  //skip format 1A as it has same length as format 0, so we already tried to decode its DCIs
 				}
 				if (cce_dci_detected[candidate * agl]) {
-					continue;  //skip CCEs in which already a DCI was detected
+					continue;  //skip CCEs in which already a DCI was detected, as we go from high to low AGL we just need to check the start location
 				}
 				uint16_t decoded_rnti;
 				uint64_t decoded_dci_bits;
@@ -449,7 +449,7 @@ void PdcchDecoder::blind_decode(int16_t* cce_buf, unsigned int num_regs,
 					prob = 0;
 				}
 
-				/* always accept DCI as successful if the RNTI value is a special RNTI value (P/SI/RA-RNTI) or if the RNTI is known as active RNTI value */
+				/* accept DCI as successful with a low threshold if the RNTI value is a special RNTI value (P/SI/RA-RNTI) or if the RNTI is known as active RNTI value */
 				if (!is_c_rnti(decoded_rnti) || (rnti_last_seen[decoded_rnti] != 0)) {
 					if (prob > decode_success_prob_known_rnti_threshold) {
 						prob = 1.0f;
