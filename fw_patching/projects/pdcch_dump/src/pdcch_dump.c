@@ -171,10 +171,10 @@ void pdcch_dump_thread_main() {
                     unsigned int cfi_detected = (LTE_DBE_PCFICH_STATUS) & 0xC0000000;
                     unsigned int reg_heights = PDCCH_DEINT_CFG_WORD1;
                     unsigned int num_regs_per_rb = ((reg_heights >> 20) & 0x3);
-                    if (cfi_detected >= 1) {
+                    if (cfi_detected >= 0x40000000) { //CFI2 or CFI3 (cfi_detected is shifted by 31 bits)
                         num_regs_per_rb += ((reg_heights >> 22) & 0x3);
                     }
-                    if (cfi_detected == 2) {
+                    if (cfi_detected == 0x80000000) { //CFI3
                         num_regs_per_rb += ((reg_heights >> 24) & 0x3);
                     }
                     unsigned int buffer_dump_length = num_regs_per_rb * num_rb + 1; //+1 because of header in LLR buffer
