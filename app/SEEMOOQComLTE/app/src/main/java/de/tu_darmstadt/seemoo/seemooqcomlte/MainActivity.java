@@ -783,7 +783,10 @@ public class MainActivity extends AppCompatActivity {
                                 // move the output stream of the ping process to the end
                                 // we have to do this because otherwise the runtime will stop the process
                                 // when too many output bytes are waiting
-                                pingProcess.getInputStream().skip(Long.MAX_VALUE);
+                                int available = pingProcess.getInputStream().available();
+                                if (available > 0) {
+                                    pingProcess.getInputStream().skip(available);
+                                }
                             } catch (IOException e) {
                             }
 
@@ -1112,6 +1115,11 @@ public class MainActivity extends AppCompatActivity {
          * @param length number of bytes in this record (without header)
          */
         public void writeRecord(int recordType, int recordVersion, byte[] data, int offset, int length) { //TODO ensure that not different data appears interleaved in output...mutex..
+            if (pdcchDumpStream == null) { //modem sends data but we are not dumping
+                pdcchDumpService.register(false);
+                return;
+            }
+
             if (pddchDumpSplitSize != 0) { //file splitting active?
                 if (pdcchDumpStream.size() + length + 8 > pddchDumpSplitSize * 1000 * 1000) { //file got too big, close it and create next one
                     try {
