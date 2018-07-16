@@ -54,6 +54,8 @@ public class SeemooQmi {
     private int statusMsgDuplCount = 0;
     private boolean lastMsgKernel = false;
 
+    private boolean qmiNotPresentNotified = false;
+
     /**
      * runnable to handle polling od messages from the kernel driver
      */
@@ -409,10 +411,15 @@ public class SeemooQmi {
                     int svcId = (int)readIntLittleEndian(data, 0);
                     notifyStatusListeners(String.format(appContext.getResources().getString(R.string.packet_receive), svcId, read), 8);
                     notifyPacketListeners(svcId, data, read);
+                    qmiNotPresentNotified = false;
                 }
             } catch (Exception e) {
                 messagesFileInputStream = null;
-                notifyStatusListeners(appContext.getResources().getString(R.string.error_msg_read) + e.toString(), 1);
+                if (!qmiNotPresentNotified) {
+                    notifyStatusListeners(appContext.getResources().getString(R.string.error_msg_qmi_not_present), 1);
+                }
+                qmiNotPresentNotified = true;
+                return;
             }
         } while (read > 0);
     }
@@ -442,8 +449,13 @@ public class SeemooQmi {
             FileOutputStream fos = new FileOutputStream(DATA_FILE);
             fos.write(data);
             fos.close();
+            //qmiNotPresentNotified = false;
+
         } catch (Exception e) {
-            notifyStatusListeners(appContext.getResources().getString(R.string.error_msg_send) + e.toString(), 1);
+            if (!qmiNotPresentNotified) {
+                notifyStatusListeners(appContext.getResources().getString(R.string.error_msg_qmi_not_present), 1);
+            }
+            qmiNotPresentNotified = true;
         }
     }
 

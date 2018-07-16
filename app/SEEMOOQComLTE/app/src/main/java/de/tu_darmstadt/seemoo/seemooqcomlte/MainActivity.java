@@ -718,6 +718,7 @@ public class MainActivity extends AppCompatActivity {
 
         private Runnable dumpSupervisorRunnable = new Runnable() {
             private AlertDialog alertDialog = null;
+            private boolean receivedNoFrames = false;
 
             private void warnUser(String title, String message) {
                 if (alertDialog != null) {
@@ -809,6 +810,17 @@ public class MainActivity extends AppCompatActivity {
                                 }
                             }
                         }
+                    }
+
+                    if (receivedPdcchDumps == 0) { //sth is wrong if we do not receive ANY frames, try to register again
+                        if (receivedNoFrames) {
+                            pdcchDumpService.register(true);
+                            receivedNoFrames = false;
+                        } else {
+                            receivedNoFrames = true;
+                        }
+                    } else {
+                        receivedNoFrames = false;
                     }
 
                     if (Math.abs(receivedPdcchDumpsAvg - receivedPdcchDumps) >= 500) {

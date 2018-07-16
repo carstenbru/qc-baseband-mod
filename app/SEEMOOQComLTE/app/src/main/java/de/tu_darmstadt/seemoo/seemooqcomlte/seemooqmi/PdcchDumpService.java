@@ -104,8 +104,6 @@ public class PdcchDumpService extends SeemooQmiService {
                 if (e.getDataLength() == 8) {
                     if (!isCellInfoRequest) {
                         seemooQmi.notifyStatusListeners(appContext.getResources().getString(R.string.pdcch_cell_info_reg_success), 4);
-                    } else {
-                        isCellInfoRequest = false;
                     }
                 } else {
                     seemooQmi.notifyStatusListeners(appContext.getResources().getString(R.string.pdcch_cell_info_dereg_success), 4);
@@ -164,6 +162,7 @@ public class PdcchDumpService extends SeemooQmiService {
      */
     public void register(boolean state) {
         isRegistered = state;
+        isCellInfoRequest = false;
 
         byte register[] = {(byte)(state ? 1 : 0)};
         seemooQmi.sendMessage(PDCCH_DUMP_SVC_ID, true, register, 1);
