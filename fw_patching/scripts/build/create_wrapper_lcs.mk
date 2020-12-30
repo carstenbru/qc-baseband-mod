@@ -14,7 +14,8 @@ WRAPPER_HEADER=$(patsubst %.img,%_wrapper.h,$(abspath $(BASE_FW)))
 
 $(WRAPPER_LCS_FILE): $(WRAPPER_HEADER)
 	mkdir -p $(FW_BASE_DIR) 
-	python $(SEEMOO_FW_PATCH_DIR_ROOT)/scripts/build/create_wrapper_lcs.py $(WRAPPER_HEADER) $(WRAPPER_LCS_FILE) $(SYMTAB_JSON_FILE)
+	mkdir -p $(GEN_DIR) 
+	python $(SEEMOO_FW_PATCH_DIR_ROOT)/scripts/build/create_wrapper_lcs.py $(WRAPPER_HEADER) $(WRAPPER_LCS_FILE) $(SYMTAB_JSON_FILE) $(GEN_DIR)
 
 clean_wrapper_lcs:
 	rm -f $(WRAPPER_LCS_FILE)

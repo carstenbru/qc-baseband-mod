@@ -21,7 +21,7 @@ from pycparser import c_ast, preprocess_file
 from pycparserext.ext_c_parser import GnuCParser
 
 def usage():
-  print "Usage: %s <path-to/fw_wrapper.h> <output-lcs> <output-symtab-json>" % sys.argv[0]
+  print "Usage: %s <path-to/fw_wrapper.h> <output-lcs> <output-symtab-json> <gen-dir>" % sys.argv[0]
   exit(1)
   
 class DeclVisitor(c_ast.NodeVisitor):
@@ -100,16 +100,21 @@ class DeclVisitor(c_ast.NodeVisitor):
                             print "error: patch address data base unknown, either assign a valid address or leave it undefined"
                             exit(1)
   
-def generate_wrapper_lcs(filename, lcs_file, symtab_json_file):
+def generate_wrapper_lcs(filename, lcs_file, symtab_json_file, gen_dir):
     """
     main linker script generation function
     
     :param filename: firmware wrapper header
     :param lcs_file: destination file
+    :param symtab_json_file: destination file for symbol table in JSON format
+    :param gen_dir: destination directory for generated (intermediate) files
     """
     text = preprocess_file(filename, 'hexagon-cpp')
-
-    parser = GnuCParser()
+    
+    try: # pycparserext >= 2016.2
+      parser = GnuCParser(taboutputdir = gen_dir)
+    except TypeError:
+      parser = GnuCParser()
     ast = parser.parse(text, filename)
     
     v = DeclVisitor(lcs_file)
@@ -121,8 +126,8 @@ if __name__ == "__main__":
     """
     script entry point
     """
-    if len(sys.argv) != 4:
+    if len(sys.argv) != 5:
         usage()
         
     lcs_file = open(sys.argv[2], 'w')
-    generate_wrapper_lcs(sys.argv[1], lcs_file, sys.argv[3])
+    generate_wrapper_lcs(sys.argv[1], lcs_file, sys.argv[3], sys.argv[4])

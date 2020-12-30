@@ -17,11 +17,13 @@ FW_BASE_ELF=$(FW_BASE_DIR)/fw_base.elf
 $(FW_ORG_SRC): $(WRAPPER_LCS_FILE) $(FW_BASE_ELF) $(SRC_FILES)
 	echo $(SRC_FILES)
 	mkdir -p $(GEN_DIR) 
-	python $(SEEMOO_FW_PATCH_DIR_ROOT)/scripts/build/generate_fw_org_functions.py $(FW_ORG_SRC) $(FW_ORG_HEADER) $(FW_ORG_LCS) $(SYMTAB_JSON_FILE) $(FW_BASE_ELF) $(SRC_FILES)
+	python $(SEEMOO_FW_PATCH_DIR_ROOT)/scripts/build/generate_fw_org_functions.py $(FW_ORG_SRC) $(FW_ORG_HEADER) $(FW_ORG_LCS) $(SYMTAB_JSON_FILE) $(FW_BASE_ELF) $(GEN_DIR) $(SRC_FILES)
 
 clean_fw_org_functions:
 	rm -f $(FW_ORG_SRC)
 	rm -f $(FW_ORG_HEADER)
 	rm -f $(FW_ORG_LCS)
+	rm -f $(GEN_DIR)/yacctab.py
+	rm -f $(GEN_DIR)/lextab.py
 	if [ -d $(GEN_DIR) ]; then rmdir --ignore-fail-on-non-empty $(GEN_DIR); fi
 	

@@ -165,7 +165,7 @@ def write_functions(req_org_funcs, org_functions_file, org_functions_header, org
     for sym in func_symtab:
         org_functions_lcs.write('%s = 0x%X;\n' % (sym, func_symtab[sym]))
 
-def generate_org_fw_functions(src_files, org_functions_file, org_functions_header, org_functions_lcs, symtab, base_elf):
+def generate_org_fw_functions(src_files, org_functions_file, org_functions_header, org_functions_lcs, symtab, base_elf, gen_dir):
     """
     determines the helper functions required to generate and writes them
     
@@ -175,13 +175,17 @@ def generate_org_fw_functions(src_files, org_functions_file, org_functions_heade
     :param org_functions_lcs:       destination file for generated linker symbol definitions
     :param symtab:                  symbol table
     :param base_elf:                base firmware ELF file
+    :param gen_dir:                 destination directory for generated (intermediate) files
     """
     # determine required original function helpers
     req_org_funcs = Set()
     for src_file in src_files:
-        text = preprocess_file(src_file, 'hexagon-cpp')
+        text = preprocess_file(src_file, 'hexagon-cpp', r'-DFW_WRAPPER="/dev/null"')
 
-        parser = GnuCParser()
+        try: # pycparserext >= 2016.2
+          parser = GnuCParser(taboutputdir = gen_dir)
+        except TypeError:
+          parser = GnuCParser()
         ast = parser.parse(text, src_file)
     
         v = FuncCallVisitor()
@@ -193,7 +197,7 @@ def generate_org_fw_functions(src_files, org_functions_file, org_functions_heade
     write_functions(req_org_funcs, org_functions_file, org_functions_header, org_functions_lcs, symtab, base_elf)
     
 def usage():
-  print "Usage: %s <org-functions-file> <org-functions-header> <org-functions-lcs> <symtab-json-file> <base-elf> <src-file> [src-file2..]" % sys.argv[0]
+  print "Usage: %s <org-functions-file> <org-functions-header> <org-functions-lcs> <symtab-json-file> <base-elf> <gen-dir> <src-file> [src-file2..]" % sys.argv[0]
   exit(1)
   
 if __name__ == "__main__":
@@ -208,4 +212,4 @@ if __name__ == "__main__":
     org_functions_header = open(sys.argv[2], 'w')
     org_functions_lcs = open(sys.argv[3], 'w')
     base_elf = open(sys.argv[5], 'rb')
-    generate_org_fw_functions(sys.argv[6:], org_functions_file, org_functions_header, org_functions_lcs, symtab, base_elf)
+    generate_org_fw_functions(sys.argv[7:], org_functions_file, org_functions_header, org_functions_lcs, symtab, base_elf, sys.argv[6])

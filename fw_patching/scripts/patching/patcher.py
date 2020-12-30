@@ -54,19 +54,23 @@ class FuncDefVisitor(c_ast.NodeVisitor):
                     print('function "%s" should be placed in pointer table "%s" at %d' % (node.decl.name, destName, destOffset))
                     print('-> function "0x%X" should be placed in pointer table at "0x%X"' % (pointer, pos))
 
-def generate_patch_list(symtab, fw_wrapper, src_files):
+def generate_patch_list(symtab, fw_wrapper, src_files, gen_dir):
     """
     generates a list of patches needed to be applied in order to patch the ELF file
     
     :param symtab: symbol table
     :param fw_wrapper: firmware wrapper header file
     :param src_files: list of patch source code files
+    :param gen_dir: destination directory for generated (intermediate) files
     """
     patches = []
     for filename in src_files:
         text = preprocess_file(filename, 'hexagon-cpp', '-DFW_WRAPPER="' + fw_wrapper + '"')
 
-        parser = GnuCParser()
+        try: # pycparserext >= 2016.2
+          parser = GnuCParser(taboutputdir = gen_dir)
+        except TypeError:
+          parser = GnuCParser()
         ast = parser.parse(text, filename)
     
         v = FuncDefVisitor()
@@ -105,7 +109,7 @@ if __name__ == "__main__":
     patches = [ElfPatch(sys.argv[2])]
     
     symtab = read_symtab_elf(sys.argv[2])
-    patches.extend(generate_patch_list(symtab, sys.argv[4], sys.argv[6:]))
+    patches.extend(generate_patch_list(symtab, sys.argv[4], sys.argv[7:], sys.argv[6]))
     if (sys.argv[6] != ""):
         patches.extend(generate_version_string_patches(sys.argv[5], symtab))
     patch_firmware(sys.argv[1], sys.argv[3], patches)
